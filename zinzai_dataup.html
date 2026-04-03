@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>書類アップロード / Document Upload</title>
+<title>書類アップロード</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600&family=Noto+Sans:wght@400;600&family=Noto+Sans+KR:wght@400;600&family=Noto+Sans+SC:wght@400;600&family=Noto+Sans+Thai:wght@400;600&family=Noto+Sans+Myanmar:wght@400;600&family=Noto+Serif+Khmer:wght@400;600&display=swap');
-
   :root {
     --primary: #1a56db;
     --primary-dark: #1341a8;
@@ -23,9 +22,7 @@
     --border: #e2e8f0;
     --hover: #eff6ff;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   body {
     font-family: 'Noto Sans', 'Noto Sans JP', sans-serif;
     background: var(--bg);
@@ -33,9 +30,8 @@
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding: 20px 16px 40px;
+    padding: 20px 16px 60px;
   }
-
   .card {
     background: var(--card);
     border-radius: 20px;
@@ -44,7 +40,6 @@
     width: 100%;
     box-shadow: 0 4px 24px rgba(0,0,0,0.08);
   }
-
   .lang-bar {
     display: flex;
     flex-wrap: wrap;
@@ -52,7 +47,6 @@
     margin-bottom: 24px;
     justify-content: center;
   }
-
   .lang-btn {
     padding: 5px 10px;
     border: 1.5px solid var(--border);
@@ -64,89 +58,58 @@
     transition: all 0.15s;
     font-family: inherit;
   }
-
   .lang-btn.active {
     background: var(--primary);
     border-color: var(--primary);
     color: #fff;
     font-weight: 600;
   }
-
-  .header {
-    text-align: center;
-    margin-bottom: 24px;
-  }
-
-  .office-name {
-    font-size: 12px;
-    color: var(--sub);
-    margin-bottom: 8px;
-  }
-
+  .header { text-align: center; margin-bottom: 28px; }
+  .office-name { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
   .page-icon { font-size: 36px; margin-bottom: 8px; }
-
-  h1 {
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 6px;
-  }
-
-  .subtitle {
-    font-size: 13px;
-    color: var(--sub);
-    line-height: 1.7;
-    white-space: pre-line;
-  }
-
-  .section-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 8px;
-    margin-top: 20px;
-  }
-
-  .doc-select {
-    width: 100%;
-    padding: 14px 40px 14px 16px;
+  h1 { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: var(--sub); line-height: 1.7; white-space: pre-line; }
+  .fields-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .field-row {
     border: 1.5px solid var(--border);
-    border-radius: 12px;
-    font-size: 15px;
-    font-family: inherit;
-    color: var(--text);
-    background: #fff;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23718096' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    cursor: pointer;
+    border-radius: 14px;
+    overflow: hidden;
     transition: border-color 0.2s;
   }
-
-  .doc-select:focus {
-    outline: none;
-    border-color: var(--primary);
+  .field-row.has-file { border-color: var(--primary); background: #eff6ff; }
+  .field-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    cursor: pointer;
+    user-select: none;
+    gap: 8px;
   }
-
-  .drop-zone {
+  .field-label { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+  .field-status { font-size: 12px; color: var(--sub); white-space: nowrap; }
+  .field-status.ready { color: var(--success); font-weight: 600; }
+  .chevron { font-size: 11px; color: var(--sub); transition: transform 0.2s; flex-shrink: 0; }
+  .field-row.open .chevron { transform: rotate(180deg); }
+  .field-body {
+    border-top: 1.5px solid var(--border);
+    padding: 12px 14px;
+    display: none;
+  }
+  .field-row.open .field-body { display: block; }
+  .field-row.has-file .field-body { border-top-color: var(--primary); }
+  .mini-drop {
     border: 2px dashed #c0cfe0;
-    border-radius: 14px;
-    padding: 32px 20px;
+    border-radius: 10px;
+    padding: 20px 12px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.2s;
-    background: #f8fafc;
     position: relative;
-    margin-top: 8px;
+    background: #f8fafc;
+    transition: all 0.2s;
   }
-
-  .drop-zone:hover, .drop-zone.dragover {
-    border-color: var(--primary);
-    background: var(--hover);
-  }
-
-  .drop-zone input[type="file"] {
+  .mini-drop:hover { border-color: var(--primary); background: var(--hover); }
+  .mini-drop input[type="file"] {
     position: absolute;
     inset: 0;
     opacity: 0;
@@ -154,71 +117,37 @@
     width: 100%;
     height: 100%;
   }
-
-  .drop-icon { font-size: 36px; margin-bottom: 10px; }
-
-  .drop-text {
-    font-size: 15px;
-    color: #4a5568;
-    font-weight: 600;
-    margin-bottom: 4px;
-  }
-
-  .drop-hint { font-size: 12px; color: #a0aec0; }
-
-  .preview-area {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 14px;
-  }
-
-  .preview-item {
-    position: relative;
-    width: 76px;
-    height: 76px;
-    border-radius: 10px;
-    overflow: hidden;
-    background: #eee;
-    flex-shrink: 0;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  }
-
-  .preview-item img {
+  .mini-drop-text { font-size: 13px; color: #4a5568; font-weight: 600; }
+  .mini-drop-hint { font-size: 11px; color: #a0aec0; margin-top: 3px; }
+  .preview-wrap { position: relative; display: block; }
+  .preview-wrap img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    max-height: 180px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #eee;
+    display: block;
   }
-
-  .preview-item .remove-btn {
+  .remove-btn {
     position: absolute;
-    top: 3px;
-    right: 3px;
+    top: 4px;
+    right: 4px;
     background: rgba(0,0,0,0.65);
     color: #fff;
     border: none;
     border-radius: 50%;
-    width: 22px;
-    height: 22px;
-    font-size: 13px;
+    width: 26px;
+    height: 26px;
+    font-size: 15px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
   }
-
-  .file-count {
-    font-size: 13px;
-    color: var(--sub);
-    margin-top: 10px;
-    text-align: center;
-  }
-
-  .btn-upload {
+  .btn-submit {
     display: block;
     width: 100%;
     padding: 16px;
-    margin-top: 22px;
     background: var(--primary);
     color: #fff;
     font-family: inherit;
@@ -229,14 +158,8 @@
     cursor: pointer;
     transition: background 0.2s;
   }
-
-  .btn-upload:hover:not(:disabled) { background: var(--primary-dark); }
-
-  .btn-upload:disabled {
-    background: #93c5fd;
-    cursor: not-allowed;
-  }
-
+  .btn-submit:hover:not(:disabled) { background: var(--primary-dark); }
+  .btn-submit:disabled { background: #93c5fd; cursor: not-allowed; }
   .progress-bar-wrap {
     display: none;
     margin-top: 14px;
@@ -245,14 +168,7 @@
     overflow: hidden;
     height: 8px;
   }
-
-  .progress-bar {
-    height: 100%;
-    background: var(--primary);
-    width: 0%;
-    transition: width 0.4s;
-  }
-
+  .progress-bar { height: 100%; background: var(--primary); width: 0%; transition: width 0.4s; }
   .status-msg {
     display: none;
     margin-top: 18px;
@@ -263,284 +179,170 @@
     line-height: 1.7;
     white-space: pre-line;
   }
-
-  .status-msg.success {
-    background: var(--success-bg);
-    color: var(--success);
-    border: 1px solid var(--success-border);
-  }
-
-  .status-msg.error {
-    background: var(--error-bg);
-    color: var(--error);
-    border: 1px solid var(--error-border);
-  }
+  .status-msg.success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+  .status-msg.error { background: var(--error-bg); color: var(--error); border: 1px solid var(--error-border); }
 </style>
 </head>
 <body>
 <div class="card">
-
   <div class="lang-bar" id="langBar"></div>
-
   <div class="header">
     <div class="page-icon">📄</div>
     <div class="office-name">大房行政書士法人</div>
     <h1 id="ttlMain"></h1>
     <p class="subtitle" id="ttlSub"></p>
   </div>
-
-  <div class="section-label" id="lblDocType"></div>
-  <select class="doc-select" id="docType">
-    <option value="" id="optPlaceholder"></option>
-  </select>
-
-  <div class="section-label" id="lblPhoto"></div>
-  <div class="drop-zone" id="dropZone">
-    <input type="file" id="fileInput" accept="image/*" multiple>
-    <div class="drop-icon">📷</div>
-    <div class="drop-text" id="dropText"></div>
-    <div class="drop-hint" id="dropHint"></div>
-  </div>
-
-  <div class="preview-area" id="previewArea"></div>
-  <div class="file-count" id="fileCount"></div>
-
-  <button class="btn-upload" id="uploadBtn" disabled></button>
-
+  <div class="fields-list" id="fieldsList"></div>
+  <button class="btn-submit" id="submitBtn" disabled></button>
   <div class="progress-bar-wrap" id="progressWrap">
     <div class="progress-bar" id="progressBar"></div>
   </div>
-
   <div class="status-msg" id="statusMsg"></div>
 </div>
 
 <script>
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 
+// URLパラメータからフォルダIDを取得
+const urlParams = new URLSearchParams(window.location.search);
+const FOLDER_ID = urlParams.get('folder') || '';
+
+const DOC_KEYS = ['zairyu_front','zairyu_back','passport','cert_jp','cert_skill','cert_specialist','tax_payment','tax_cert','withholding','medical','other'];
+
 const LANGS = {
   ja: {
-    label: '日本語',
-    title: '書類アップロード',
-    subtitle: '書類の種類を選んで\n写真をアップロードしてください',
-    lblDocType: '書類の種類 ★',
-    lblPhoto: '写真を選択 ★',
-    optPlaceholder: '-- 書類を選んでください --',
-    dropText: 'タップして写真を選ぶ',
-    dropHint: '複数枚まとめて選べます',
-    btnUpload: 'アップロードする',
-    fileCount: n => `${n}枚 選択中`,
-    msgSuccess: '✅ アップロード完了しました！\n担当者に届きました。',
-    msgError: '❌ 送信に失敗しました。\nもう一度お試しください。',
-    msgSelectDoc: '書類の種類を選んでください',
-    msgSelectFile: '写真を選んでください',
-    docs: ['在留カード（表）','在留カード（裏）','パスポート','合格証（日本語）','合格証（技能試験）','合格証（専門級・3級）','納税証明書','課税証明書','源泉徴収票','健康診断証','その他'],
+    label:'日本語', title:'書類アップロード',
+    subtitle:'必要な書類の写真をアップロードしてください\n（不要な項目はスキップできます）',
+    tapToAdd:'📷 タップして写真を追加', hint:'JPG / PNG', btnSubmit:'送信する',
+    noFile:'未選択', selected:'選択済み ✓',
+    msgSuccess:'✅ アップロード完了しました！\n担当者に届きました。',
+    msgError:'❌ 送信に失敗しました。\nもう一度お試しください。',
+    msgNoFile:'少なくとも1枚の写真を選択してください',
+    docs:{ zairyu_front:'在留カード（表）', zairyu_back:'在留カード（裏）', passport:'パスポート', cert_jp:'合格証（日本語）', cert_skill:'合格証（技能試験）', cert_specialist:'合格証（専門級・3級）', tax_payment:'納税証明書', tax_cert:'課税証明書', withholding:'源泉徴収票', medical:'健康診断証', other:'その他' }
   },
   en: {
-    label: 'English',
-    title: 'Document Upload',
-    subtitle: 'Please select the document type\nand upload your photo(s)',
-    lblDocType: 'Document Type ★',
-    lblPhoto: 'Select Photo(s) ★',
-    optPlaceholder: '-- Select document type --',
-    dropText: 'Tap to select photo(s)',
-    dropHint: 'Multiple files allowed',
-    btnUpload: 'Upload',
-    fileCount: n => `${n} file(s) selected`,
-    msgSuccess: '✅ Upload complete!\nYour documents have been received.',
-    msgError: '❌ Upload failed.\nPlease try again.',
-    msgSelectDoc: 'Please select a document type',
-    msgSelectFile: 'Please select a photo',
-    docs: ['Residence Card (Front)','Residence Card (Back)','Passport','Certificate (Japanese Language)','Certificate (Skills Test)','Certificate (Specialist/Level 3)','Tax Payment Certificate','Taxation Certificate','Withholding Tax Statement','Medical Certificate','Other'],
+    label:'English', title:'Document Upload',
+    subtitle:'Please upload photos of required documents\n(You can skip items that are not needed)',
+    tapToAdd:'📷 Tap to add photo', hint:'JPG / PNG', btnSubmit:'Submit',
+    noFile:'Not selected', selected:'Selected ✓',
+    msgSuccess:'✅ Upload complete!\nYour documents have been received.',
+    msgError:'❌ Upload failed.\nPlease try again.',
+    msgNoFile:'Please select at least one photo',
+    docs:{ zairyu_front:'Residence Card (Front)', zairyu_back:'Residence Card (Back)', passport:'Passport', cert_jp:'Certificate (Japanese)', cert_skill:'Certificate (Skills Test)', cert_specialist:'Certificate (Specialist/Level 3)', tax_payment:'Tax Payment Certificate', tax_cert:'Taxation Certificate', withholding:'Withholding Tax Statement', medical:'Medical Certificate', other:'Other' }
   },
   mn: {
-    label: 'Монгол',
-    title: 'Баримт бичиг байршуулах',
-    subtitle: 'Баримт бичгийн төрлийг сонгоод\nзураг байршуулна уу',
-    lblDocType: 'Баримт бичгийн төрөл ★',
-    lblPhoto: 'Зураг сонгох ★',
-    optPlaceholder: '-- Баримт бичгийн төрлийг сонгоно уу --',
-    dropText: 'Зураг сонгохын тулд дарна уу',
-    dropHint: 'Олон зураг нэгэн зэрэг сонгох боломжтой',
-    btnUpload: 'Байршуулах',
-    fileCount: n => `${n} зураг сонгогдсон`,
-    msgSuccess: '✅ Байршуулалт амжилттай!\nТаны баримт бичиг хүлээн авагдлаа.',
-    msgError: '❌ Байршуулалт амжилтгүй болсон.\nДахин оролдоно уу.',
-    msgSelectDoc: 'Баримт бичгийн төрлийг сонгоно уу',
-    msgSelectFile: 'Зураг сонгоно уу',
-    docs: ['Оршин суух карт (Урд тал)','Оршин суух карт (Арын тал)','Паспорт','Гэрчилгээ (Япон хэл)','Гэрчилгээ (Ур чадварын шалгалт)','Гэрчилгээ (Мэргэжлийн/3-р түвшин)','Татвар төлсний гэрчилгээ','Татварын гэрчилгээ','Татварын тодорхойлолт','Эрүүл мэндийн гэрчилгээ','Бусад'],
+    label:'Монгол', title:'Баримт бичиг байршуулах',
+    subtitle:'Шаардлагатай баримт бичгийн зургийг байршуулна уу\n(Шаардлагагүй зүйлийг алгасаж болно)',
+    tapToAdd:'📷 Зураг нэмэхийн тулд дарна уу', hint:'JPG / PNG', btnSubmit:'Илгээх',
+    noFile:'Сонгоогүй', selected:'Сонгосон ✓',
+    msgSuccess:'✅ Байршуулалт амжилттай!\nТаны баримт бичиг хүлээн авагдлаа.',
+    msgError:'❌ Илгээхэд алдаа гарлаа.\nДахин оролдоно уу.',
+    msgNoFile:'Дор хаяж нэг зураг сонгоно уу',
+    docs:{ zairyu_front:'Оршин суух карт (Урд тал)', zairyu_back:'Оршин суух карт (Арын тал)', passport:'Паспорт', cert_jp:'Гэрчилгээ (Япон хэл)', cert_skill:'Гэрчилгээ (Ур чадварын шалгалт)', cert_specialist:'Гэрчилгээ (Мэргэжлийн/3-р түвшин)', tax_payment:'Татвар төлсний гэрчилгээ', tax_cert:'Татварын гэрчилгээ', withholding:'Татварын тодорхойлолт', medical:'Эрүүл мэндийн гэрчилгээ', other:'Бусад' }
   },
   zh: {
-    label: '中文',
-    title: '文件上传',
-    subtitle: '请选择文件类型\n并上传照片',
-    lblDocType: '文件类型 ★',
-    lblPhoto: '选择照片 ★',
-    optPlaceholder: '-- 请选择文件类型 --',
-    dropText: '点击选择照片',
-    dropHint: '可同时选择多张',
-    btnUpload: '上传',
-    fileCount: n => `已选择 ${n} 张`,
-    msgSuccess: '✅ 上传成功！\n您的文件已收到。',
-    msgError: '❌ 上传失败。\n请重试。',
-    msgSelectDoc: '请选择文件类型',
-    msgSelectFile: '请选择照片',
-    docs: ['居留卡（正面）','居留卡（背面）','护照','合格证（日语）','合格证（技能考试）','合格证（专项级·3级）','纳税证明','课税证明','扣缴凭证','健康诊断证明','其他'],
+    label:'中文', title:'文件上传',
+    subtitle:'请上传所需文件的照片\n（不需要的项目可以跳过）',
+    tapToAdd:'📷 点击添加照片', hint:'JPG / PNG', btnSubmit:'提交',
+    noFile:'未选择', selected:'已选择 ✓',
+    msgSuccess:'✅ 上传成功！\n您的文件已收到。',
+    msgError:'❌ 上传失败。\n请重试。',
+    msgNoFile:'请至少选择一张照片',
+    docs:{ zairyu_front:'居留卡（正面）', zairyu_back:'居留卡（背面）', passport:'护照', cert_jp:'合格证（日语）', cert_skill:'合格证（技能考试）', cert_specialist:'合格证（专项级·3级）', tax_payment:'纳税证明', tax_cert:'课税证明', withholding:'扣缴凭证', medical:'健康诊断证明', other:'其他' }
   },
   km: {
-    label: 'ខ្មែរ',
-    title: 'បង្ហោះឯកសារ',
-    subtitle: 'សូមជ្រើសរើសប្រភេទឯកសារ\nហើយបង្ហោះរូបថត',
-    lblDocType: 'ប្រភេទឯកសារ ★',
-    lblPhoto: 'ជ្រើសរើសរូបថត ★',
-    optPlaceholder: '-- ជ្រើសរើសប្រភេទឯកសារ --',
-    dropText: 'ចុចដើម្បីជ្រើសរើសរូបថត',
-    dropHint: 'អាចជ្រើសរើសបានច្រើនសន្លឹក',
-    btnUpload: 'បង្ហោះ',
-    fileCount: n => `បានជ្រើសរើស ${n} រូបថត`,
-    msgSuccess: '✅ បង្ហោះបានជោគជ័យ!\nឯកសាររបស់អ្នកត្រូវបានទទួល។',
-    msgError: '❌ បង្ហោះបានបរាជ័យ។\nសូមព្យាយាមម្តងទៀត។',
-    msgSelectDoc: 'សូមជ្រើសរើសប្រភេទឯកសារ',
-    msgSelectFile: 'សូមជ្រើសរើសរូបថត',
-    docs: ['កាតស្នាក់នៅ (ខាងមុខ)','កាតស្នាក់នៅ (ខាងក្រោយ)','លិខិតឆ្លងដែន','វិញ្ញាបនបត្រ (ភាសាជប៉ុន)','វិញ្ញាបនបត្រ (ការប្រឡងជំនាញ)','វិញ្ញាបនបត្រ (ថ្នាក់ជំនាញ/កម្រិត 3)','វិញ្ញាបនបត្របង់ពន្ធ','វិញ្ញាបនបត្រពន្ធ','លិខិតកាត់ពន្ធ','វិញ្ញាបនបត្រសុខភាព','ផ្សេងទៀត'],
+    label:'ខ្មែរ', title:'បង្ហោះឯកសារ',
+    subtitle:'សូមបង្ហោះរូបថតឯកសារដែលត្រូវការ\n(អ្នកអាចរំលងធាតុដែលមិនចាំបាច់)',
+    tapToAdd:'📷 ចុចដើម្បីបន្ថែមរូបថត', hint:'JPG / PNG', btnSubmit:'បញ្ជូន',
+    noFile:'មិនទាន់ជ្រើសរើស', selected:'បានជ្រើសរើស ✓',
+    msgSuccess:'✅ បង្ហោះបានជោគជ័យ!\nឯកសាររបស់អ្នកត្រូវបានទទួល។',
+    msgError:'❌ បង្ហោះបានបរាជ័យ។\nសូមព្យាយាមម្តងទៀត។',
+    msgNoFile:'សូមជ្រើសរើសរូបថតយ៉ាងហោចណាស់មួយ',
+    docs:{ zairyu_front:'កាតស្នាក់នៅ (ខាងមុខ)', zairyu_back:'កាតស្នាក់នៅ (ខាងក្រោយ)', passport:'លិខិតឆ្លងដែន', cert_jp:'វិញ្ញាបនបត្រ (ភាសាជប៉ុន)', cert_skill:'វិញ្ញាបនបត្រ (ការប្រឡងជំនាញ)', cert_specialist:'វិញ្ញាបនបត្រ (ថ្នាក់ជំនាញ/កម្រិត 3)', tax_payment:'វិញ្ញាបនបត្របង់ពន្ធ', tax_cert:'វិញ្ញាបនបត្រពន្ធ', withholding:'លិខិតកាត់ពន្ធ', medical:'វិញ្ញាបនបត្រសុខភាព', other:'ផ្សេងទៀត' }
   },
   vi: {
-    label: 'Tiếng Việt',
-    title: 'Tải lên tài liệu',
-    subtitle: 'Vui lòng chọn loại tài liệu\nvà tải ảnh lên',
-    lblDocType: 'Loại tài liệu ★',
-    lblPhoto: 'Chọn ảnh ★',
-    optPlaceholder: '-- Chọn loại tài liệu --',
-    dropText: 'Nhấn để chọn ảnh',
-    dropHint: 'Có thể chọn nhiều ảnh cùng lúc',
-    btnUpload: 'Tải lên',
-    fileCount: n => `Đã chọn ${n} ảnh`,
-    msgSuccess: '✅ Tải lên thành công!\nTài liệu của bạn đã được nhận.',
-    msgError: '❌ Tải lên thất bại.\nVui lòng thử lại.',
-    msgSelectDoc: 'Vui lòng chọn loại tài liệu',
-    msgSelectFile: 'Vui lòng chọn ảnh',
-    docs: ['Thẻ cư trú (Mặt trước)','Thẻ cư trú (Mặt sau)','Hộ chiếu','Chứng chỉ (Tiếng Nhật)','Chứng chỉ (Kỳ thi kỹ năng)','Chứng chỉ (Chuyên ngành/Cấp 3)','Giấy chứng nhận nộp thuế','Giấy chứng nhận thuế','Phiếu khấu trừ thuế','Giấy khám sức khỏe','Khác'],
+    label:'Tiếng Việt', title:'Tải lên tài liệu',
+    subtitle:'Vui lòng tải ảnh các tài liệu cần thiết\n(Có thể bỏ qua các mục không cần thiết)',
+    tapToAdd:'📷 Nhấn để thêm ảnh', hint:'JPG / PNG', btnSubmit:'Gửi',
+    noFile:'Chưa chọn', selected:'Đã chọn ✓',
+    msgSuccess:'✅ Tải lên thành công!\nTài liệu của bạn đã được nhận.',
+    msgError:'❌ Tải lên thất bại.\nVui lòng thử lại.',
+    msgNoFile:'Vui lòng chọn ít nhất một ảnh',
+    docs:{ zairyu_front:'Thẻ cư trú (Mặt trước)', zairyu_back:'Thẻ cư trú (Mặt sau)', passport:'Hộ chiếu', cert_jp:'Chứng chỉ (Tiếng Nhật)', cert_skill:'Chứng chỉ (Kỳ thi kỹ năng)', cert_specialist:'Chứng chỉ (Chuyên ngành/Cấp 3)', tax_payment:'Giấy chứng nhận nộp thuế', tax_cert:'Giấy chứng nhận thuế', withholding:'Phiếu khấu trừ thuế', medical:'Giấy khám sức khỏe', other:'Khác' }
   },
   id: {
-    label: 'Indonesia',
-    title: 'Unggah Dokumen',
-    subtitle: 'Silakan pilih jenis dokumen\ndan unggah foto',
-    lblDocType: 'Jenis Dokumen ★',
-    lblPhoto: 'Pilih Foto ★',
-    optPlaceholder: '-- Pilih jenis dokumen --',
-    dropText: 'Ketuk untuk memilih foto',
-    dropHint: 'Bisa memilih beberapa foto sekaligus',
-    btnUpload: 'Unggah',
-    fileCount: n => `${n} foto dipilih`,
-    msgSuccess: '✅ Unggah berhasil!\nDokumen Anda telah diterima.',
-    msgError: '❌ Unggah gagal.\nSilakan coba lagi.',
-    msgSelectDoc: 'Silakan pilih jenis dokumen',
-    msgSelectFile: 'Silakan pilih foto',
-    docs: ['Kartu Izin Tinggal (Depan)','Kartu Izin Tinggal (Belakang)','Paspor','Sertifikat (Bahasa Jepang)','Sertifikat (Uji Keterampilan)','Sertifikat (Spesialis/Level 3)','Bukti Pembayaran Pajak','Surat Keterangan Pajak','Slip Pemotongan Pajak','Sertifikat Kesehatan','Lainnya'],
+    label:'Indonesia', title:'Unggah Dokumen',
+    subtitle:'Silakan unggah foto dokumen yang diperlukan\n(Item yang tidak diperlukan dapat dilewati)',
+    tapToAdd:'📷 Ketuk untuk menambah foto', hint:'JPG / PNG', btnSubmit:'Kirim',
+    noFile:'Belum dipilih', selected:'Dipilih ✓',
+    msgSuccess:'✅ Unggah berhasil!\nDokumen Anda telah diterima.',
+    msgError:'❌ Unggah gagal.\nSilakan coba lagi.',
+    msgNoFile:'Silakan pilih setidaknya satu foto',
+    docs:{ zairyu_front:'Kartu Izin Tinggal (Depan)', zairyu_back:'Kartu Izin Tinggal (Belakang)', passport:'Paspor', cert_jp:'Sertifikat (Bahasa Jepang)', cert_skill:'Sertifikat (Uji Keterampilan)', cert_specialist:'Sertifikat (Spesialis/Level 3)', tax_payment:'Bukti Pembayaran Pajak', tax_cert:'Surat Keterangan Pajak', withholding:'Slip Pemotongan Pajak', medical:'Sertifikat Kesehatan', other:'Lainnya' }
   },
   th: {
-    label: 'ไทย',
-    title: 'อัปโหลดเอกสาร',
-    subtitle: 'กรุณาเลือกประเภทเอกสาร\nและอัปโหลดรูปภาพ',
-    lblDocType: 'ประเภทเอกสาร ★',
-    lblPhoto: 'เลือกรูปภาพ ★',
-    optPlaceholder: '-- กรุณาเลือกประเภทเอกสาร --',
-    dropText: 'แตะเพื่อเลือกรูปภาพ',
-    dropHint: 'สามารถเลือกหลายภาพได้',
-    btnUpload: 'อัปโหลด',
-    fileCount: n => `เลือกแล้ว ${n} ภาพ`,
-    msgSuccess: '✅ อัปโหลดสำเร็จ!\nได้รับเอกสารของคุณแล้ว',
-    msgError: '❌ อัปโหลดล้มเหลว\nกรุณาลองใหม่อีกครั้ง',
-    msgSelectDoc: 'กรุณาเลือกประเภทเอกสาร',
-    msgSelectFile: 'กรุณาเลือกรูปภาพ',
-    docs: ['บัตรถิ่นที่อยู่ (ด้านหน้า)','บัตรถิ่นที่อยู่ (ด้านหลัง)','หนังสือเดินทาง','ใบรับรอง (ภาษาญี่ปุ่น)','ใบรับรอง (การสอบทักษะ)','ใบรับรอง (ผู้เชี่ยวชาญ/ระดับ 3)','ใบรับรองการชำระภาษี','ใบรับรองภาษี','ใบหักภาษี ณ ที่จ่าย','ใบรับรองสุขภาพ','อื่นๆ'],
+    label:'ไทย', title:'อัปโหลดเอกสาร',
+    subtitle:'กรุณาอัปโหลดรูปภาพเอกสารที่จำเป็น\n(สามารถข้ามรายการที่ไม่จำเป็นได้)',
+    tapToAdd:'📷 แตะเพื่อเพิ่มรูปภาพ', hint:'JPG / PNG', btnSubmit:'ส่ง',
+    noFile:'ยังไม่ได้เลือก', selected:'เลือกแล้ว ✓',
+    msgSuccess:'✅ อัปโหลดสำเร็จ!\nได้รับเอกสารของคุณแล้ว',
+    msgError:'❌ อัปโหลดล้มเหลว\nกรุณาลองใหม่อีกครั้ง',
+    msgNoFile:'กรุณาเลือกรูปภาพอย่างน้อยหนึ่งภาพ',
+    docs:{ zairyu_front:'บัตรถิ่นที่อยู่ (ด้านหน้า)', zairyu_back:'บัตรถิ่นที่อยู่ (ด้านหลัง)', passport:'หนังสือเดินทาง', cert_jp:'ใบรับรอง (ภาษาญี่ปุ่น)', cert_skill:'ใบรับรอง (การสอบทักษะ)', cert_specialist:'ใบรับรอง (ผู้เชี่ยวชาญ/ระดับ 3)', tax_payment:'ใบรับรองการชำระภาษี', tax_cert:'ใบรับรองภาษี', withholding:'ใบหักภาษี ณ ที่จ่าย', medical:'ใบรับรองสุขภาพ', other:'อื่นๆ' }
   },
   my: {
-    label: 'မြန်မာ',
-    title: 'စာရွက်စာတမ်းတင်ရန်',
-    subtitle: 'စာရွက်စာတမ်းအမျိုးအစားရွေးချယ်ပြီး\nဓာတ်ပုံတင်ပါ',
-    lblDocType: 'စာရွက်စာတမ်းအမျိုးအစား ★',
-    lblPhoto: 'ဓာတ်ပုံရွေးချယ်ရန် ★',
-    optPlaceholder: '-- စာရွက်စာတမ်းအမျိုးအစားရွေးချယ်ပါ --',
-    dropText: 'ဓာတ်ပုံရွေးချယ်ရန် နှိပ်ပါ',
-    dropHint: 'တစ်ကြိမ်တည်းဓာတ်ပုံများစွာရွေးနိုင်သည်',
-    btnUpload: 'တင်ရန်',
-    fileCount: n => `${n} ဓာတ်ပုံရွေးထားသည်`,
-    msgSuccess: '✅ တင်ခြင်းအောင်မြင်သည်!\nသင့်စာရွက်စာတမ်းကိုလက်ခံရရှိပြီ။',
-    msgError: '❌ တင်ခြင်းမအောင်မြင်ပါ။\nထပ်မံကြိုးစားပါ။',
-    msgSelectDoc: 'စာရွက်စာတမ်းအမျိုးအစားရွေးချယ်ပါ',
-    msgSelectFile: 'ဓာတ်ပုံရွေးချယ်ပါ',
-    docs: ['နေထိုင်ခွင့်ကတ် (ရှေ့ဘက်)','နေထိုင်ခွင့်ကတ် (နောက်ဘက်)','နိုင်ငံကူးလက်မှတ်','လက်မှတ် (ဂျပန်ဘာသာ)','လက်မှတ် (ကျွမ်းကျင်မှုစာမေးပွဲ)','လက်မှတ် (ကျွမ်းကျင်ရည်မှန်း/အဆင့် 3)','အခွန်ပေးဆောင်မှုသက်သေခံလက်မှတ်','အခွန်သက်သေခံလက်မှတ်','အခွန်နုတ်ယူသည့်ဖော်ပြချက်','ကျန်းမာရေးသက်သေခံလက်မှတ်','အခြား'],
+    label:'မြန်မာ', title:'စာရွက်စာတမ်းတင်ရန်',
+    subtitle:'လိုအပ်သောစာရွက်စာတမ်းများ၏ဓာတ်ပုံတင်ပါ\n(မလိုအပ်သောအရာများကိုကျော်နိုင်သည်)',
+    tapToAdd:'📷 ဓာတ်ပုံထည့်ရန်နှိပ်ပါ', hint:'JPG / PNG', btnSubmit:'ပေးပို့ရန်',
+    noFile:'မရွေးချယ်ရသေး', selected:'ရွေးချယ်ပြီး ✓',
+    msgSuccess:'✅ တင်ခြင်းအောင်မြင်သည်!\nသင့်စာရွက်စာတမ်းကိုလက်ခံရရှိပြီ။',
+    msgError:'❌ တင်ခြင်းမအောင်မြင်ပါ။\nထပ်မံကြိုးစားပါ။',
+    msgNoFile:'ဓာတ်ပုံတစ်ပုံရွေးချယ်ပါ',
+    docs:{ zairyu_front:'နေထိုင်ခွင့်ကတ် (ရှေ့ဘက်)', zairyu_back:'နေထိုင်ခွင့်ကတ် (နောက်ဘက်)', passport:'နိုင်ငံကူးလက်မှတ်', cert_jp:'လက်မှတ် (ဂျပန်ဘာသာ)', cert_skill:'လက်မှတ် (ကျွမ်းကျင်မှုစာမေးပွဲ)', cert_specialist:'လက်မှတ် (ကျွမ်းကျင်ရည်မှန်း/အဆင့် 3)', tax_payment:'အခွန်ပေးဆောင်မှုသက်သေခံ', tax_cert:'အခွန်သက်သေခံလက်မှတ်', withholding:'အခွန်နုတ်ယူသည့်ဖော်ပြချက်', medical:'ကျန်းမာရေးသက်သေခံ', other:'အခြား' }
   },
   si: {
-    label: 'සිංහල',
-    title: 'ලේඛන උඩුගත කිරීම',
-    subtitle: 'ලේඛනයේ වර්ගය තෝරා\nඡායාරූප උඩුගත කරන්න',
-    lblDocType: 'ලේඛනයේ වර්ගය ★',
-    lblPhoto: 'ඡායාරූප තෝරන්න ★',
-    optPlaceholder: '-- ලේඛනයේ වර්ගය තෝරන්න --',
-    dropText: 'ඡායාරූප තෝරීමට තට්ටු කරන්න',
-    dropHint: 'එකවර බොහෝ ඡායාරූප තෝරා ගත හැකිය',
-    btnUpload: 'උඩුගත කරන්න',
-    fileCount: n => `ඡායාරූප ${n}ක් තෝරා ඇත`,
-    msgSuccess: '✅ උඩුගත කිරීම සාර්ථකයි!\nඔබේ ලේඛන ලැබී ඇත.',
-    msgError: '❌ උඩුගත කිරීම අසාර්ථකයි.\nනැවත උත්සාහ කරන්න.',
-    msgSelectDoc: 'ලේඛනයේ වර්ගය තෝරන්න',
-    msgSelectFile: 'ඡායාරූපයක් තෝරන්න',
-    docs: ['පදිංචිකාර්ඩ් (ඉදිරිපස)','පදිංචිකාර්ඩ් (පිටුපස)','ගමන් බලපත්‍රය','සහතිකය (ජපන් භාෂාව)','සහතිකය (කුසලතා විභාගය)','සහතිකය (විශේෂඥ/මට්ටම 3)','බදු ගෙවීමේ සහතිකය','බදු සහතිකය','රඳවා ගත් බදු ප්‍රකාශය','වෛද්‍ය සහතිකය','වෙනත්'],
+    label:'සිංහල', title:'ලේඛන උඩුගත කිරීම',
+    subtitle:'අවශ්‍ය ලේඛනවල ඡායාරූප උඩුගත කරන්න\n(අනවශ්‍ය අයිතම මඟ හැරිය හැකිය)',
+    tapToAdd:'📷 ඡායාරූප එකතු කිරීමට තට්ටු කරන්න', hint:'JPG / PNG', btnSubmit:'යොමු කරන්න',
+    noFile:'තෝරා නැත', selected:'තෝරා ඇත ✓',
+    msgSuccess:'✅ උඩුගත කිරීම සාර්ථකයි!\nඔබේ ලේඛන ලැබී ඇත.',
+    msgError:'❌ උඩුගත කිරීම අසාර්ථකයි.\nනැවත උත්සාහ කරන්න.',
+    msgNoFile:'අවම වශයෙන් ඡායාරූපයක් තෝරන්න',
+    docs:{ zairyu_front:'පදිංචිකාර්ඩ් (ඉදිරිපස)', zairyu_back:'පදිංචිකාර්ඩ් (පිටුපස)', passport:'ගමන් බලපත්‍රය', cert_jp:'සහතිකය (ජපන් භාෂාව)', cert_skill:'සහතිකය (කුසලතා විභාගය)', cert_specialist:'සහතිකය (විශේෂඥ/මට්ටම 3)', tax_payment:'බදු ගෙවීමේ සහතිකය', tax_cert:'බදු සහතිකය', withholding:'රඳවා ගත් බදු ප්‍රකාශය', medical:'වෛද්‍ය සහතිකය', other:'වෙනත්' }
   },
   ko: {
-    label: '한국어',
-    title: '서류 업로드',
-    subtitle: '서류 종류를 선택하고\n사진을 업로드해 주세요',
-    lblDocType: '서류 종류 ★',
-    lblPhoto: '사진 선택 ★',
-    optPlaceholder: '-- 서류 종류를 선택해 주세요 --',
-    dropText: '탭하여 사진 선택',
-    dropHint: '여러 장을 동시에 선택할 수 있습니다',
-    btnUpload: '업로드',
-    fileCount: n => `${n}장 선택됨`,
-    msgSuccess: '✅ 업로드 완료!\n담당자에게 전달되었습니다.',
-    msgError: '❌ 업로드 실패.\n다시 시도해 주세요.',
-    msgSelectDoc: '서류 종류를 선택해 주세요',
-    msgSelectFile: '사진을 선택해 주세요',
-    docs: ['재류카드 (앞면)','재류카드 (뒷면)','여권','합격증 (일본어)','합격증 (기능시험)','합격증 (전문급·3급)','납세증명서','과세증명서','원천징수영수증','건강진단서','기타'],
+    label:'한국어', title:'서류 업로드',
+    subtitle:'필요한 서류의 사진을 업로드해 주세요\n(불필요한 항목은 건너뛸 수 있습니다)',
+    tapToAdd:'📷 탭하여 사진 추가', hint:'JPG / PNG', btnSubmit:'제출',
+    noFile:'미선택', selected:'선택됨 ✓',
+    msgSuccess:'✅ 업로드 완료!\n담당자에게 전달되었습니다.',
+    msgError:'❌ 업로드 실패.\n다시 시도해 주세요.',
+    msgNoFile:'사진을 최소 한 장 선택해 주세요',
+    docs:{ zairyu_front:'재류카드 (앞면)', zairyu_back:'재류카드 (뒷면)', passport:'여권', cert_jp:'합격증 (일본어)', cert_skill:'합격증 (기능시험)', cert_specialist:'합격증 (전문급·3급)', tax_payment:'납세증명서', tax_cert:'과세증명서', withholding:'원천징수영수증', medical:'건강진단서', other:'기타' }
   },
   ne: {
-    label: 'नेपाली',
-    title: 'कागजात अपलोड',
-    subtitle: 'कागजातको प्रकार छनोट गरी\nफोटो अपलोड गर्नुहोस्',
-    lblDocType: 'कागजातको प्रकार ★',
-    lblPhoto: 'फोटो छनोट गर्नुहोस् ★',
-    optPlaceholder: '-- कागजातको प्रकार छनोट गर्नुहोस् --',
-    dropText: 'फोटो छनोट गर्न थिच्नुहोस्',
-    dropHint: 'एकै पटक धेरै फोटो छनोट गर्न सकिन्छ',
-    btnUpload: 'अपलोड गर्नुहोस्',
-    fileCount: n => `${n} फोटो छनोट भयो`,
-    msgSuccess: '✅ अपलोड सफल भयो!\nतपाईंको कागजात प्राप्त भयो।',
-    msgError: '❌ अपलोड असफल भयो।\nपुनः प्रयास गर्नुहोस्।',
-    msgSelectDoc: 'कागजातको प्रकार छनोट गर्नुहोस्',
-    msgSelectFile: 'फोटो छनोट गर्नुहोस्',
-    docs: ['आवास कार्ड (अगाडि)','आवास कार्ड (पछाडि)','राहदानी','प्रमाणपत्र (जापानी भाषा)','प्रमाणपत्र (सीप परीक्षण)','प्रमाणपत्र (विशेषज्ञ/स्तर ३)','कर तिरेको प्रमाणपत्र','कर प्रमाणपत्र','स्रोतमा कर कटौती विवरण','स्वास्थ्य परीक्षण प्रमाणपत्र','अन्य'],
+    label:'नेपाली', title:'कागजात अपलोड',
+    subtitle:'आवश्यक कागजातको फोटो अपलोड गर्नुहोस्\n(अनावश्यक वस्तुहरू छोड्न सकिन्छ)',
+    tapToAdd:'📷 फोटो थप्न थिच्नुहोस्', hint:'JPG / PNG', btnSubmit:'पेश गर्नुहोस्',
+    noFile:'छनोट गरिएको छैन', selected:'छनोट भयो ✓',
+    msgSuccess:'✅ अपलोड सफल भयो!\nतपाईंको कागजात प्राप्त भयो।',
+    msgError:'❌ अपलोड असफल भयो।\nपुनः प्रयास गर्नुहोस्।',
+    msgNoFile:'कम्तीमा एउटा फोटो छनोट गर्नुहोस्',
+    docs:{ zairyu_front:'आवास कार्ड (अगाडि)', zairyu_back:'आवास कार्ड (पछाडि)', passport:'राहदानी', cert_jp:'प्रमाणपत्र (जापानी भाषा)', cert_skill:'प्रमाणपत्र (सीप परीक्षण)', cert_specialist:'प्रमाणपत्र (विशेषज्ञ/स्तर ३)', tax_payment:'कर तिरेको प्रमाणपत्र', tax_cert:'कर प्रमाणपत्र', withholding:'स्रोतमा कर कटौती विवरण', medical:'स्वास्थ्य परीक्षण प्रमाणपत्र', other:'अन्य' }
   },
 };
 
 const LANG_ORDER = ['ja','en','mn','zh','km','vi','id','th','my','si','ko','ne'];
-
 let currentLang = 'ja';
-let selectedFiles = [];
+const fileData = {};
 
 const langBar = document.getElementById('langBar');
-const docType = document.getElementById('docType');
-const fileInput = document.getElementById('fileInput');
-const dropZone = document.getElementById('dropZone');
-const previewArea = document.getElementById('previewArea');
-const fileCount = document.getElementById('fileCount');
-const uploadBtn = document.getElementById('uploadBtn');
+const fieldsList = document.getElementById('fieldsList');
+const submitBtn = document.getElementById('submitBtn');
 const progressWrap = document.getElementById('progressWrap');
 const progressBar = document.getElementById('progressBar');
 const statusMsg = document.getElementById('statusMsg');
 
-// Build lang bar
 LANG_ORDER.forEach(code => {
   const btn = document.createElement('button');
   btn.className = 'lang-btn' + (code === 'ja' ? ' active' : '');
@@ -549,146 +351,169 @@ LANG_ORDER.forEach(code => {
   langBar.appendChild(btn);
 });
 
+function buildFields() {
+  const L = LANGS[currentLang];
+  fieldsList.innerHTML = '';
+  let firstEmptyOpened = false;
+
+  DOC_KEYS.forEach(key => {
+    const hasFile = !!fileData[key];
+    const row = document.createElement('div');
+    row.className = 'field-row' + (hasFile ? ' has-file' : '');
+    row.dataset.key = key;
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'field-header';
+
+    const label = document.createElement('span');
+    label.className = 'field-label';
+    label.textContent = L.docs[key];
+
+    const status = document.createElement('span');
+    status.className = 'field-status' + (hasFile ? ' ready' : '');
+    status.textContent = hasFile ? L.selected : L.noFile;
+
+    const chevron = document.createElement('span');
+    chevron.className = 'chevron';
+    chevron.textContent = '▼';
+
+    header.appendChild(label);
+    header.appendChild(status);
+    header.appendChild(chevron);
+    header.addEventListener('click', () => row.classList.toggle('open'));
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'field-body';
+
+    if (hasFile) {
+      const previewWrap = document.createElement('div');
+      previewWrap.className = 'preview-wrap';
+      const img = document.createElement('img');
+      img.src = fileData[key].dataUrl;
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-btn';
+      removeBtn.textContent = '×';
+      removeBtn.addEventListener('click', () => {
+        delete fileData[key];
+        buildFields();
+        updateSubmitBtn();
+      });
+      previewWrap.appendChild(img);
+      previewWrap.appendChild(removeBtn);
+      body.appendChild(previewWrap);
+    } else {
+      const mini = document.createElement('div');
+      mini.className = 'mini-drop';
+
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          fileData[key] = {
+            dataUrl: ev.target.result,
+            name: file.name,
+            mimeType: file.type,
+            base64: ev.target.result.split(',')[1],
+          };
+          buildFields();
+          updateSubmitBtn();
+          // Open next empty field
+          const idx = DOC_KEYS.indexOf(key);
+          const nextKey = DOC_KEYS.slice(idx + 1).find(k => !fileData[k]);
+          if (nextKey) {
+            const nextRow = fieldsList.querySelector('[data-key="' + nextKey + '"]');
+            if (nextRow) nextRow.classList.add('open');
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const dropText = document.createElement('div');
+      dropText.className = 'mini-drop-text';
+      dropText.textContent = L.tapToAdd;
+
+      const dropHint = document.createElement('div');
+      dropHint.className = 'mini-drop-hint';
+      dropHint.textContent = L.hint;
+
+      mini.appendChild(input);
+      mini.appendChild(dropText);
+      mini.appendChild(dropHint);
+      body.appendChild(mini);
+
+      // Open first empty
+      if (!firstEmptyOpened) {
+        row.classList.add('open');
+        firstEmptyOpened = true;
+      }
+    }
+
+    row.appendChild(header);
+    row.appendChild(body);
+    fieldsList.appendChild(row);
+  });
+}
+
+function updateSubmitBtn() {
+  const L = LANGS[currentLang];
+  submitBtn.textContent = L.btnSubmit;
+  submitBtn.disabled = Object.keys(fileData).length === 0;
+}
+
 function setLang(code) {
   currentLang = code;
   const L = LANGS[code];
-
   langBar.querySelectorAll('.lang-btn').forEach((b, i) => {
     b.classList.toggle('active', LANG_ORDER[i] === code);
   });
-
   document.getElementById('ttlMain').textContent = L.title;
   document.getElementById('ttlSub').textContent = L.subtitle;
-  document.getElementById('lblDocType').textContent = L.lblDocType;
-  document.getElementById('lblPhoto').textContent = L.lblPhoto;
-  document.getElementById('dropText').textContent = L.dropText;
-  document.getElementById('dropHint').textContent = L.dropHint;
-  uploadBtn.textContent = L.btnUpload;
-
-  const currentVal = docType.value;
-  docType.innerHTML = '';
-  const ph = document.createElement('option');
-  ph.value = '';
-  ph.textContent = L.optPlaceholder;
-  docType.appendChild(ph);
-  L.docs.forEach((d, i) => {
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = d;
-    docType.appendChild(opt);
-  });
-  docType.value = currentVal;
-
-  if (selectedFiles.length > 0) fileCount.textContent = L.fileCount(selectedFiles.length);
-  updateBtn();
+  buildFields();
+  updateSubmitBtn();
 }
 
 setLang('ja');
 
-fileInput.addEventListener('change', e => {
-  addFiles(Array.from(e.target.files));
-  e.target.value = '';
-});
-
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('dragover');
-  addFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
-});
-
-function addFiles(files) {
-  files.forEach(file => {
-    if (!selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
-      selectedFiles.push(file);
-      addPreview(file);
-    }
-  });
-  updateBtn();
-}
-
-function addPreview(file) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    const item = document.createElement('div');
-    item.className = 'preview-item';
-    const img = document.createElement('img');
-    img.src = e.target.result;
-    const btn = document.createElement('button');
-    btn.className = 'remove-btn';
-    btn.textContent = '×';
-    btn.addEventListener('click', ev => {
-      ev.stopPropagation();
-      selectedFiles = selectedFiles.filter(f => !(f.name === file.name && f.size === file.size));
-      item.remove();
-      updateBtn();
-    });
-    item.appendChild(img);
-    item.appendChild(btn);
-    previewArea.appendChild(item);
-  };
-  reader.readAsDataURL(file);
-}
-
-function updateBtn() {
+submitBtn.addEventListener('click', async () => {
   const L = LANGS[currentLang];
-  const n = selectedFiles.length;
-  fileCount.textContent = n > 0 ? L.fileCount(n) : '';
-  uploadBtn.disabled = n === 0 || docType.value === '';
-}
+  const keys = Object.keys(fileData);
+  if (keys.length === 0) { alert(L.msgNoFile); return; }
 
-docType.addEventListener('change', updateBtn);
-
-uploadBtn.addEventListener('click', async () => {
-  const L = LANGS[currentLang];
-  if (docType.value === '') { alert(L.msgSelectDoc); return; }
-  if (selectedFiles.length === 0) { alert(L.msgSelectFile); return; }
-
-  const docLabel = LANGS['ja'].docs[parseInt(docType.value)];
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-
-  uploadBtn.disabled = true;
+  submitBtn.disabled = true;
   progressWrap.style.display = 'block';
   progressBar.style.width = '10%';
   statusMsg.style.display = 'none';
 
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const filesPayload = keys.map(key => {
+    const d = fileData[key];
+    const ext = d.name.split('.').pop() || 'jpg';
+    const docLabel = LANGS['ja'].docs[key];
+    return { name: docLabel + '_' + timestamp + '.' + ext, mimeType: d.mimeType, data: d.base64 };
+  });
+
   try {
-    const filesData = await Promise.all(selectedFiles.map((file, idx) => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const base64 = e.target.result.split(',')[1];
-          const ext = file.name.split('.').pop() || 'jpg';
-          const fileName = selectedFiles.length === 1
-            ? `${docLabel}_${timestamp}.${ext}`
-            : `${docLabel}_${timestamp}_${idx + 1}.${ext}`;
-          resolve({ name: fileName, mimeType: file.type, data: base64 });
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }));
-
-    progressBar.style.width = '50%';
-
+    progressBar.style.width = '40%';
     const res = await fetch(GAS_URL, {
       method: 'POST',
-      body: JSON.stringify({ files: filesData, docType: docLabel }),
+      body: JSON.stringify({ files: filesPayload, folderId: FOLDER_ID }),
     });
-
-    progressBar.style.width = '100%';
+    progressBar.style.width = '90%';
     const json = await res.json();
-
     if (json.success) {
+      progressBar.style.width = '100%';
       statusMsg.className = 'status-msg success';
       statusMsg.textContent = L.msgSuccess;
       statusMsg.style.display = 'block';
-      selectedFiles = [];
-      previewArea.innerHTML = '';
-      fileCount.textContent = '';
-      docType.value = '';
-      updateBtn();
+      DOC_KEYS.forEach(k => delete fileData[k]);
+      buildFields();
+      updateSubmitBtn();
     } else {
       throw new Error(json.error || 'error');
     }
@@ -696,7 +521,7 @@ uploadBtn.addEventListener('click', async () => {
     statusMsg.className = 'status-msg error';
     statusMsg.textContent = L.msgError;
     statusMsg.style.display = 'block';
-    uploadBtn.disabled = false;
+    submitBtn.disabled = false;
   }
 
   setTimeout(() => {
