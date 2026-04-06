@@ -282,9 +282,17 @@ const SB_URL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
 const SB_KEY = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
 
 async function notifyUploadToSystem(fileCount, companyId, companyName) {
-  if (!companyId && !companyName) return; // 通知先が特定できない場合はスキップ
+  // companyId・companyName両方なくてもとりあえず送る（テーブル存在確認も兼ねる）
   try {
-    await fetch(SB_URL + '/rest/v1/upload_notifications', {
+    const payload = {
+      file_count: fileCount,
+      source: 'company_dataup',
+      created_at: new Date().toISOString()
+    };
+    if (companyId) payload.company_id = companyId;
+    if (companyName) payload.company_name = companyName;
+    console.log('📤 Supabase通知送信:', payload);
+    const res = await fetch(SB_URL + '/rest/v1/upload_notifications', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -292,17 +300,16 @@ async function notifyUploadToSystem(fileCount, companyId, companyName) {
         'Authorization': 'Bearer ' + SB_KEY,
         'Prefer': 'return=minimal'
       },
-      body: JSON.stringify({
-        company_id: companyId || null,
-        company_name: companyName || null,
-        file_count: fileCount,
-        source: 'company_dataup',
-        created_at: new Date().toISOString()
-      })
+      body: JSON.stringify(payload)
     });
-    console.log('✅ 案件管理システムに通知しました');
+    if (res.ok) {
+      console.log('✅ 案件管理システムに通知しました (HTTP ' + res.status + ')');
+    } else {
+      const errText = await res.text();
+      console.error('❌ Supabase通知エラー (HTTP ' + res.status + '):', errText);
+    }
   } catch(e) {
-    console.warn('通知送信失敗:', e);
+    console.error('❌ 通知送信例外:', e);
   }
 }
 
