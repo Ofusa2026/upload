@@ -206,6 +206,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5z
 // URLパラメータからフォルダIDを取得
 const urlParams = new URLSearchParams(window.location.search);
 const FOLDER_ID = urlParams.get('folder') || '';
+const CASE_ID = urlParams.get('case') || '';
 
 const DOC_KEYS = ['zairyu_front','zairyu_back','passport','cert_jp','cert_skill','cert_specialist','tax_payment','tax_cert','withholding','medical','other'];
 
@@ -565,6 +566,26 @@ submitBtn.addEventListener('click', async () => {
       statusMsg.className = 'status-msg success';
       statusMsg.textContent = L.msgSuccess;
       statusMsg.style.display = 'block';
+      // Supabaseに通知を保存
+      if (CASE_ID) {
+        try {
+          await fetch('https://ehwlgbwpycglmopiqyty.supabase.co/rest/v1/upload_notifications', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u',
+              'Authorization': 'Bearer sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              case_id: CASE_ID,
+              folder_id: FOLDER_ID,
+              file_count: filesPayload.length,
+              file_names: filesPayload.map(f => f.name).join(', ')
+            })
+          });
+        } catch(e) { console.warn('通知保存失敗:', e); }
+      }
       DOC_KEYS.forEach(k => delete fileData[k]);
       buildFields();
       updateSubmitBtn();
