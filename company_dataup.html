@@ -291,6 +291,7 @@ async function notifyUploadToSystem(fileCount, companyId, companyName) {
     };
     if (companyId) payload.company_id = companyId;
     if (companyName) payload.company_name = companyName;
+    if (FOLDER_ID) payload.folder_id = FOLDER_ID;
     console.log('📤 Supabase通知送信:', payload);
     const res = await fetch(SB_URL + '/rest/v1/upload_notifications', {
       method: 'POST',
