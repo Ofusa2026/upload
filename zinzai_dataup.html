@@ -357,9 +357,9 @@ function buildFields() {
   let firstEmptyOpened = false;
 
   DOC_KEYS.forEach(key => {
-    const hasFile = !!fileData[key];
+    const hasFiles = fileData[key] && fileData[key].length > 0;
     const row = document.createElement('div');
-    row.className = 'field-row' + (hasFile ? ' has-file' : '');
+    row.className = 'field-row' + (hasFiles ? ' has-file' : '');
     row.dataset.key = key;
 
     // Header
@@ -387,29 +387,62 @@ function buildFields() {
     const body = document.createElement('div');
     body.className = 'field-body';
 
-    if (hasFile) {
-      const previewWrap = document.createElement('div');
-      previewWrap.className = 'preview-wrap';
-      if (fileData[key].isPdf) {
-        const pdfIcon = document.createElement('div');
-        pdfIcon.style.cssText = 'padding:12px;background:#fef2f2;border-radius:8px;text-align:center;font-size:13px;color:#dc2626;font-weight:600;';
-        pdfIcon.textContent = '📄 ' + fileData[key].name;
-        previewWrap.appendChild(pdfIcon);
-      } else {
-        const img = document.createElement('img');
-        img.src = fileData[key].dataUrl;
-        previewWrap.appendChild(img);
-      }
-      const removeBtn = document.createElement('button');
-      removeBtn.className = 'remove-btn';
-      removeBtn.textContent = '×';
-      removeBtn.addEventListener('click', () => {
-        delete fileData[key];
-        buildFields();
-        updateSubmitBtn();
+    if (hasFiles) {
+      fileData[key].forEach((fd, fi) => {
+        const previewWrap = document.createElement('div');
+        previewWrap.className = 'preview-wrap';
+        if (fd.isPdf) {
+          const pdfIcon = document.createElement('div');
+          pdfIcon.style.cssText = 'padding:12px;background:#fef2f2;border-radius:8px;text-align:center;font-size:13px;color:#dc2626;font-weight:600;';
+          pdfIcon.textContent = '📄 ' + fd.name;
+          previewWrap.appendChild(pdfIcon);
+        } else {
+          const img = document.createElement('img');
+          img.src = fd.dataUrl;
+          previewWrap.appendChild(img);
+        }
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => {
+          fileData[key].splice(fi, 1);
+          if (fileData[key].length === 0) delete fileData[key];
+          buildFields();
+          updateSubmitBtn();
+        });
+        previewWrap.appendChild(removeBtn);
+        body.appendChild(previewWrap);
       });
-      previewWrap.appendChild(removeBtn);
-      body.appendChild(previewWrap);
+      // 追加ボタン
+      const addMore = document.createElement('div');
+      addMore.className = 'mini-drop';
+      addMore.style.cssText = 'margin-top:4px;';
+      const addInput = document.createElement('input');
+      addInput.type = 'file';
+      addInput.accept = 'image/*,application/pdf';
+      addInput.multiple = true;
+      addInput.addEventListener('change', e => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        if (!fileData[key]) fileData[key] = [];
+        let loaded = 0;
+        files.forEach(file => {
+          const reader = new FileReader();
+          reader.onload = ev => {
+            fileData[key].push({ dataUrl: ev.target.result, name: file.name, mimeType: file.type, base64: ev.target.result.split(',')[1], isPdf: file.type === 'application/pdf' });
+            loaded++;
+            if (loaded === files.length) { buildFields(); updateSubmitBtn(); }
+          };
+          reader.readAsDataURL(file);
+        });
+        e.target.value = '';
+      });
+      const addText = document.createElement('div');
+      addText.className = 'mini-drop-text';
+      addText.textContent = '➕ 追加';
+      addMore.appendChild(addInput);
+      addMore.appendChild(addText);
+      body.appendChild(addMore);
     } else {
       const mini = document.createElement('div');
       mini.className = 'mini-drop';
@@ -417,29 +450,38 @@ function buildFields() {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*,application/pdf';
+      input.multiple = true;
       input.addEventListener('change', e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-          fileData[key] = {
-            dataUrl: ev.target.result,
-            name: file.name,
-            mimeType: file.type,
-            base64: ev.target.result.split(',')[1],
-            isPdf: file.type === 'application/pdf',
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        if (!fileData[key]) fileData[key] = [];
+        let loaded = 0;
+        files.forEach(file => {
+          const reader = new FileReader();
+          reader.onload = ev => {
+            fileData[key].push({
+              dataUrl: ev.target.result,
+              name: file.name,
+              mimeType: file.type,
+              base64: ev.target.result.split(',')[1],
+              isPdf: file.type === 'application/pdf',
+            });
+            loaded++;
+            if (loaded === files.length) {
+              buildFields();
+              updateSubmitBtn();
+              // Open next empty field
+              const idx = DOC_KEYS.indexOf(key);
+              const nextKey = DOC_KEYS.slice(idx + 1).find(k => !fileData[k] || !fileData[k].length);
+              if (nextKey) {
+                const nextRow = fieldsList.querySelector('[data-key="' + nextKey + '"]');
+                if (nextRow) nextRow.classList.add('open');
+              }
+            }
           };
-          buildFields();
-          updateSubmitBtn();
-          // Open next empty field
-          const idx = DOC_KEYS.indexOf(key);
-          const nextKey = DOC_KEYS.slice(idx + 1).find(k => !fileData[k]);
-          if (nextKey) {
-            const nextRow = fieldsList.querySelector('[data-key="' + nextKey + '"]');
-            if (nextRow) nextRow.classList.add('open');
-          }
-        };
-        reader.readAsDataURL(file);
+          reader.readAsDataURL(file);
+        });
+        e.target.value = '';
       });
 
       const dropText = document.createElement('div');
@@ -471,7 +513,7 @@ function buildFields() {
 function updateSubmitBtn() {
   const L = LANGS[currentLang];
   submitBtn.textContent = L.btnSubmit;
-  submitBtn.disabled = Object.keys(fileData).length === 0;
+  submitBtn.disabled = Object.keys(fileData).filter(k => fileData[k] && fileData[k].length > 0).length === 0;
 }
 
 function setLang(code) {
@@ -490,7 +532,7 @@ setLang('ja');
 
 submitBtn.addEventListener('click', async () => {
   const L = LANGS[currentLang];
-  const keys = Object.keys(fileData);
+  const keys = Object.keys(fileData).filter(k => fileData[k] && fileData[k].length > 0);
   if (keys.length === 0) { alert(L.msgNoFile); return; }
 
   submitBtn.disabled = true;
@@ -499,11 +541,15 @@ submitBtn.addEventListener('click', async () => {
   statusMsg.style.display = 'none';
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const filesPayload = keys.map(key => {
-    const d = fileData[key];
-    const ext = d.name.split('.').pop() || 'jpg';
+  const filesPayload = [];
+  keys.forEach(key => {
+    const arr = fileData[key] || [];
     const docLabel = LANGS['ja'].docs[key];
-    return { name: docLabel + '_' + timestamp + '.' + ext, mimeType: d.mimeType, data: d.base64 };
+    arr.forEach((d, i) => {
+      const ext = d.name.split('.').pop() || 'jpg';
+      const suffix = arr.length > 1 ? '_' + (i + 1) : '';
+      filesPayload.push({ name: docLabel + suffix + '_' + timestamp + '.' + ext, mimeType: d.mimeType, data: d.base64 });
+    });
   });
 
   try {
