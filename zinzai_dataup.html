@@ -581,7 +581,8 @@ submitBtn.addEventListener('click', async () => {
               case_id: CASE_ID,
               folder_id: FOLDER_ID,
               file_count: filesPayload.length,
-              file_names: filesPayload.map(f => f.name).join(', ')
+              file_names: filesPayload.map(f => f.name).join(', '),
+              source: 'zinzai_dataup'
             })
           });
         } catch(e) { console.warn('通知保存失敗:', e); }
