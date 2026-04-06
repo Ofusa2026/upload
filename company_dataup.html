@@ -382,7 +382,10 @@ function buildFieldRow(key, docsMap) {
   label.appendChild(input);
   addWrap.appendChild(label);
   body.appendChild(addWrap);
-  body.innerHTML += '<div class="hint">JPG / PNG / PDF</div>';
+  const hint = document.createElement('div');
+  hint.className = 'hint';
+  hint.textContent = 'JPG / PNG / PDF';
+  body.appendChild(hint);
 
   row.appendChild(header);
   row.appendChild(body);
