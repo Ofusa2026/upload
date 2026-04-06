@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>書類アップロード（所属機関）</title>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-dark: #1341a8;
+    --success: #057a55;
+    --success-bg: #f0fdf4;
+    --success-border: #bbf7d0;
+    --error: #9b1c1c;
+    --error-bg: #fef2f2;
+    --error-border: #fecaca;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --text: #1a202c;
+    --sub: #718096;
+    --border: #e2e8f0;
+    --hover: #eff6ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px 16px 60px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 28px 20px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  .header { text-align: center; margin-bottom: 28px; }
+  .office-name { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+  .page-icon { font-size: 36px; margin-bottom: 8px; }
+  h1 { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: var(--sub); line-height: 1.7; }
+  .company-name-bar {
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .fields-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .field-row {
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .field-row.has-file { border-color: var(--primary); background: #eff6ff; }
+  .field-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    cursor: pointer;
+    user-select: none;
+    gap: 8px;
+  }
+  .field-label { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+  .field-status { font-size: 12px; color: var(--sub); white-space: nowrap; }
+  .field-status.ready { color: var(--success); font-weight: 600; }
+  .chevron { font-size: 11px; color: var(--sub); transition: transform 0.2s; flex-shrink: 0; }
+  .field-row.open .chevron { transform: rotate(180deg); }
+  .field-body {
+    border-top: 1.5px solid var(--border);
+    padding: 12px 14px;
+    display: none;
+  }
+  .field-row.open .field-body { display: block; }
+  .field-row.has-file .field-body { border-top-color: var(--primary); }
+  .file-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: var(--text);
+    gap: 6px;
+  }
+  .file-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-remove {
+    background: none;
+    border: none;
+    color: #e53e3e;
+    font-size: 15px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .add-btn-wrap { display: flex; gap: 8px; }
+  .add-file-label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: white;
+    border: 1.5px dashed var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 13px;
+    color: var(--sub);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .add-file-label:hover { background: var(--hover); border-color: var(--primary); color: var(--primary); }
+  .hint { font-size: 11px; color: var(--sub); margin-top: 6px; text-align: center; }
+  .submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 12px;
+  }
+  .submit-btn:hover { background: var(--primary-dark); }
+  .submit-btn:disabled { background: #a0aec0; cursor: not-allowed; }
+  .progress-wrap {
+    display: none;
+    background: #e2e8f0;
+    border-radius: 99px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .progress-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 99px;
+    transition: width 0.3s;
+    width: 0%;
+  }
+  .status-msg {
+    display: none;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.6;
+    white-space: pre-line;
+    text-align: center;
+  }
+  .status-msg.success { background: var(--success-bg); border: 1.5px solid var(--success-border); color: var(--success); }
+  .status-msg.error { background: var(--error-bg); border: 1.5px solid var(--error-border); color: var(--error); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="office-name">大房行政書士法人</div>
+    <div class="page-icon">🏢</div>
+    <h1>書類アップロード</h1>
+    <div class="subtitle">所属機関の書類をアップロードしてください<br>（不要な項目はスキップできます）</div>
+  </div>
+  <div class="company-name-bar" id="companyNameBar" style="display:none;"></div>
+  <div class="fields-list" id="fieldsList"></div>
+  <button class="submit-btn" id="submitBtn" disabled>送信する</button>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="status-msg" id="statusMsg"></div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
+
+const urlParams = new URLSearchParams(window.location.search);
+const FOLDER_ID = urlParams.get('folder') || '';
+const COMPANY_ID = urlParams.get('company') || '';
+const COMPANY_NAME = urlParams.get('name') ? decodeURIComponent(urlParams.get('name')) : '';
+
+// 会社名表示
+if (COMPANY_NAME) {
+  const bar = document.getElementById('companyNameBar');
+  bar.textContent = '🏢 ' + COMPANY_NAME;
+  bar.style.display = 'block';
+}
+
+const DOC_KEYS = [
+  'kessan_1',
+  'kessan_2',
+  'kessan_3',
+  'tokibo',
+  'jumin_hoken',
+  'rousai_hoken',
+  'koyo_hoken',
+  'zeimu_1',
+  'zeimu_2',
+  'shareholder',
+  'other',
+];
+
+const DOCS = {
+  kessan_1:    '決算書（直近1期）',
+  kessan_2:    '決算書（直近2期）',
+  kessan_3:    '決算書（直近3期）',
+  tokibo:      '登記事項証明書',
+  jumin_hoken: '社会保険加入証明',
+  rousai_hoken:'労災保険加入証明',
+  koyo_hoken:  '雇用保険加入証明',
+  zeimu_1:     '納税証明書（法人税）',
+  zeimu_2:     '納税証明書（消費税）',
+  shareholder: '株主名簿・役員名簿',
+  other:       'その他',
+};
+
+const fieldsList = document.getElementById('fieldsList');
+const submitBtn = document.getElementById('submitBtn');
+const progressWrap = document.getElementById('progressWrap');
+const progressBar = document.getElementById('progressBar');
+const statusMsg = document.getElementById('statusMsg');
+
+const fileData = {};
+
+function buildFields() {
+  fieldsList.innerHTML = '';
+  DOC_KEYS.forEach(key => {
+    const arr = fileData[key] || [];
+    const hasFile = arr.length > 0;
+    const row = document.createElement('div');
+    row.className = 'field-row' + (hasFile ? ' has-file' : '');
+    row.dataset.key = key;
+
+    // ヘッダー
+    const header = document.createElement('div');
+    header.className = 'field-header';
+    header.innerHTML = `
+      <span class="field-label">${DOCS[key]}</span>
+      <span class="field-status${hasFile ? ' ready' : ''}">${hasFile ? arr.length + '件選択済み ✓' : '未選択'}</span>
+      <span class="chevron">▼</span>
+    `;
+    header.onclick = () => {
+      row.classList.toggle('open');
+    };
+
+    // ボディ
+    const body = document.createElement('div');
+    body.className = 'field-body';
+
+    // 選択済みファイル一覧
+    const fileListEl = document.createElement('div');
+    fileListEl.className = 'file-list';
+    fileListEl.id = 'fileList_' + key;
+    renderFileList(key, fileListEl);
+    body.appendChild(fileListEl);
+
+    // 追加ボタン
+    const addWrap = document.createElement('div');
+    addWrap.className = 'add-btn-wrap';
+    const label = document.createElement('label');
+    label.className = 'add-file-label';
+    label.innerHTML = '📷 ファイルを追加';
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,application/pdf';
+    input.multiple = true;
+    input.style.display = 'none';
+    input.onchange = async (e) => {
+      const files = Array.from(e.target.files);
+      for (const file of files) {
+        const b64 = await toBase64(file);
+        if (!fileData[key]) fileData[key] = [];
+        fileData[key].push({ name: file.name, mimeType: file.type || 'application/octet-stream', base64: b64 });
+      }
+      input.value = '';
+      buildFields();
+      updateSubmitBtn();
+    };
+    label.appendChild(input);
+    addWrap.appendChild(label);
+    body.appendChild(addWrap);
+    body.innerHTML += '<div class="hint">JPG / PNG / PDF</div>';
+
+    row.appendChild(header);
+    row.appendChild(body);
+    fieldsList.appendChild(row);
+
+    // ファイルある項目は開く
+    if (hasFile) row.classList.add('open');
+  });
+}
+
+function renderFileList(key, container) {
+  container.innerHTML = '';
+  const arr = fileData[key] || [];
+  arr.forEach((d, i) => {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    item.innerHTML = `<span class="file-item-name">📄 ${d.name}</span><button class="file-remove" title="削除">✕</button>`;
+    item.querySelector('.file-remove').onclick = () => {
+      fileData[key].splice(i, 1);
+      buildFields();
+      updateSubmitBtn();
+    };
+    container.appendChild(item);
+  });
+}
+
+function updateSubmitBtn() {
+  const hasAny = DOC_KEYS.some(k => fileData[k] && fileData[k].length > 0);
+  submitBtn.disabled = !hasAny;
+}
+
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = () => reject(new Error('Read failed'));
+    r.readAsDataURL(file);
+  });
+}
+
+buildFields();
+
+submitBtn.addEventListener('click', async () => {
+  const hasAny = DOC_KEYS.some(k => fileData[k] && fileData[k].length > 0);
+  if (!hasAny) { alert('少なくとも1つのファイルを選択してください'); return; }
+
+  submitBtn.disabled = true;
+  statusMsg.style.display = 'none';
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '10%';
+
+  const timestamp = Date.now();
+  const filesPayload = [];
+  DOC_KEYS.forEach(key => {
+    const arr = fileData[key] || [];
+    arr.forEach((d, i) => {
+      const ext = d.name.split('.').pop() || 'jpg';
+      const suffix = arr.length > 1 ? '_' + (i + 1) : '';
+      filesPayload.push({ name: DOCS[key] + suffix + '_' + timestamp + '.' + ext, mimeType: d.mimeType, data: d.base64 });
+    });
+  });
+
+  try {
+    progressBar.style.width = '40%';
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ files: filesPayload, folderId: FOLDER_ID }),
+    });
+    progressBar.style.width = '90%';
+    const json = await res.json();
+    if (json.success) {
+      progressBar.style.width = '100%';
+      statusMsg.className = 'status-msg success';
+      statusMsg.textContent = '✅ アップロード完了しました！\n担当者に届きました。';
+      statusMsg.style.display = 'block';
+      DOC_KEYS.forEach(k => delete fileData[k]);
+      buildFields();
+      updateSubmitBtn();
+    } else {
+      throw new Error(json.error || 'error');
+    }
+  } catch (err) {
+    statusMsg.className = 'status-msg error';
+    statusMsg.textContent = '❌ 送信に失敗しました。\nもう一度お試しください。';
+    statusMsg.style.display = 'block';
+    submitBtn.disabled = false;
+  }
+
+  setTimeout(() => {
+    progressWrap.style.display = 'none';
+    progressBar.style.width = '0%';
+  }, 1200);
+});
+</script>
+</body>
+</html>
