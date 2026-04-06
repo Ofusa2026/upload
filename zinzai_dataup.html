@@ -372,8 +372,8 @@ function buildFields() {
     label.textContent = L.docs[key];
 
     const status = document.createElement('span');
-    status.className = 'field-status' + (hasFile ? ' ready' : '');
-    status.textContent = hasFile ? L.selected : L.noFile;
+    status.className = 'field-status' + (hasFiles ? ' ready' : '');
+    status.textContent = hasFiles ? L.selected : L.noFile;
 
     const chevron = document.createElement('span');
     chevron.className = 'chevron';
