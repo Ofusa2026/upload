@@ -277,6 +277,35 @@
 <script>
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 
+// Supabase（アップロード通知用）
+const SB_URL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
+const SB_KEY = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
+
+async function notifyUploadToSystem(fileCount, companyId, companyName) {
+  if (!companyId && !companyName) return; // 通知先が特定できない場合はスキップ
+  try {
+    await fetch(SB_URL + '/rest/v1/upload_notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        company_id: companyId || null,
+        company_name: companyName || null,
+        file_count: fileCount,
+        source: 'company_dataup',
+        created_at: new Date().toISOString()
+      })
+    });
+    console.log('✅ 案件管理システムに通知しました');
+  } catch(e) {
+    console.warn('通知送信失敗:', e);
+  }
+}
+
 const urlParams = new URLSearchParams(window.location.search);
 const FOLDER_ID = urlParams.get('folder') || '';
 const COMPANY_ID = urlParams.get('company') || '';
@@ -490,6 +519,8 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
       statusMsg.className = 'status-msg success';
       statusMsg.textContent = '✅ アップロード完了しました！\n担当者に届きました。';
       statusMsg.style.display = 'block';
+      // 案件管理システムにアップロード通知
+      notifyUploadToSystem(filesPayload.length, COMPANY_ID, COMPANY_NAME);
       allKeys.forEach(k => delete fileData[k]);
       buildAllFields();
       updateSubmitBtn();
