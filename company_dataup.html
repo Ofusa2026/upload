@@ -245,12 +245,16 @@
   <!-- タブ -->
   <div class="tabs-wrap">
     <button class="tab-btn active" id="tabBtnLarge" onclick="switchTab('large')">
-      💹 源泉徴収税額<br>1,000万円以上
+      💹 大企業<br><small>源泉1,000万円以上</small>
       <span class="tab-count hidden" id="countLarge"></span>
     </button>
     <button class="tab-btn" id="tabBtnNormal" onclick="switchTab('normal')">
-      🏭 それ以外の<br>企業様
+      🏭 中小企業
       <span class="tab-count hidden" id="countNormal"></span>
+    </button>
+    <button class="tab-btn" id="tabBtnKojin" onclick="switchTab('kojin')">
+      👤 個人事業主
+      <span class="tab-count hidden" id="countKojin"></span>
     </button>
   </div>
 
@@ -259,21 +263,21 @@
     <div class="fields-list" id="fieldsListLarge"></div>
   </div>
 
-  <!-- 通常パネル -->
+  <!-- 中小企業パネル -->
   <div class="tab-panel" id="panelNormal">
     <div class="notice-box">
-      ⚠️ 3年間継続した受入れ実績があり過去3年間債務超過なし、または
+      ⚠️ 3年間継続した受入れ実績があり過去3年間債務超過なし（法人に限る）、または
       <a href="https://www.moj.go.jp/isa/content/001378932.pdf" target="_blank">こちらの条件</a>
       に当てはまる企業様は<strong>事前にお申し出ください</strong>。
     </div>
     <div class="fields-list" id="fieldsListNormal"></div>
   </div>
 
-  <div style="margin-bottom:16px;">
-    <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px;">💬 担当者へのメッセージ</label>
-    <div style="font-size:11px;color:#9ca3af;margin-bottom:6px;">担当者にお伝えしたいことがございましたらご記入ください</div>
-    <textarea id="messageToStaff" rows="3" placeholder="例：2人目の申請です。先日お電話した件です。" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;resize:vertical;box-sizing:border-box;line-height:1.6;font-family:inherit;"></textarea>
+  <!-- 個人事業主パネル -->
+  <div class="tab-panel" id="panelKojin">
+    <div class="fields-list" id="fieldsListKojin"></div>
   </div>
+
   <button class="submit-btn" id="submitBtn" disabled>送信する</button>
   <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
   <div class="status-msg" id="statusMsg"></div>
@@ -297,8 +301,6 @@ async function notifyUploadToSystem(fileCount, companyId, companyName) {
     if (companyId) payload.company_id = companyId;
     if (companyName) payload.company_name = companyName;
     if (FOLDER_ID) payload.folder_id = FOLDER_ID;
-    const msg = document.getElementById('messageToStaff');
-    if (msg && msg.value.trim()) payload.message = msg.value.trim();
     console.log('📤 Supabase通知送信:', payload);
     const res = await fetch(SB_URL + '/rest/v1/upload_notifications', {
       method: 'POST',
@@ -336,45 +338,59 @@ if (COMPANY_NAME) {
 const LARGE_KEYS = ['shikiho', 'hoteichosho'];
 const LARGE_DOCS = {
   shikiho:     '四季報の写し、または上場証明書類',
-  hoteichosho: '法定調書合計表の写し',
+  hoteichosho: '法定調書合計表の写し（税務署発行）',
 };
 
-// ─── 通常企業の書類 ───
+// ─── 中小企業の書類 ───
 const NORMAL_KEYS = [
   'kessan', 'tokibo', 'jumin_hyo', 'rodo_hoken', 'shakai_hoken',
   'zeimu_3', 'zeimu_shimin', 'shugyo_kisoku', 'chingin_kitei',
-  'san_roku', 'henkei_rodo', 'nengkan_cal', 'madori', 'kyogikai', 'other',
+  'san_roku', 'henkei_rodo', 'nengkan_cal', 'madori', 'other',
 ];
 const NORMAL_DOCS = {
   kessan:        '決算文書の写し3期分（損益計算書及び貸借対照表）',
   tokibo:        '登記事項証明書（履歴事項全部証明書）',
-  jumin_hyo:     '役員（最低1名分）の住民票の写し',
+  jumin_hyo:     '業務に関わる役員（最低1名分）の住民票の写し',
   rodo_hoken:    '労働保険料等納付証明書（未納なし証明）',
-  shakai_hoken:  '社会保険料納入状況照会回答票',
-  zeimu_3:       '納税証明書（その３）＊税務署発行',
-  zeimu_shimin:  '納税証明書（法人住民税）＊市町村発行',
+  shakai_hoken:  '社会保険料納入状況照会回答票または領収書24ヶ月分',
+  zeimu_3:       '納税証明書（その３）＊税務署発行　税目）源泉所得税及び復興特別所得税、法人税、消費税及び地方消費税',
+  zeimu_shimin:  '納税証明書（地方税）法人住民税 ＊市町村発行',
   shugyo_kisoku: '就業規則',
   chingin_kitei: '賃金規定',
   san_roku:      '36協定届出書',
   henkei_rodo:   '変形労働届出書',
   nengkan_cal:   '年間カレンダー',
   madori:        '予定物件の間取り図、物件資料など',
-  kyogikai:      '協議会加入証明書',
   other:         'その他',
+};
+
+// ─── 個人事業主の書類 ───
+const KOJIN_KEYS = [
+  'kojin_jumin', 'kojin_rodo', 'kojin_iryo', 'kojin_kokuho',
+  'kojin_nenkin_fu', 'kojin_nenkin_rec', 'kojin_zeimu3', 'kojin_shimin', 'other_kojin',
+];
+const KOJIN_DOCS = {
+  kojin_jumin:    '個人事業主の住民票の写し',
+  kojin_rodo:     '労働保険料等納付証明書（未納なし証明）',
+  kojin_iryo:     'マイナポータルからダウンロードした医療保険の資格情報の写し、または資格確認書の写し',
+  kojin_kokuho:   '国民健康保険料（税）納付証明書（直近2年分）',
+  kojin_nenkin_fu:'被保険者記録照会（納付Ⅱ）または国民年金保険料領収証書の写し（直近24ヶ月分）',
+  kojin_nenkin_rec:'被保険者記録照会回答票',
+  kojin_zeimu3:   '納税証明書（その３）＊税務署発行　税目）源泉所得税・申告所得税・消費税・地方消費税・相続税・贈与税',
+  kojin_shimin:   '個人住民税の納税証明書（直近2年度分）＊市区町村発行',
+  other_kojin:    'その他',
 };
 
 const fileData = {};
 
 // ─── タブ切り替え ───
 function switchTab(tab) {
-  ['large', 'normal'].forEach(t => {
-    document.getElementById('panelLarge'.replace('large', t === 'large' ? 'Large' : 'Normal')).classList.toggle('active', t === tab);
-    document.getElementById('tabBtn' + (t === 'large' ? 'Large' : 'Normal')).classList.toggle('active', t === tab);
+  ['large', 'normal', 'kojin'].forEach(t => {
+    const panelId = t === 'large' ? 'panelLarge' : t === 'normal' ? 'panelNormal' : 'panelKojin';
+    const btnId   = t === 'large' ? 'tabBtnLarge' : t === 'normal' ? 'tabBtnNormal' : 'tabBtnKojin';
+    document.getElementById(panelId).classList.toggle('active', t === tab);
+    document.getElementById(btnId).classList.toggle('active', t === tab);
   });
-  document.getElementById('panelLarge').classList.toggle('active', tab === 'large');
-  document.getElementById('panelNormal').classList.toggle('active', tab === 'normal');
-  document.getElementById('tabBtnLarge').classList.toggle('active', tab === 'large');
-  document.getElementById('tabBtnNormal').classList.toggle('active', tab === 'normal');
 }
 
 // ─── フィールド行を生成 ───
@@ -459,22 +475,30 @@ function buildAllFields() {
   listLarge.innerHTML = '';
   LARGE_KEYS.forEach(key => listLarge.appendChild(buildFieldRow(key, LARGE_DOCS)));
 
-  // 通常タブ
+  // 中小企業タブ
   const listNormal = document.getElementById('fieldsListNormal');
   listNormal.innerHTML = '';
   NORMAL_KEYS.forEach(key => listNormal.appendChild(buildFieldRow(key, NORMAL_DOCS)));
 
+  // 個人事業主タブ
+  const listKojin = document.getElementById('fieldsListKojin');
+  listKojin.innerHTML = '';
+  KOJIN_KEYS.forEach(key => listKojin.appendChild(buildFieldRow(key, KOJIN_DOCS)));
+
   // タブバッジ更新
   const cntL = LARGE_KEYS.filter(k => fileData[k] && fileData[k].length > 0).length;
   const cntN = NORMAL_KEYS.filter(k => fileData[k] && fileData[k].length > 0).length;
-  const el = document.getElementById('countLarge');
-  const en = document.getElementById('countNormal');
-  el.textContent = cntL; el.className = 'tab-count' + (cntL > 0 ? '' : ' hidden');
-  en.textContent = cntN; en.className = 'tab-count' + (cntN > 0 ? '' : ' hidden');
+  const cntK = KOJIN_KEYS.filter(k => fileData[k] && fileData[k].length > 0).length;
+  document.getElementById('countLarge').textContent = cntL;
+  document.getElementById('countLarge').className = 'tab-count' + (cntL > 0 ? '' : ' hidden');
+  document.getElementById('countNormal').textContent = cntN;
+  document.getElementById('countNormal').className = 'tab-count' + (cntN > 0 ? '' : ' hidden');
+  document.getElementById('countKojin').textContent = cntK;
+  document.getElementById('countKojin').className = 'tab-count' + (cntK > 0 ? '' : ' hidden');
 }
 
 function updateSubmitBtn() {
-  const allKeys = [...LARGE_KEYS, ...NORMAL_KEYS];
+  const allKeys = [...LARGE_KEYS, ...NORMAL_KEYS, ...KOJIN_KEYS];
   const hasAny = allKeys.some(k => fileData[k] && fileData[k].length > 0);
   document.getElementById('submitBtn').disabled = !hasAny;
 }
@@ -491,8 +515,8 @@ function toBase64(file) {
 buildAllFields();
 
 document.getElementById('submitBtn').addEventListener('click', async () => {
-  const allKeys = [...LARGE_KEYS, ...NORMAL_KEYS];
-  const allDocs = { ...LARGE_DOCS, ...NORMAL_DOCS };
+  const allKeys = [...LARGE_KEYS, ...NORMAL_KEYS, ...KOJIN_KEYS];
+  const allDocs = { ...LARGE_DOCS, ...NORMAL_DOCS, ...KOJIN_DOCS };
   const hasAny = allKeys.some(k => fileData[k] && fileData[k].length > 0);
   if (!hasAny) { alert('少なくとも1つのファイルを選択してください'); return; }
 
@@ -514,7 +538,7 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
       const ext = d.name.split('.').pop() || 'jpg';
       const suffix = arr.length > 1 ? '_' + (i + 1) : '';
       filesPayload.push({
-        name: allDocs[key] + suffix + '_' + timestamp + '.' + ext,
+        name: allDocs[key] + suffix + '.' + ext,
         mimeType: d.mimeType,
         data: d.base64,
       });
