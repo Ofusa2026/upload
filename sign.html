@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.13</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.14</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -364,54 +364,11 @@ async function submitSign(){
   btn.disabled=true;btn.innerHTML='<span>処理中...</span>';
   const signedAt=new Date().toISOString();
   const sigDataUrl=canvas.toDataURL('image/png');
+  window._lastSigDataUrl=sigDataUrl;
   try{
     // 1. PDF合成
     signedPdfBytes=await embedSignatureToPdf();
-    // 2. GAS経由でDriveに保存（PDFがなくても署名画像単体で保存）
-    if(driveFolderId){
-      try{
-        let b64, fname;
-        if(signedPdfBytes){
-          // 署名合成済みPDF
-          b64=btoa(String.fromCharCode(...new Uint8Array(signedPdfBytes)));
-          fname='1-6_雇用条件書_署名済_'+name+'.pdf';
-        } else {
-          // PDFなし → 署名画像のみ保存（PNG）
-          const sigDataUrlForSave=canvas.toDataURL('image/png');
-          b64=sigDataUrlForSave.split(',')[1];
-          fname='署名_'+name+'_'+new Date().toISOString().slice(0,10)+'.png';
-        }
-        // 署名済みPDFをDriveに保存（チャンク分割JSONP方式）
-        try {
-          let saveBase64, saveMime, saveFname;
-          if(signedPdfBytes){
-            saveBase64 = btoa(String.fromCharCode(...new Uint8Array(signedPdfBytes)));
-            saveMime = 'application/pdf';
-            saveFname = '1-6_雇用条件書_署名済_'+name+'.pdf';
-          } else {
-            saveBase64 = sigDataUrl.split(',')[1];
-            saveMime = 'image/png';
-            saveFname = '署名_'+name+'_'+new Date().toISOString().slice(0,10)+'.png';
-          }
-          // チャンク分割して送信（1チャンク=50KB）
-          const CHUNK = 50000;
-          const totalChunks = Math.ceil(saveBase64.length / CHUNK);
-          const uploadId = 'up_'+Date.now();
-          for(let ci=0; ci<totalChunks; ci++){
-            const chunk = saveBase64.slice(ci*CHUNK, (ci+1)*CHUNK);
-            await callGasJsonp({action:'saveSignedPdfChunk',data:{
-              uploadId, chunk, chunkIndex:ci, totalChunks,
-              folderId:driveFolderId, signerName:name,
-              filename:saveFname, mimeType:saveMime
-            }});
-          }
-          console.log('Drive保存完了');
-        } catch(ge){ console.warn('Drive保存エラー:',ge.message); }
-      }catch(ge){console.warn('Drive保存エラー:',ge.message);}
-    } else {
-      console.warn('driveFolderIdが未設定のためDrive保存をスキップ');
-    }
-    // 3. Supabase更新
+    // 2. Supabase更新（署名画像も保存。Drive保存はindex.htmlの担当者操作で行う）
     const {error}=await sb.from('sign_requests').update({
       status:'signed',signed_at:signedAt,signer_name:name,
       signer_card_last4:card,signature_image:sigDataUrl
