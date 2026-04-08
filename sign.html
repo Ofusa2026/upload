@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.12</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.13</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -381,21 +381,32 @@ async function submitSign(){
           b64=sigDataUrlForSave.split(',')[1];
           fname='署名_'+name+'_'+new Date().toISOString().slice(0,10)+'.png';
         }
-        // 署名画像をJSONPで送信（PNGは小さいのでURL乗る）
-        // PDFは大きいのでPNGのみDrive保存、PDFはダウンロードボタンで対応
-        const sigPng=canvas.toDataURL('image/png').split(',')[1];
-        const saveResult=await callGasJsonp({action:'saveSignedPdf',data:{
-          folderId:driveFolderId,caseId:caseData.case_id,
-          signerName:name,base64:sigPng,
-          filename:'署名_'+name+'_'+new Date().toISOString().slice(0,10)+'.png',
-          mimeType:'image/png',
-          hasPdf:!!signedPdfBytes
-        }});
-        if(saveResult&&saveResult.status==='ok'){
-          console.log('Drive保存完了:', saveResult.filename);
-        } else {
-          console.warn('Drive保存エラー:', saveResult&&saveResult.msg);
-        }
+        // 署名済みPDFをDriveに保存（チャンク分割JSONP方式）
+        try {
+          let saveBase64, saveMime, saveFname;
+          if(signedPdfBytes){
+            saveBase64 = btoa(String.fromCharCode(...new Uint8Array(signedPdfBytes)));
+            saveMime = 'application/pdf';
+            saveFname = '1-6_雇用条件書_署名済_'+name+'.pdf';
+          } else {
+            saveBase64 = sigDataUrl.split(',')[1];
+            saveMime = 'image/png';
+            saveFname = '署名_'+name+'_'+new Date().toISOString().slice(0,10)+'.png';
+          }
+          // チャンク分割して送信（1チャンク=50KB）
+          const CHUNK = 50000;
+          const totalChunks = Math.ceil(saveBase64.length / CHUNK);
+          const uploadId = 'up_'+Date.now();
+          for(let ci=0; ci<totalChunks; ci++){
+            const chunk = saveBase64.slice(ci*CHUNK, (ci+1)*CHUNK);
+            await callGasJsonp({action:'saveSignedPdfChunk',data:{
+              uploadId, chunk, chunkIndex:ci, totalChunks,
+              folderId:driveFolderId, signerName:name,
+              filename:saveFname, mimeType:saveMime
+            }});
+          }
+          console.log('Drive保存完了');
+        } catch(ge){ console.warn('Drive保存エラー:',ge.message); }
       }catch(ge){console.warn('Drive保存エラー:',ge.message);}
     } else {
       console.warn('driveFolderIdが未設定のためDrive保存をスキップ');
@@ -440,17 +451,21 @@ function showError(t,m){
   document.getElementById('errorScreen').classList.add('active');
 }
 function downloadSignedPdf(){
-  const name=document.getElementById('completeName').textContent;
+  const name=document.getElementById('completeName').textContent||'署名';
   if(signedPdfBytes){
+    // 署名合成済みPDF
     const blob=new Blob([signedPdfBytes],{type:'application/pdf'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;
     a.download='雇用条件書_署名済_'+name+'.pdf';a.click();
     URL.revokeObjectURL(url);
-  } else if(canvas){
+  } else if(window._lastSigDataUrl){
+    // PDFがない場合は署名画像
     const a=document.createElement('a');
-    a.href=canvas.toDataURL('image/png');
+    a.href=window._lastSigDataUrl;
     a.download='署名_'+name+'.png';a.click();
+  } else {
+    alert('ダウンロードできるファイルがありません。');
   }
 }
 function showAlreadySigned(){showError('署名済みです','このリンクはすでに使用済みです。');document.querySelector('.error-icon').textContent='✅';}
