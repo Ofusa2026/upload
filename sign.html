@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.18</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.19</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -283,9 +283,17 @@ async function loadPdfFromDrive(caseId,folderId){
     const json = await resp.json();
     if(json.status==='error') throw new Error(json.msg||'GASエラー');
     if(!json.base64) throw new Error('PDFが見つかりません');
+    // base64の先頭チェック（JVBERi0=がPDFの正常な先頭）
+    const b64head = json.base64.substring(0,8);
+    console.log('PDF base64先頭:', b64head, 'length:', json.base64.length);
+    if(!json.base64.startsWith('JVBER')) {
+      alert('PDF base64異常: 先頭=' + b64head);
+      throw new Error('PDF base64が不正です');
+    }
     const raw=atob(json.base64);
     pdfBytes=new Uint8Array(raw.length);
     for(let i=0;i<raw.length;i++)pdfBytes[i]=raw.charCodeAt(i);
+    console.log('pdfBytes length:', pdfBytes.length, '先頭4bytes:', pdfBytes[0], pdfBytes[1], pdfBytes[2], pdfBytes[3]);
     await renderPdf(pdfBytes);
   }catch(e){
     console.warn('PDF取得エラー:',e.message);
