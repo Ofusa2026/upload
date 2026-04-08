@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.09</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.12</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -172,7 +172,7 @@ input:focus{border-color:var(--accent);background:white;}
     <div class="complete-screen">
       <div class="complete-icon">✅</div>
       <div class="complete-title">署名完了</div>
-      <div class="complete-sub">署名済みの雇用条件書が<br>Driveに保存されました。<br>このページを閉じて構いません。</div>
+      <div class="complete-sub">署名が完了しました。<br>下のボタンから書類を保存しておいてください。</div>
       <div class="complete-card">
         <div class="complete-card-title">受理情報</div>
         <div class="complete-card-row"><span class="complete-card-key">書類</span><span class="complete-card-val">雇用条件書</span></div>
@@ -180,7 +180,11 @@ input:focus{border-color:var(--accent);background:white;}
         <div class="complete-card-row"><span class="complete-card-key">日時</span><span class="complete-card-val" id="completeTime">—</span></div>
         <div class="complete-card-row"><span class="complete-card-key">受理番号</span><span class="complete-card-val" id="completeId">—</span></div>
       </div>
-      <button class="btn-download" id="btnDownload" style="display:none" onclick="downloadSignedPdf()">📥 署名済みPDFをダウンロード</button>
+      <div style="margin-top:16px;background:#fffbf0;border:1px solid #f0d080;border-radius:10px;padding:14px;font-size:12px;color:#7a6010;line-height:1.7;">
+        📄 <strong>書類を保存しておきましょう</strong><br>
+        下のボタンから署名済み書類をダウンロードして、PDFとして保存してください。
+      </div>
+      <button onclick="downloadSignedPdf()" style="width:100%;padding:14px;background:#1a1a2e;color:white;border:none;border-radius:50px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;">📥 書類をダウンロード</button>
     </div>
   </div>
 
@@ -377,17 +381,21 @@ async function submitSign(){
           b64=sigDataUrlForSave.split(',')[1];
           fname='署名_'+name+'_'+new Date().toISOString().slice(0,10)+'.png';
         }
-        // no-cors: Content-Typeはtext/plainで送る（application/jsonはpreflightが必要）
-        const payload=JSON.stringify({action:'saveSignedPdf',data:{
+        // 署名画像をJSONPで送信（PNGは小さいのでURL乗る）
+        // PDFは大きいのでPNGのみDrive保存、PDFはダウンロードボタンで対応
+        const sigPng=canvas.toDataURL('image/png').split(',')[1];
+        const saveResult=await callGasJsonp({action:'saveSignedPdf',data:{
           folderId:driveFolderId,caseId:caseData.case_id,
-          signerName:name,base64:b64,filename:fname,
-          mimeType:signedPdfBytes?'application/pdf':'image/png'}});
-        await fetch(GAS_URL,{
-          method:'POST',
-          mode:'no-cors',
-          body:payload
-        });
-        console.log('Drive保存リクエスト送信完了 (no-cors)');
+          signerName:name,base64:sigPng,
+          filename:'署名_'+name+'_'+new Date().toISOString().slice(0,10)+'.png',
+          mimeType:'image/png',
+          hasPdf:!!signedPdfBytes
+        }});
+        if(saveResult&&saveResult.status==='ok'){
+          console.log('Drive保存完了:', saveResult.filename);
+        } else {
+          console.warn('Drive保存エラー:', saveResult&&saveResult.msg);
+        }
       }catch(ge){console.warn('Drive保存エラー:',ge.message);}
     } else {
       console.warn('driveFolderIdが未設定のためDrive保存をスキップ');
@@ -402,7 +410,6 @@ async function submitSign(){
     document.getElementById('completeName').textContent=name;
     document.getElementById('completeTime').textContent=new Date(signedAt).toLocaleString('ja-JP');
     document.getElementById('completeId').textContent=signRequestId.slice(0,8).toUpperCase();
-    if(signedPdfBytes)document.getElementById('btnDownload').style.display='flex';
     document.getElementById('progressFill').style.width='100%';
     goStep(4);
   }catch(e){
@@ -412,15 +419,7 @@ async function submitSign(){
   }
 }
 
-function downloadSignedPdf(){
-  if(!signedPdfBytes)return;
-  const name=document.getElementById('completeName').textContent;
-  const blob=new Blob([signedPdfBytes],{type:'application/pdf'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;
-  a.download='雇用条件書_署名済_'+name+'.pdf';a.click();
-  URL.revokeObjectURL(url);
-}
+
 
 // ===== ステップ管理 =====
 function goStep(n){
@@ -439,6 +438,20 @@ function showError(t,m){
   document.getElementById('errorTitle').textContent=t||'エラー';
   document.getElementById('errorMsg').textContent=m||'担当者にお問い合わせください。';
   document.getElementById('errorScreen').classList.add('active');
+}
+function downloadSignedPdf(){
+  const name=document.getElementById('completeName').textContent;
+  if(signedPdfBytes){
+    const blob=new Blob([signedPdfBytes],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;
+    a.download='雇用条件書_署名済_'+name+'.pdf';a.click();
+    URL.revokeObjectURL(url);
+  } else if(canvas){
+    const a=document.createElement('a');
+    a.href=canvas.toDataURL('image/png');
+    a.download='署名_'+name+'.png';a.click();
+  }
 }
 function showAlreadySigned(){showError('署名済みです','このリンクはすでに使用済みです。');document.querySelector('.error-icon').textContent='✅';}
 </script>
