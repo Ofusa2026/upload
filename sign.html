@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.14</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.15</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -409,20 +409,29 @@ function showError(t,m){
 }
 function downloadSignedPdf(){
   const name=document.getElementById('completeName').textContent||'署名';
+  let url=null, mime='application/pdf';
   if(signedPdfBytes){
-    // 署名合成済みPDF
+    // 署名合成済みPDF → Blobで新しいタブに開く
     const blob=new Blob([signedPdfBytes],{type:'application/pdf'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;
-    a.download='雇用条件書_署名済_'+name+'.pdf';a.click();
-    URL.revokeObjectURL(url);
+    url=URL.createObjectURL(blob);
+    mime='application/pdf';
   } else if(window._lastSigDataUrl){
-    // PDFがない場合は署名画像
-    const a=document.createElement('a');
-    a.href=window._lastSigDataUrl;
-    a.download='署名_'+name+'.png';a.click();
+    // 署名画像
+    url=window._lastSigDataUrl;
+    mime='image/png';
   } else {
     alert('ダウンロードできるファイルがありません。');
+    return;
+  }
+  // iOS Safari対応：新しいウィンドウで開く
+  var newWin=window.open(url,'_blank');
+  if(!newWin){
+    // ポップアップブロックされた場合はリンクを表示
+    var a=document.createElement('a');
+    a.href=url;a.target='_blank';
+    a.style.cssText='display:block;margin-top:10px;text-align:center;font-size:14px;color:#1a1a2e;font-weight:700;';
+    a.textContent='📄 こちらをタップして開く';
+    document.querySelector('.complete-screen').appendChild(a);
   }
 }
 function showAlreadySigned(){showError('署名済みです','このリンクはすでに使用済みです。');document.querySelector('.error-icon').textContent='✅';}
