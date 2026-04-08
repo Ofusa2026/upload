@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.08</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.09</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 async function loadSignRequest(token){
   try{
     const {data,error}=await sb.from('sign_requests')
-      .select('id,case_id,status,expires_at,doc_lang,drive_folder_id,cases(applicant,company)')
+      .select('id,case_id,status,expires_at,doc_lang,drive_folder_id')
       .eq('token',token).single();
     if(error||!data){showError('リンクが見つかりません');return;}
     if(data.expires_at&&new Date(data.expires_at)<new Date()){showError('リンクの有効期限が切れています');return;}
@@ -234,9 +234,14 @@ async function loadSignRequest(token){
     docLang=data.doc_lang||'インドネシア語';
     driveFolderId=data.drive_folder_id||'';
     // 署名のみのためcases参照なし
-    const c=data.cases||{};
-    document.getElementById('workerName').textContent=c.applicant||'—';
-    document.getElementById('companyName').textContent=c.company||'—';
+    // casesテーブルから別途取得
+    try {
+      const {data:cd}=await sb.from('cases').select('applicant,company').eq('id',data.case_id).single();
+      if(cd){
+        document.getElementById('workerName').textContent=cd.applicant||'—';
+        document.getElementById('companyName').textContent=cd.company||'—';
+      }
+    } catch(ce){ console.warn('cases取得エラー:',ce); }
     document.getElementById('docLang').textContent=docLang;
     await loadPdfFromDrive(data.case_id,driveFolderId);
     goStep(1);
