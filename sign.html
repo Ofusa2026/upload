@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.17</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.18</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -276,9 +276,13 @@ function callGasJsonp(params){
 async function loadPdfFromDrive(caseId,folderId){
   try{
     if(!folderId)throw new Error('フォルダIDが未設定です');
-    const json=await callGasJsonp({action:'getEmploymentPdf',data:{folderId:folderId,caseId:caseId}});
-    if(json.error)throw new Error(json.error);
-    if(!json.base64)throw new Error('PDFが見つかりません');
+    // GAS WebアプリURLにfetchでPDFを取得（JSONP不使用・大容量対応）
+    const gasUrl = GAS_URL + '?action=getEmploymentPdf&folderId=' + encodeURIComponent(folderId) + '&caseId=' + encodeURIComponent(caseId||'');
+    const resp = await fetch(gasUrl);
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const json = await resp.json();
+    if(json.status==='error') throw new Error(json.msg||'GASエラー');
+    if(!json.base64) throw new Error('PDFが見つかりません');
     const raw=atob(json.base64);
     pdfBytes=new Uint8Array(raw.length);
     for(let i=0;i<raw.length;i++)pdfBytes[i]=raw.charCodeAt(i);
