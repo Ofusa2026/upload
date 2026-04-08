@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人</div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.02</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -251,11 +251,30 @@ async function loadSignRequest(token){
 }
 
 // ===== DriveからPDF取得 =====
+// JSONP呼び出しユーティリティ
+function callGasJsonp(params){
+  return new Promise(function(resolve,reject){
+    var cb='_gasCallback'+Date.now();
+    var s=document.createElement('script');
+    var encoded=encodeURIComponent(JSON.stringify(params));
+    s.src=GAS_URL+'?jsonpPost='+encoded+'&callback='+cb;
+    var timer=setTimeout(function(){
+      delete window[cb];document.body.removeChild(s);
+      reject(new Error('タイムアウト'));
+    },30000);
+    window[cb]=function(data){
+      clearTimeout(timer);delete window[cb];
+      try{document.body.removeChild(s);}catch(e){}
+      resolve(data);
+    };
+    document.body.appendChild(s);
+  });
+}
+
 async function loadPdfFromDrive(caseId,folderId){
   try{
-    const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'getEmploymentPdf',caseId,folderId})});
-    const json=await res.json();
+    if(!folderId)throw new Error('フォルダIDが未設定です');
+    const json=await callGasJsonp({action:'getEmploymentPdf',data:{folderId:folderId,caseId:caseId}});
     if(json.error)throw new Error(json.error);
     if(!json.base64)throw new Error('PDFが見つかりません');
     const raw=atob(json.base64);
@@ -265,7 +284,7 @@ async function loadPdfFromDrive(caseId,folderId){
   }catch(e){
     console.warn('PDF取得エラー:',e.message);
     document.getElementById('pdfContainer').innerHTML=
-      '<div class="pdf-loading" style="color:#f97316;">⚠️ PDFを取得できませんでした<br><small>担当者に確認してから、署名のみ続行できます</small></div>';
+      '<div class="pdf-loading" style="color:#f97316;">⚠️ PDFを取得できませんでした<br><small>'+e.message+'</small></div>';
   }
 }
 
@@ -349,13 +368,14 @@ async function submitSign(){
     signedPdfBytes=await embedSignatureToPdf();
     // 2. GAS経由でDriveに保存
     if(signedPdfBytes&&driveFolderId){
-      const b64=btoa(String.fromCharCode(...new Uint8Array(signedPdfBytes)));
-      const gr=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:'saveSignedPdf',folderId:driveFolderId,
-          caseId:caseData.case_id,signerName:name,base64:b64,
-          filename:'1-6_雇用条件書_署名済_'+name+'.pdf'})});
-      const gj=await gr.json();
-      if(gj.error)console.warn('Drive保存エラー:',gj.error);
+      try{
+        const b64=btoa(String.fromCharCode(...new Uint8Array(signedPdfBytes)));
+        const gj=await callGasJsonp({action:'saveSignedPdf',data:{
+          folderId:driveFolderId,caseId:caseData.case_id,
+          signerName:name,base64:b64,
+          filename:'1-6_雇用条件書_署名済_'+name+'.pdf'}});
+        if(gj.error)console.warn('Drive保存エラー:',gj.error);
+      }catch(ge){console.warn('Drive保存エラー:',ge.message);}
     }
     // 3. Supabase更新
     const {error}=await sb.from('sign_requests').update({
