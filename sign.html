@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 async function loadSignRequest(token){
   try{
     const {data,error}=await sb.from('sign_requests')
-      .select('id,case_id,status,expires_at,doc_lang,drive_folder_id,cases(applicant_name,applicant_name_kana,nationality,company_name)')
+      .select('id,case_id,status,expires_at,doc_lang,drive_folder_id')
       .eq('token',token).single();
     if(error||!data){showError('リンクが見つかりません');return;}
     if(data.expires_at&&new Date(data.expires_at)<new Date()){showError('リンクの有効期限が切れています');return;}
@@ -240,11 +240,10 @@ async function loadSignRequest(token){
     signRequestId=data.id;caseData=data;
     docLang=data.doc_lang||'インドネシア語';
     driveFolderId=data.drive_folder_id||'';
-    const c=data.cases||{};
-    document.getElementById('workerName').textContent=c.applicant_name||'—';
-    document.getElementById('workerNameKana').textContent=c.applicant_name_kana||'';
-    document.getElementById('workerNationality').textContent=c.nationality||'—';
-    document.getElementById('companyName').textContent=c.company_name||'—';
+    // 署名のみのためcases参照なし
+    document.getElementById('workerName').textContent='—';
+    document.getElementById('workerNationality').textContent='—';
+    document.getElementById('companyName').textContent='—';
     document.getElementById('docLang').textContent=docLang;
     await loadPdfFromDrive(data.case_id,driveFolderId);
     goStep(1);
