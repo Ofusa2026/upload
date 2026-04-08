@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.03</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.06</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -104,13 +104,10 @@ input:focus{border-color:var(--accent);background:white;}
     <div class="section">
       <div class="section-label">署名対象者</div>
       <div class="case-card">
-        <div class="case-name" id="workerName">—</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="workerNameKana"></div>
-        <div class="case-meta">
-          <div class="case-meta-item"><div class="case-meta-key">国籍</div><div class="case-meta-value" id="workerNationality">—</div></div>
+        <div class="case-meta" style="grid-template-columns:1fr;">
+          <div class="case-meta-item"><div class="case-meta-key">氏名</div><div class="case-meta-value" id="workerName">—</div></div>
           <div class="case-meta-item"><div class="case-meta-key">所属機関</div><div class="case-meta-value" id="companyName">—</div></div>
-          <div class="case-meta-item"><div class="case-meta-key">書類</div><div class="case-meta-value">雇用条件書</div></div>
-          <div class="case-meta-item"><div class="case-meta-key">言語</div><div class="case-meta-value" id="docLang">—</div></div>
+          <div class="case-meta-item"><div class="case-meta-key">書類</div><div class="case-meta-value">雇用条件書（<span id="docLang">—</span>）</div></div>
         </div>
       </div>
     </div>
@@ -158,19 +155,15 @@ input:focus{border-color:var(--accent);background:white;}
       <span class="step-label">本人確認</span>
     </div>
     <div class="section">
-      <div class="section-label">本人確認</div>
+      <div class="section-label">氏名を入力してください</div>
       <div class="verify-section">
         <div class="input-group">
-          <label class="input-label">氏名（漢字またはローマ字）</label>
+          <label class="input-label">氏名（ローマ字）</label>
           <input type="text" id="inputName" placeholder="例：NGUYEN VAN AN" autocomplete="name">
-        </div>
-        <div class="input-group">
-          <label class="input-label">在留カード番号（下4桁）</label>
-          <input type="tel" id="inputCard" placeholder="例：1234" maxlength="4" inputmode="numeric">
         </div>
       </div>
     </div>
-    <div class="notice">入力内容は本人確認のためのみ使用されます。</div>
+    <div class="notice">署名者の氏名として記録されます。</div>
     <button class="btn-primary" id="btnSubmit" onclick="submitSign()">✅ 署名を送信する</button>
     <button class="btn-back" onclick="goStep(2)">← 戻る</button>
   </div>
@@ -242,7 +235,6 @@ async function loadSignRequest(token){
     driveFolderId=data.drive_folder_id||'';
     // 署名のみのためcases参照なし
     document.getElementById('workerName').textContent='—';
-    document.getElementById('workerNationality').textContent='—';
     document.getElementById('companyName').textContent='—';
     document.getElementById('docLang').textContent=docLang;
     await loadPdfFromDrive(data.case_id,driveFolderId);
@@ -355,9 +347,8 @@ async function embedSignatureToPdf(){
 // ===== 送信 =====
 async function submitSign(){
   const name=document.getElementById('inputName').value.trim();
-  const card=document.getElementById('inputCard').value.trim();
+  const card='';
   if(!name){alert('氏名を入力してください');return;}
-  if(!card||!/^\d{4}$/.test(card)){alert('在留カード番号の下4桁（数字4桁）を入力してください');return;}
   if(!hasDrawn){alert('署名してください');return;}
   const btn=document.getElementById('btnSubmit');
   btn.disabled=true;btn.innerHTML='<span>処理中...</span>';
@@ -366,16 +357,34 @@ async function submitSign(){
   try{
     // 1. PDF合成
     signedPdfBytes=await embedSignatureToPdf();
-    // 2. GAS経由でDriveに保存
-    if(signedPdfBytes&&driveFolderId){
+    // 2. GAS経由でDriveに保存（PDFがなくても署名画像単体で保存）
+    if(driveFolderId){
       try{
-        const b64=btoa(String.fromCharCode(...new Uint8Array(signedPdfBytes)));
-        const gj=await callGasJsonp({action:'saveSignedPdf',data:{
-          folderId:driveFolderId,caseId:caseData.case_id,
-          signerName:name,base64:b64,
-          filename:'1-6_雇用条件書_署名済_'+name+'.pdf'}});
-        if(gj.error)console.warn('Drive保存エラー:',gj.error);
+        let b64, fname;
+        if(signedPdfBytes){
+          // 署名合成済みPDF
+          b64=btoa(String.fromCharCode(...new Uint8Array(signedPdfBytes)));
+          fname='1-6_雇用条件書_署名済_'+name+'.pdf';
+        } else {
+          // PDFなし → 署名画像のみ保存（PNG）
+          const sigDataUrlForSave=canvas.toDataURL('image/png');
+          b64=sigDataUrlForSave.split(',')[1];
+          fname='署名_'+name+'_'+new Date().toISOString().slice(0,10)+'.png';
+        }
+        // no-cors fetchでPOST（レスポンスは読めないが送信可能）
+        await fetch(GAS_URL,{
+          method:'POST',
+          mode:'no-cors',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({action:'saveSignedPdf',data:{
+            folderId:driveFolderId,caseId:caseData.case_id,
+            signerName:name,base64:b64,filename:fname,
+            mimeType:signedPdfBytes?'application/pdf':'image/png'}})
+        });
+        console.log('Drive保存リクエスト送信完了');
       }catch(ge){console.warn('Drive保存エラー:',ge.message);}
+    } else {
+      console.warn('driveFolderIdが未設定のためDrive保存をスキップ');
     }
     // 3. Supabase更新
     const {error}=await sb.from('sign_requests').update({
