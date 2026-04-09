@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.19</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.20</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -294,7 +294,7 @@ async function loadPdfFromDrive(caseId,folderId){
     pdfBytes=new Uint8Array(raw.length);
     for(let i=0;i<raw.length;i++)pdfBytes[i]=raw.charCodeAt(i);
     console.log('pdfBytes length:', pdfBytes.length, '先頭4bytes:', pdfBytes[0], pdfBytes[1], pdfBytes[2], pdfBytes[3]);
-    await renderPdf(pdfBytes);
+    await renderPdf(pdfBytes.slice()); // pdf.jsにはコピーを渡す（元データ保持のため）
   }catch(e){
     console.warn('PDF取得エラー:',e.message);
     document.getElementById('pdfContainer').innerHTML=
@@ -351,6 +351,11 @@ function clearCanvas(){if(!ctx)return;ctx.clearRect(0,0,canvas.width,canvas.heig
 // ===== pdf-lib で署名合成 =====
 async function embedSignatureToPdf(){
   if(!pdfBytes||!hasDrawn)return null;
+  console.log('embedSignatureToPdf: pdfBytes length=', pdfBytes.length, '先頭4bytes=', pdfBytes[0], pdfBytes[1], pdfBytes[2], pdfBytes[3]);
+  // 37=%, 80=P, 68=D, 70=F → %PDF が正常
+  if(pdfBytes[0]!==37||pdfBytes[1]!==80||pdfBytes[2]!==68||pdfBytes[3]!==70){
+    alert('pdfBytes異常: 先頭=' + Array.from(pdfBytes.slice(0,4)).join(',') + ' (正常は37,80,68,70)');
+  }
   try{
     const {PDFDocument}=PDFLib;
     const sigDataUrl=canvas.toDataURL('image/png');
