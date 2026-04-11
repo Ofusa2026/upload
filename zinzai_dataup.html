@@ -184,6 +184,7 @@
 </style>
 </head>
 <body>
+<div style="position:fixed;top:6px;left:8px;font-size:9px;color:rgba(0,0,0,.3);z-index:9999;pointer-events:none;" id="verBadge"></div>
 <div class="card">
   <div class="lang-bar" id="langBar"></div>
   <div class="header">
@@ -201,6 +202,9 @@
 </div>
 
 <script>
+const VERSION = 'ver.20260412.01';
+console.log('📄 zinzai_dataup.html', VERSION);
+
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 
 // URLパラメータからフォルダIDを取得
@@ -228,7 +232,7 @@ const ALL_DOCS = [
   {key:'health_ins_cert',tags:['国民健康保険料納付証明書']}, // 留学生
   {key:'graduation',    tags:['卒業証明書']},           // 留学生
   {key:'transcript',    tags:['成績証明書']},           // 留学生
-  {key:'nenkin',        tags:['年金手帐']},             // 留学生
+  {key:'nenkin',        tags:['年金手帳']},             // 留学生
   {key:'other',         tags:[]},
 ];
 
@@ -240,8 +244,8 @@ const REQUIRED_RULES = {
 };
 const RYUGAKU_RULES = {
   '更新': [],
-  '変更': ['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帐'],
-  '認定': ['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帐'],
+  '変更': ['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帳'],
+  '認定': ['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帳'],
 };
 const NATIONALITY_RULES = {};
 
@@ -315,7 +319,7 @@ const LANGS = {
     msgSuccess:'✅ アップロード完了しました！\n担当者に届きました。',
     msgError:'❌ 送信に失敗しました。\nもう一度お試しください。',
     msgNoFile:'少なくとも1枚の写真を選択してください',
-    docs:{ zairyu_front:'在留カード（表）', zairyu_back:'在留カード（裏）', passport:'パスポート', cert_jp:'合格証（日本語）', cert_skill:'合格証（技能試験）', cert_specialist:'合格証（専門級・3級）', tax_payment:'納税証明書', tax_cert:'課税証明書', withholding:'源泉徴収票', medical:'健康診断証', mugshot:'顔写真', health_ins:'健康保険証', health_ins_cert:'国民健康保険料納付証明書', graduation:'卒業証明書', transcript:'成績証明書', nenkin:'年金手帐', other:'その他' }
+    docs:{ zairyu_front:'在留カード（表）', zairyu_back:'在留カード（裏）', passport:'パスポート', cert_jp:'合格証（日本語）', cert_skill:'合格証（技能試験）', cert_specialist:'合格証（専門級・3級）', tax_payment:'納税証明書', tax_cert:'課税証明書', withholding:'源泉徴収票', medical:'健康診断証', mugshot:'顔写真', health_ins:'健康保険証', health_ins_cert:'国民健康保険料納付証明書', graduation:'卒業証明書', transcript:'成績証明書', nenkin:'年金手帳', other:'その他' }
   },
   en: {
     label:'English', title:'Document Upload',
@@ -345,7 +349,7 @@ const LANGS = {
     msgSuccess:'✅ 上传成功！\n您的文件已收到。',
     msgError:'❌ 上传失败。\n请重试。',
     msgNoFile:'请至少选择一张照片',
-    docs:{ zairyu_front:'居留卡（正面）', zairyu_back:'居留卡（背面）', passport:'护照', cert_jp:'合格证（日语）', cert_skill:'合格证（技能考试）', cert_specialist:'合格证（专项级·3级）', tax_payment:'纳税证明', tax_cert:'课税证明', withholding:'扣缴凭证', medical:'健康诊断证明', mugshot:'照片', health_ins:'健康保险证', health_ins_cert:'国民健康保险缴费证明', graduation:'毕业证明书', transcript:'成绩单', nenkin:'年金手帐', other:'其他' }
+    docs:{ zairyu_front:'居留卡（正面）', zairyu_back:'居留卡（背面）', passport:'护照', cert_jp:'合格证（日语）', cert_skill:'合格证（技能考试）', cert_specialist:'合格证（专项级·3级）', tax_payment:'纳税证明', tax_cert:'课税证明', withholding:'扣缴凭证', medical:'健康诊断证明', mugshot:'照片', health_ins:'健康保险证', health_ins_cert:'国民健康保险缴费证明', graduation:'毕业证明书', transcript:'成绩单', nenkin:'年金手帳', other:'其他' }
   },
   km: {
     label:'ខ្មែរ', title:'បង្ហោះឯកសារ',
@@ -355,7 +359,7 @@ const LANGS = {
     msgSuccess:'✅ បង្ហោះបានជោគជ័យ!\nឯកសាររបស់អ្នកត្រូវបានទទួល។',
     msgError:'❌ បង្ហោះបានបរាជ័យ។\nសូមព្យាយាមម្តងទៀត។',
     msgNoFile:'សូមជ្រើសរើសរូបថតយ៉ាងហោចណាស់មួយ',
-    docs:{ zairyu_front:'កាតស្នាក់នៅ (ខាងមុខ)', zairyu_back:'កាតស្នាក់នៅ (ខាងក្រោយ)', passport:'លិខិតឆ្លងដែន', cert_jp:'វិញ្ញាបនបត្រ (ភាសាជប៉ុន)', cert_skill:'វិញ្ញាបនបត្រ (ការប្រឡងជំនាញ)', cert_specialist:'វិញ្ញាបនបត្រ (ថ្នាក់ជំនាញ/កម្រិត 3)', tax_payment:'វិញ្ញាបនបត្របង់ពន្ធ', tax_cert:'វិញ្ញាបនបត្រពន្ធ', withholding:'លិខិតកាត់ពន្ធ', medical:'វិញ្ញាបនបត្រសុខភាព', mugshot:'រូបថត', health_ins:'កាតប្រកញសុខភាព', health_ins_cert:'វិញ្ញាបនបត្របង់ប្រកញសុខ', graduation:'សញ្ញាបត្រ', transcript:'លត្តផល', nenkin:'年金手帐', other:'ផ្សេងទៀត' }
+    docs:{ zairyu_front:'កាតស្នាក់នៅ (ខាងមុខ)', zairyu_back:'កាតស្នាក់នៅ (ខាងក្រោយ)', passport:'លិខិតឆ្លងដែន', cert_jp:'វិញ្ញាបនបត្រ (ភាសាជប៉ុន)', cert_skill:'វិញ្ញាបនបត្រ (ការប្រឡងជំនាញ)', cert_specialist:'វិញ្ញាបនបត្រ (ថ្នាក់ជំនាញ/កម្រិត 3)', tax_payment:'វិញ្ញាបនបត្របង់ពន្ធ', tax_cert:'វិញ្ញាបនបត្រពន្ធ', withholding:'លិខិតកាត់ពន្ធ', medical:'វិញ្ញាបនបត្រសុខភាព', mugshot:'រូបថត', health_ins:'កាតប្រកញសុខភាព', health_ins_cert:'វិញ្ញាបនបត្របង់ប្រកញសុខ', graduation:'សញ្ញាបត្រ', transcript:'លត្តផល', nenkin:'年金手帳', other:'ផ្សេងទៀត' }
   },
   vi: {
     label:'Tiếng Việt', title:'Tải lên tài liệu',
@@ -395,7 +399,7 @@ const LANGS = {
     msgSuccess:'✅ တင်ခြင်းအောင်မြင်သည်!\nသင့်စာရွက်စာတမ်းကိုလက်ခံရရှိပြီ။',
     msgError:'❌ တင်ခြင်းမအောင်မြင်ပါ။\nထပ်မံကြိုးစားပါ။',
     msgNoFile:'ဓာတ်ပုံတစ်ပုံရွေးချယ်ပါ',
-    docs:{ zairyu_front:'နေထိုင်ခွင့်ကတ် (ရှေ့ဘက်)', zairyu_back:'နေထိုင်ခွင့်ကတ် (နောက်ဘက်)', passport:'နိုင်ငံကူးလက်မှတ်', cert_jp:'လက်မှတ် (ဂျပန်ဘာသာ)', cert_skill:'လက်မှတ် (ကျွမ်းကျင်မှုစာမေးပွဲ)', cert_specialist:'လက်မှတ် (ကျွမ်းကျင်ရည်မှန်း/အဆင့် 3)', tax_payment:'အခွန်ပေးဆောင်မှုသက်သေခံ', tax_cert:'အခွန်သက်သေခံလက်မှတ်', withholding:'အခွန်နုတ်ယူသည့်ဖော်ပြချက်', medical:'ကျန်းမာရေးသက်သေခံ', mugshot:'ဒာတ်ပုံ', health_ins:'ကျန်မာရေရောေမ်ကာတ်', health_ins_cert:'အမျိုးသာမ်ကာတ်ရသိက်အထိအမ်မှတ်တမ်', graduation:'ဘွီလက်မှတ်တမ်', transcript:'ကျောင်းသာမှတ်တမ်', nenkin:'年金手帐', other:'အခြား' }
+    docs:{ zairyu_front:'နေထိုင်ခွင့်ကတ် (ရှေ့ဘက်)', zairyu_back:'နေထိုင်ခွင့်ကတ် (နောက်ဘက်)', passport:'နိုင်ငံကူးလက်မှတ်', cert_jp:'လက်မှတ် (ဂျပန်ဘာသာ)', cert_skill:'လက်မှတ် (ကျွမ်းကျင်မှုစာမေးပွဲ)', cert_specialist:'လက်မှတ် (ကျွမ်းကျင်ရည်မှန်း/အဆင့် 3)', tax_payment:'အခွန်ပေးဆောင်မှုသက်သေခံ', tax_cert:'အခွန်သက်သေခံလက်မှတ်', withholding:'အခွန်နုတ်ယူသည့်ဖော်ပြချက်', medical:'ကျန်းမာရေးသက်သေခံ', mugshot:'ဒာတ်ပုံ', health_ins:'ကျန်မာရေရောေမ်ကာတ်', health_ins_cert:'အမျိုးသာမ်ကာတ်ရသိက်အထိအမ်မှတ်တမ်', graduation:'ဘွီလက်မှတ်တမ်', transcript:'ကျောင်းသာမှတ်တမ်', nenkin:'年金手帳', other:'အခြား' }
   },
   si: {
     label:'සිංහල', title:'ලේඛන උඩුගත කිරීම',
@@ -425,7 +429,7 @@ const LANGS = {
     msgSuccess:'✅ अपलोड सफल भयो!\nतपाईंको कागजात प्राप्त भयो।',
     msgError:'❌ अपलोड असफल भयो।\nपुनः प्रयास गर्नुहोस्।',
     msgNoFile:'कम्तीमा एउटा फोटो छनोट गर्नुहोस्',
-    docs:{ zairyu_front:'आवास कार्ड (अगाडि)', zairyu_back:'आवास कार्ड (पछाडि)', passport:'राहदानी', cert_jp:'प्रमाणपत्र (जापानी भाषा)', cert_skill:'प्रमाणपत्र (सीप परीक्षण)', cert_specialist:'प्रमाणपत्र (विशेषज्ञ/स्तर ३)', tax_payment:'कर तिरेको प्रमाणपत्र', tax_cert:'कर प्रमाणपत्र', withholding:'स्रोतमा कर कटौती विवरण', medical:'स्वास्थ्य परीक्षण प्रमाणपत्र', mugshot:'फोटो', health_ins:'स्वास्थ्य बिमा कार्ड', health_ins_cert:'राष्ट्रिय स्वास्थ्य बिमा भुक्तानी प्रमाणपत्र', graduation:'उपाधि', transcript:'अङ्कतालिका', nenkin:'年金手帐', other:'अन्य' }
+    docs:{ zairyu_front:'आवास कार्ड (अगाडि)', zairyu_back:'आवास कार्ड (पछाडि)', passport:'राहदानी', cert_jp:'प्रमाणपत्र (जापानी भाषा)', cert_skill:'प्रमाणपत्र (सीप परीक्षण)', cert_specialist:'प्रमाणपत्र (विशेषज्ञ/स्तर ३)', tax_payment:'कर तिरेको प्रमाणपत्र', tax_cert:'कर प्रमाणपत्र', withholding:'स्रोतमा कर कटौती विवरण', medical:'स्वास्थ्य परीक्षण प्रमाणपत्र', mugshot:'फोटो', health_ins:'स्वास्थ्य बिमा कार्ड', health_ins_cert:'राष्ट्रिय स्वास्थ्य बिमा भुक्तानी प्रमाणपत्र', graduation:'उपाधि', transcript:'अङ्कतालिका', nenkin:'年金手帳', other:'अन्य' }
   },
 };
 
@@ -648,6 +652,7 @@ function requiredCount() {
 }
 
 setLang('ja');
+document.getElementById('verBadge').textContent = VERSION;
 
 submitBtn.addEventListener('click', async () => {
   const L = LANGS[currentLang];
