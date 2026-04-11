@@ -245,6 +245,43 @@ const RYUGAKU_RULES = {
 };
 const NATIONALITY_RULES = {};
 
+function getDocPattern() {
+  const at = APP_TYPE;
+  if (at === '更新') return {
+    zairyu_front:'required', zairyu_back:'required', passport:'required',
+    cert_jp:'optional', cert_skill:'optional', cert_specialist:'hidden',
+    tax_cert:'required', tax_payment:'required', withholding:'required',
+    medical:'required', mugshot:'required',
+    health_ins:'hidden', health_ins_cert:'hidden', graduation:'hidden', transcript:'hidden', nenkin:'hidden',
+    other:'optional',
+  };
+  if (at === '変更') return {
+    zairyu_front:'required', zairyu_back:'required', passport:'required',
+    cert_jp:'required', cert_skill:'required', cert_specialist:'optional',
+    tax_cert:'required', tax_payment:'required', withholding:'required',
+    medical:'required', mugshot:'required',
+    health_ins: IS_RYUGAKU?'required':'hidden',
+    health_ins_cert: IS_RYUGAKU?'required':'hidden',
+    graduation: IS_RYUGAKU?'required':'hidden',
+    transcript: IS_RYUGAKU?'required':'hidden',
+    nenkin: IS_RYUGAKU?'required':'hidden',
+    other:'optional',
+  };
+  if (at === '認定') return {
+    zairyu_front:'hidden', zairyu_back:'hidden', passport:'required',
+    cert_jp:'required', cert_skill:'required', cert_specialist:'optional',
+    tax_cert:'hidden', tax_payment:'hidden', withholding:'hidden',
+    medical:'required', mugshot:'required',
+    health_ins: IS_RYUGAKU?'required':'hidden',
+    health_ins_cert: IS_RYUGAKU?'required':'hidden',
+    graduation: IS_RYUGAKU?'required':'hidden',
+    transcript: IS_RYUGAKU?'required':'hidden',
+    nenkin: IS_RYUGAKU?'required':'hidden',
+    other:'optional',
+  };
+  return Object.fromEntries(ALL_DOCS.map(d => [d.key, 'optional']));
+}
+
 function getRequiredTags() {
   if (!APP_TYPE) return null; // 不明時は全表示
   const base = REQUIRED_RULES[APP_TYPE] || [];
