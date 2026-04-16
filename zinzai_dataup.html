@@ -202,7 +202,7 @@
 </div>
 
 <script>
-const VERSION = 'ver.20260413.02';
+const VERSION = 'ver.20260412.01';
 console.log('📄 zinzai_dataup.html', VERSION);
 
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
@@ -283,42 +283,20 @@ function getDocPattern() {
     nenkin: IS_RYUGAKU?'required':'hidden',
     other:'optional',
   };
-  // APP_TYPE不明時は最大公約数的なデフォルト（留学生書類は IS_RYUGAKU で制御）
-  return {
-    zairyu_front:'optional', zairyu_back:'optional', passport:'required',
-    cert_jp:'optional', cert_skill:'optional', cert_specialist:'optional',
-    tax_cert:'optional', tax_payment:'optional', withholding:'optional',
-    medical:'optional', mugshot:'required',
-    health_ins: IS_RYUGAKU?'optional':'hidden',
-    health_ins_cert: IS_RYUGAKU?'optional':'hidden',
-    graduation: IS_RYUGAKU?'optional':'hidden',
-    transcript: IS_RYUGAKU?'optional':'hidden',
-    nenkin: IS_RYUGAKU?'optional':'hidden',
-    other:'optional',
-  };
+  return Object.fromEntries(ALL_DOCS.map(d => [d.key, 'optional']));
 }
 
 function getRequiredTags() {
-  // APP_TYPE不明でも留学生書類はIS_RYUGAKUで制御（nullにしない）
+  if (!APP_TYPE) return null; // 不明時は全表示
   const base = REQUIRED_RULES[APP_TYPE] || [];
   const ryugaku = IS_RYUGAKU ? (RYUGAKU_RULES[APP_TYPE] || []) : [];
   const nat = (NATIONALITY_RULES[NATIONALITY] || {})[APP_TYPE] || [];
-  // APP_TYPEが空でもベース書類リストが空なら全表示
-  if (!APP_TYPE) return null;
   return base.concat(ryugaku).concat(nat);
 }
 
 function getDocKeys() {
   const required = getRequiredTags();
-  if (!required) {
-    // APP_TYPE不明時：留学生書類は IS_RYUGAKU でフィルタ
-    return ALL_DOCS.filter(doc => {
-      if (['health_ins','health_ins_cert','graduation','transcript','nenkin'].includes(doc.key)) {
-        return IS_RYUGAKU;
-      }
-      return true;
-    }).map(d => d.key);
-  }
+  if (!required) return ALL_DOCS.map(d => d.key); // 全表示
 
   return ALL_DOCS.filter(doc => {
     if (doc.key === 'other') return true; // otherは常に表示
@@ -702,10 +680,17 @@ submitBtn.addEventListener('click', async () => {
     progressBar.style.width = '40%';
     const res = await fetch(GAS_URL, {
       method: 'POST',
+      redirect: 'follow',
       body: JSON.stringify({ files: filesPayload, folderId: FOLDER_ID }),
     });
     progressBar.style.width = '90%';
-    const json = await res.json();
+    let json = { success: true }; // GASリダイレクト対策：デフォルトで成功とみなす
+    try {
+      const text = await res.text();
+      if (text && text.trim().startsWith('{')) {
+        json = JSON.parse(text);
+      }
+    } catch(parseErr) { /* ignore */ }
     if (json.success) {
       progressBar.style.width = '100%';
       statusMsg.className = 'status-msg success';
