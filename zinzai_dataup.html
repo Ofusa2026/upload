@@ -64,7 +64,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260420.03';
+const VERSION = 'ver.20260420.04';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -125,11 +125,16 @@ function getRequiredTags() {
 }
 function getDocKeys() {
   const required = getRequiredTags();
+  const pattern = APP_TYPE ? getDocPattern() : null;
   if (!required) return ALL_DOCS.filter(doc => !isDocSkipped(doc)).map(d => d.key);
   return ALL_DOCS.filter(doc => {
     if (doc.key === 'other') return true;
     if (!doc.tags.length) return false;
     if (isDocSkipped(doc)) return false;
+    // patternでoptionalのものも表示
+    if (pattern && pattern[doc.key] === 'optional') return true;
+    // hiddenは除外
+    if (pattern && pattern[doc.key] === 'hidden') return false;
     return doc.tags.some(tag => required.some(r => r.indexOf(tag) >= 0 || tag.indexOf(r) >= 0));
   }).map(d => d.key);
 }
