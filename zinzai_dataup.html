@@ -5,182 +5,47 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>書類アップロード</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600&family=Noto+Sans:wght@400;600&family=Noto+Sans+KR:wght@400;600&family=Noto+Sans+SC:wght@400;600&family=Noto+Sans+Thai:wght@400;600&family=Noto+Sans+Myanmar:wght@400;600&family=Noto+Serif+Khmer:wght@400;600&display=swap');
-  :root {
-    --primary: #1a56db;
-    --primary-dark: #1341a8;
-    --success: #057a55;
-    --success-bg: #f0fdf4;
-    --success-border: #bbf7d0;
-    --error: #9b1c1c;
-    --error-bg: #fef2f2;
-    --error-border: #fecaca;
-    --bg: #f0f4f8;
-    --card: #ffffff;
-    --text: #1a202c;
-    --sub: #718096;
-    --border: #e2e8f0;
-    --hover: #eff6ff;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Noto Sans', 'Noto Sans JP', sans-serif;
-    background: var(--bg);
-    min-height: 100vh;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 20px 16px 60px;
-  }
-  .card {
-    background: var(--card);
-    border-radius: 20px;
-    padding: 28px 20px;
-    max-width: 480px;
-    width: 100%;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-  }
-  .lang-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 24px;
-    justify-content: center;
-  }
-  .lang-btn {
-    padding: 5px 10px;
-    border: 1.5px solid var(--border);
-    border-radius: 20px;
-    font-size: 12px;
-    cursor: pointer;
-    background: #fff;
-    color: var(--sub);
-    transition: all 0.15s;
-    font-family: inherit;
-  }
-  .lang-btn.active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: #fff;
-    font-weight: 600;
-  }
-  .header { text-align: center; margin-bottom: 28px; }
-  .office-name { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
-  .page-icon { font-size: 36px; margin-bottom: 8px; }
-  h1 { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
-  .subtitle { font-size: 13px; color: var(--sub); line-height: 1.7; white-space: pre-line; }
-  .fields-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
-  .field-row {
-    border: 1.5px solid var(--border);
-    border-radius: 14px;
-    overflow: hidden;
-    transition: border-color 0.2s;
-  }
-  .field-row.has-file { border-color: var(--primary); background: #eff6ff; }
-  .field-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    cursor: pointer;
-    user-select: none;
-    gap: 8px;
-  }
-  .field-label { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
-  .field-status { font-size: 12px; color: var(--sub); white-space: nowrap; }
-  .field-status.ready { color: var(--success); font-weight: 600; }
-  .chevron { font-size: 11px; color: var(--sub); transition: transform 0.2s; flex-shrink: 0; }
-  .field-row.open .chevron { transform: rotate(180deg); }
-  .field-body {
-    border-top: 1.5px solid var(--border);
-    padding: 12px 14px;
-    display: none;
-  }
-  .field-row.open .field-body { display: block; }
-  .field-row.has-file .field-body { border-top-color: var(--primary); }
-  .mini-drop {
-    border: 2px dashed #c0cfe0;
-    border-radius: 10px;
-    padding: 20px 12px;
-    text-align: center;
-    cursor: pointer;
-    position: relative;
-    background: #f8fafc;
-    transition: all 0.2s;
-  }
-  .mini-drop:hover { border-color: var(--primary); background: var(--hover); }
-  .mini-drop input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
-  }
-  .mini-drop-text { font-size: 13px; color: #4a5568; font-weight: 600; }
-  .mini-drop-hint { font-size: 11px; color: #a0aec0; margin-top: 3px; }
-  .preview-wrap { position: relative; display: block; }
-  .preview-wrap img {
-    width: 100%;
-    max-height: 180px;
-    object-fit: contain;
-    border-radius: 8px;
-    background: #eee;
-    display: block;
-  }
-  .remove-btn {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    background: rgba(0,0,0,0.65);
-    color: #fff;
-    border: none;
-    border-radius: 50%;
-    width: 26px;
-    height: 26px;
-    font-size: 15px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .btn-submit {
-    display: block;
-    width: 100%;
-    padding: 16px;
-    background: var(--primary);
-    color: #fff;
-    font-family: inherit;
-    font-size: 16px;
-    font-weight: 600;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  .btn-submit:hover:not(:disabled) { background: var(--primary-dark); }
-  .btn-submit:disabled { background: #93c5fd; cursor: not-allowed; }
-  .progress-bar-wrap {
-    display: none;
-    margin-top: 14px;
-    background: #e2e8f0;
-    border-radius: 8px;
-    overflow: hidden;
-    height: 8px;
-  }
-  .progress-bar { height: 100%; background: var(--primary); width: 0%; transition: width 0.4s; }
-  .status-msg {
-    display: none;
-    margin-top: 18px;
-    padding: 16px;
-    border-radius: 12px;
-    font-size: 14px;
-    text-align: center;
-    line-height: 1.7;
-    white-space: pre-line;
-  }
-  .status-msg.success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
-  .status-msg.error { background: var(--error-bg); color: var(--error); border: 1px solid var(--error-border); }
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600&family=Noto+Sans:wght@400;600&display=swap');
+  :root{--primary:#1a56db;--primary-dark:#1341a8;--success:#057a55;--success-bg:#f0fdf4;--success-border:#bbf7d0;--error:#9b1c1c;--error-bg:#fef2f2;--error-border:#fecaca;--bg:#f0f4f8;--card:#ffffff;--text:#1a202c;--sub:#718096;--border:#e2e8f0;--hover:#eff6ff;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Noto Sans','Noto Sans JP',sans-serif;background:var(--bg);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px 60px;}
+  .card{background:var(--card);border-radius:20px;padding:28px 20px;max-width:480px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
+  .lang-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px;justify-content:center;}
+  .lang-btn{padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:#fff;color:var(--sub);transition:all 0.15s;font-family:inherit;}
+  .lang-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600;}
+  .header{text-align:center;margin-bottom:28px;}
+  .office-name{font-size:12px;color:var(--sub);margin-bottom:8px;}
+  .page-icon{font-size:36px;margin-bottom:8px;}
+  h1{font-size:20px;font-weight:600;color:var(--text);margin-bottom:6px;}
+  .subtitle{font-size:13px;color:var(--sub);line-height:1.7;white-space:pre-line;}
+  .fields-list{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
+  .field-row{border:1.5px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color 0.2s;}
+  .field-row.has-file{border-color:var(--primary);background:#eff6ff;}
+  .field-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none;gap:8px;}
+  .field-label{font-size:14px;font-weight:600;color:var(--text);flex:1;}
+  .field-status{font-size:12px;color:var(--sub);white-space:nowrap;}
+  .field-status.ready{color:var(--success);font-weight:600;}
+  .chevron{font-size:11px;color:var(--sub);transition:transform 0.2s;flex-shrink:0;}
+  .field-row.open .chevron{transform:rotate(180deg);}
+  .field-body{border-top:1.5px solid var(--border);padding:12px 14px;display:none;}
+  .field-row.open .field-body{display:block;}
+  .field-row.has-file .field-body{border-top-color:var(--primary);}
+  .mini-drop{border:2px dashed #c0cfe0;border-radius:10px;padding:20px 12px;text-align:center;cursor:pointer;position:relative;background:#f8fafc;transition:all 0.2s;}
+  .mini-drop:hover{border-color:var(--primary);background:var(--hover);}
+  .mini-drop input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .mini-drop-text{font-size:13px;color:#4a5568;font-weight:600;}
+  .mini-drop-hint{font-size:11px;color:#a0aec0;margin-top:3px;}
+  .preview-wrap{position:relative;display:block;}
+  .preview-wrap img{width:100%;max-height:180px;object-fit:contain;border-radius:8px;background:#eee;display:block;}
+  .remove-btn{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:50%;width:26px;height:26px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .btn-submit{display:block;width:100%;padding:16px;background:var(--primary);color:#fff;font-family:inherit;font-size:16px;font-weight:600;border:none;border-radius:12px;cursor:pointer;transition:background 0.2s;}
+  .btn-submit:hover:not(:disabled){background:var(--primary-dark);}
+  .btn-submit:disabled{background:#93c5fd;cursor:not-allowed;}
+  .progress-bar-wrap{display:none;margin-top:14px;background:#e2e8f0;border-radius:8px;overflow:hidden;height:8px;}
+  .progress-bar{height:100%;background:var(--primary);width:0%;transition:width 0.4s;}
+  .status-msg{display:none;margin-top:18px;padding:16px;border-radius:12px;font-size:14px;text-align:center;line-height:1.7;white-space:pre-line;}
+  .status-msg.success{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border);}
+  .status-msg.error{background:var(--error-bg);color:var(--error);border:1px solid var(--error-border);}
 </style>
 </head>
 <body>
@@ -195,248 +60,97 @@
   </div>
   <div class="fields-list" id="fieldsList"></div>
   <button class="btn-submit" id="submitBtn" disabled></button>
-  <div class="progress-bar-wrap" id="progressWrap">
-    <div class="progress-bar" id="progressBar"></div>
-  </div>
+  <div class="progress-bar-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
   <div class="status-msg" id="statusMsg"></div>
 </div>
-
 <script>
-const VERSION = 'ver.20260412.01';
+const VERSION = 'ver.20260420.02';
 console.log('📄 zinzai_dataup.html', VERSION);
-
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
-
-// URLパラメータからフォルダIDを取得
 const urlParams = new URLSearchParams(window.location.search);
 const FOLDER_ID = urlParams.get('folder') || '';
 const CASE_ID = urlParams.get('case') || '';
-const APP_TYPE = urlParams.get('appType') || '';         // 更新/変更/認定
-const NATIONALITY = urlParams.get('nationality') || '';   // ベトナム/ミャンマー/カンボジアetc
-const IS_RYUGAKU = urlParams.get('ryugaku') === '1';     // 留学生フラグ
+const APP_TYPE = urlParams.get('appType') || '';
+const NATIONALITY = urlParams.get('nationality') || '';
+const IS_RYUGAKU = urlParams.get('ryugaku') === '1';
+// 不要書類リスト（index.htmlのskipフラグから渡される）
+const SKIP_DOCS_RAW = urlParams.get('skipDocs') || '';
+const SKIP_DOCS = SKIP_DOCS_RAW ? decodeURIComponent(SKIP_DOCS_RAW).split(',').map(s => s.trim()).filter(Boolean) : [];
+console.log('📋 SKIP_DOCS:', SKIP_DOCS);
 
-// 全書類定義
 const ALL_DOCS = [
-  {key:'zairyu_front',  tags:['在留カード']},
-  {key:'zairyu_back',   tags:['在留カード']},
-  {key:'passport',      tags:['パスポート']},
-  {key:'cert_jp',       tags:['合格証（日本語）']},
-  {key:'cert_skill',    tags:['合格証（技能）']},
+  {key:'zairyu_front',tags:['在留カード']},
+  {key:'zairyu_back',tags:['在留カード']},
+  {key:'passport',tags:['パスポート']},
+  {key:'cert_jp',tags:['合格証（日本語）']},
+  {key:'cert_skill',tags:['合格証（技能）']},
   {key:'cert_specialist',tags:['合格証（専門級・3級）']},
-  {key:'tax_cert',      tags:['所得・課税証明書']},
-  {key:'tax_payment',   tags:['納税証明書']},
-  {key:'withholding',   tags:['源泉徴収票']},
-  {key:'medical',       tags:['健康診断票']},
-  {key:'mugshot',       tags:['顔写真']},
-  {key:'health_ins',    tags:['健康保険証']},          // 留学生
-  {key:'health_ins_cert',tags:['国民健康保険料納付証明書']}, // 留学生
-  {key:'graduation',    tags:['卒業証明書']},           // 留学生
-  {key:'transcript',    tags:['成績証明書']},           // 留学生
-  {key:'nenkin',        tags:['年金手帳']},             // 留学生
-  {key:'other',         tags:[]},
+  {key:'tax_cert',tags:['所得・課税証明書']},
+  {key:'tax_payment',tags:['納税証明書']},
+  {key:'withholding',tags:['源泉徴収票']},
+  {key:'medical',tags:['健康診断票']},
+  {key:'mugshot',tags:['顔写真']},
+  {key:'health_ins',tags:['健康保険証']},
+  {key:'health_ins_cert',tags:['国民健康保険料納付証明書']},
+  {key:'graduation',tags:['卒業証明書']},
+  {key:'transcript',tags:['成績証明書']},
+  {key:'nenkin',tags:['年金手帳']},
+  {key:'other',tags:[]},
 ];
-
-// REQUIRED_DOCSのルール
 const REQUIRED_RULES = {
-  '更新': ['顔写真','所得・課税証明書','納税証明書','源泉徴収票','在留カード','パスポート','合格証（技能）','合格証（日本語）'],
-  '変更': ['顔写真','所得・課税証明書','納税証明書','源泉徴収票','在留カード','パスポート','合格証（技能）','合格証（日本語）','健康診断票'],
-  '認定': ['顔写真','パスポート','合格証（技能）','合格証（日本語）','健康診断票'],
+  '更新':['顔写真','所得・課税証明書','納税証明書','源泉徴収票','在留カード','パスポート','合格証（技能）','合格証（日本語）'],
+  '変更':['顔写真','所得・課税証明書','納税証明書','源泉徴収票','在留カード','パスポート','合格証（技能）','合格証（日本語）','健康診断票'],
+  '認定':['顔写真','パスポート','合格証（技能）','合格証（日本語）','健康診断票'],
 };
 const RYUGAKU_RULES = {
-  '更新': [],
-  '変更': ['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帳'],
-  '認定': ['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帳'],
+  '更新':[],
+  '変更':['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帳'],
+  '認定':['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帳'],
 };
-const NATIONALITY_RULES = {};
-
+function isDocSkipped(doc) {
+  if (!SKIP_DOCS.length || !doc.tags.length) return false;
+  return doc.tags.some(tag => SKIP_DOCS.some(s => s.indexOf(tag) >= 0 || tag.indexOf(s) >= 0));
+}
 function getDocPattern() {
   const at = APP_TYPE;
-  if (at === '更新') return {
-    zairyu_front:'required', zairyu_back:'required', passport:'required',
-    cert_jp:'optional', cert_skill:'optional', cert_specialist:'hidden',
-    tax_cert:'required', tax_payment:'required', withholding:'required',
-    medical:'required', mugshot:'required',
-    health_ins:'hidden', health_ins_cert:'hidden', graduation:'hidden', transcript:'hidden', nenkin:'hidden',
-    other:'optional',
-  };
-  if (at === '変更') return {
-    zairyu_front:'required', zairyu_back:'required', passport:'required',
-    cert_jp:'required', cert_skill:'required', cert_specialist:'optional',
-    tax_cert:'required', tax_payment:'required', withholding:'required',
-    medical:'required', mugshot:'required',
-    health_ins: IS_RYUGAKU?'required':'hidden',
-    health_ins_cert: IS_RYUGAKU?'required':'hidden',
-    graduation: IS_RYUGAKU?'required':'hidden',
-    transcript: IS_RYUGAKU?'required':'hidden',
-    nenkin: IS_RYUGAKU?'required':'hidden',
-    other:'optional',
-  };
-  if (at === '認定') return {
-    zairyu_front:'hidden', zairyu_back:'hidden', passport:'required',
-    cert_jp:'required', cert_skill:'required', cert_specialist:'optional',
-    tax_cert:'hidden', tax_payment:'hidden', withholding:'hidden',
-    medical:'required', mugshot:'required',
-    health_ins: IS_RYUGAKU?'required':'hidden',
-    health_ins_cert: IS_RYUGAKU?'required':'hidden',
-    graduation: IS_RYUGAKU?'required':'hidden',
-    transcript: IS_RYUGAKU?'required':'hidden',
-    nenkin: IS_RYUGAKU?'required':'hidden',
-    other:'optional',
-  };
-  return Object.fromEntries(ALL_DOCS.map(d => [d.key, 'optional']));
+  if (at === '更新') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'optional',cert_skill:'optional',cert_specialist:'hidden',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:'hidden',health_ins_cert:'hidden',graduation:'hidden',transcript:'hidden',nenkin:'hidden',other:'optional'};
+  if (at === '変更') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',other:'optional'};
+  if (at === '認定') return {zairyu_front:'hidden',zairyu_back:'hidden',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'hidden',tax_payment:'hidden',withholding:'hidden',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',other:'optional'};
+  return Object.fromEntries(ALL_DOCS.map(d => [d.key,'optional']));
 }
-
 function getRequiredTags() {
-  if (!APP_TYPE) return null; // 不明時は全表示
-  const base = REQUIRED_RULES[APP_TYPE] || [];
-  const ryugaku = IS_RYUGAKU ? (RYUGAKU_RULES[APP_TYPE] || []) : [];
-  const nat = (NATIONALITY_RULES[NATIONALITY] || {})[APP_TYPE] || [];
-  return base.concat(ryugaku).concat(nat);
+  if (!APP_TYPE) return null;
+  return (REQUIRED_RULES[APP_TYPE]||[]).concat(IS_RYUGAKU?(RYUGAKU_RULES[APP_TYPE]||[]):[]);
 }
-
 function getDocKeys() {
   const required = getRequiredTags();
-  if (!required) return ALL_DOCS.map(d => d.key); // 全表示
-
+  if (!required) return ALL_DOCS.filter(doc => !isDocSkipped(doc)).map(d => d.key);
   return ALL_DOCS.filter(doc => {
-    if (doc.key === 'other') return true; // otherは常に表示
-    if (doc.tags.length === 0) return false;
-    // 必要書類リストと1つでもタグが一致すれば表示
-    return doc.tags.some(tag =>
-      required.some(r => r.indexOf(tag) >= 0 || tag.indexOf(r) >= 0)
-    );
+    if (doc.key === 'other') return true;
+    if (!doc.tags.length) return false;
+    if (isDocSkipped(doc)) return false;
+    return doc.tags.some(tag => required.some(r => r.indexOf(tag) >= 0 || tag.indexOf(r) >= 0));
   }).map(d => d.key);
 }
-
 let DOC_KEYS = getDocKeys();
 
 const LANGS = {
-  ja: {
-    label:'日本語', title:'書類アップロード',
-    subtitle:'必要な書類の写真をアップロードしてください\n（不要な項目はスキップできます）',
-    tapToAdd:'📷 タップして写真を追加', hint:'JPG / PNG / PDF', btnSubmit:'送信する',
-    noFile:'未選択', selected:'選択済み ✓',
-    msgSuccess:'✅ アップロード完了しました！\n担当者に届きました。',
-    msgError:'❌ 送信に失敗しました。\nもう一度お試しください。',
-    msgNoFile:'少なくとも1枚の写真を選択してください',
-    docs:{ zairyu_front:'在留カード（表）', zairyu_back:'在留カード（裏）', passport:'パスポート', cert_jp:'合格証（日本語）', cert_skill:'合格証（技能試験）', cert_specialist:'合格証（専門級・3級）', tax_payment:'納税証明書', tax_cert:'課税証明書', withholding:'源泉徴収票', medical:'健康診断証', mugshot:'顔写真', health_ins:'健康保険証', health_ins_cert:'国民健康保険料納付証明書', graduation:'卒業証明書', transcript:'成績証明書', nenkin:'年金手帳', other:'その他' }
-  },
-  en: {
-    label:'English', title:'Document Upload',
-    subtitle:'Please upload photos of required documents\n(You can skip items that are not needed)',
-    tapToAdd:'📷 Tap to add photo', hint:'JPG / PNG / PDF', btnSubmit:'Submit',
-    noFile:'Not selected', selected:'Selected ✓',
-    msgSuccess:'✅ Upload complete!\nYour documents have been received.',
-    msgError:'❌ Upload failed.\nPlease try again.',
-    msgNoFile:'Please select at least one photo',
-    docs:{ zairyu_front:'Residence Card (Front)', zairyu_back:'Residence Card (Back)', passport:'Passport', cert_jp:'Certificate (Japanese)', cert_skill:'Certificate (Skills Test)', cert_specialist:'Certificate (Specialist/Level 3)', tax_payment:'Tax Payment Certificate', tax_cert:'Taxation Certificate', withholding:'Withholding Tax Statement', medical:'Medical Certificate', mugshot:'Photo', health_ins:'Health Insurance Card', health_ins_cert:'National Health Insurance Payment Certificate', graduation:'Graduation Certificate', transcript:'Academic Transcript', nenkin:'Pension Booklet', other:'Other' }
-  },
-  mn: {
-    label:'Монгол', title:'Баримт бичиг байршуулах',
-    subtitle:'Шаардлагатай баримт бичгийн зургийг байршуулна уу\n(Шаардлагагүй зүйлийг алгасаж болно)',
-    tapToAdd:'📷 Зураг нэмэхийн тулд дарна уу', hint:'JPG / PNG / PDF', btnSubmit:'Илгээх',
-    noFile:'Сонгоогүй', selected:'Сонгосон ✓',
-    msgSuccess:'✅ Байршуулалт амжилттай!\nТаны баримт бичиг хүлээн авагдлаа.',
-    msgError:'❌ Илгээхэд алдаа гарлаа.\nДахин оролдоно уу.',
-    msgNoFile:'Дор хаяж нэг зураг сонгоно уу',
-    docs:{ zairyu_front:'Оршин суух карт (Урд тал)', zairyu_back:'Оршин суух карт (Арын тал)', passport:'Паспорт', cert_jp:'Гэрчилгээ (Япон хэл)', cert_skill:'Гэрчилгээ (Ур чадварын шалгалт)', cert_specialist:'Гэрчилгээ (Мэргэжлийн/3-р түвшин)', tax_payment:'Татвар төлсний гэрчилгээ', tax_cert:'Татварын гэрчилгээ', withholding:'Татварын тодорхойлолт', medical:'Эрүүл мэндийн гэрчилгээ', mugshot:'Зураг', health_ins:'Ерүүл мэхээллэлтийн даатхалын гэрчилгээ', health_ins_cert:'Эрүүлийн даатгалын төлбөрийн тодорхойлолт', graduation:'Төгсөлтийн гэрчилгээ', transcript:'Дүнгийн гэрчилгээ', nenkin:'Тэтгэврийн дэвтэр', other:'Бусад' }
-  },
-  zh: {
-    label:'中文', title:'文件上传',
-    subtitle:'请上传所需文件的照片\n（不需要的项目可以跳过）',
-    tapToAdd:'📷 点击添加照片', hint:'JPG / PNG / PDF', btnSubmit:'提交',
-    noFile:'未选择', selected:'已选择 ✓',
-    msgSuccess:'✅ 上传成功！\n您的文件已收到。',
-    msgError:'❌ 上传失败。\n请重试。',
-    msgNoFile:'请至少选择一张照片',
-    docs:{ zairyu_front:'居留卡（正面）', zairyu_back:'居留卡（背面）', passport:'护照', cert_jp:'合格证（日语）', cert_skill:'合格证（技能考试）', cert_specialist:'合格证（专项级·3级）', tax_payment:'纳税证明', tax_cert:'课税证明', withholding:'扣缴凭证', medical:'健康诊断证明', mugshot:'照片', health_ins:'健康保险证', health_ins_cert:'国民健康保险缴费证明', graduation:'毕业证明书', transcript:'成绩单', nenkin:'年金手帳', other:'其他' }
-  },
-  km: {
-    label:'ខ្មែរ', title:'បង្ហោះឯកសារ',
-    subtitle:'សូមបង្ហោះរូបថតឯកសារដែលត្រូវការ\n(អ្នកអាចរំលងធាតុដែលមិនចាំបាច់)',
-    tapToAdd:'📷 ចុចដើម្បីបន្ថែមរូបថត', hint:'JPG / PNG / PDF', btnSubmit:'បញ្ជូន',
-    noFile:'មិនទាន់ជ្រើសរើស', selected:'បានជ្រើសរើស ✓',
-    msgSuccess:'✅ បង្ហោះបានជោគជ័យ!\nឯកសាររបស់អ្នកត្រូវបានទទួល។',
-    msgError:'❌ បង្ហោះបានបរាជ័យ។\nសូមព្យាយាមម្តងទៀត។',
-    msgNoFile:'សូមជ្រើសរើសរូបថតយ៉ាងហោចណាស់មួយ',
-    docs:{ zairyu_front:'កាតស្នាក់នៅ (ខាងមុខ)', zairyu_back:'កាតស្នាក់នៅ (ខាងក្រោយ)', passport:'លិខិតឆ្លងដែន', cert_jp:'វិញ្ញាបនបត្រ (ភាសាជប៉ុន)', cert_skill:'វិញ្ញាបនបត្រ (ការប្រឡងជំនាញ)', cert_specialist:'វិញ្ញាបនបត្រ (ថ្នាក់ជំនាញ/កម្រិត 3)', tax_payment:'វិញ្ញាបនបត្របង់ពន្ធ', tax_cert:'វិញ្ញាបនបត្រពន្ធ', withholding:'លិខិតកាត់ពន្ធ', medical:'វិញ្ញាបនបត្រសុខភាព', mugshot:'រូបថត', health_ins:'កាតប្រកញសុខភាព', health_ins_cert:'វិញ្ញាបនបត្របង់ប្រកញសុខ', graduation:'សញ្ញាបត្រ', transcript:'លត្តផល', nenkin:'年金手帳', other:'ផ្សេងទៀត' }
-  },
-  vi: {
-    label:'Tiếng Việt', title:'Tải lên tài liệu',
-    subtitle:'Vui lòng tải ảnh các tài liệu cần thiết\n(Có thể bỏ qua các mục không cần thiết)',
-    tapToAdd:'📷 Nhấn để thêm ảnh', hint:'JPG / PNG / PDF', btnSubmit:'Gửi',
-    noFile:'Chưa chọn', selected:'Đã chọn ✓',
-    msgSuccess:'✅ Tải lên thành công!\nTài liệu của bạn đã được nhận.',
-    msgError:'❌ Tải lên thất bại.\nVui lòng thử lại.',
-    msgNoFile:'Vui lòng chọn ít nhất một ảnh',
-    docs:{ zairyu_front:'Thẻ cư trú (Mặt trước)', zairyu_back:'Thẻ cư trú (Mặt sau)', passport:'Hộ chiếu', cert_jp:'Chứng chỉ (Tiếng Nhật)', cert_skill:'Chứng chỉ (Kỳ thi kỹ năng)', cert_specialist:'Chứng chỉ (Chuyên ngành/Cấp 3)', tax_payment:'Giấy chứng nhận nộp thuế', tax_cert:'Giấy chứng nhận thuế', withholding:'Phiếu khấu trừ thuế', medical:'Giấy khám sức khỏe', mugshot:'Ảnh', health_ins:'Thẻ bảo hiểm y tế', health_ins_cert:'Chứng nhận đóng bảo hiểm y tế', graduation:'Bằng tốt nghiệp', transcript:'Bảng điểm', nenkin:'Sổ hưu trí', other:'Khác' }
-  },
-  id: {
-    label:'Indonesia', title:'Unggah Dokumen',
-    subtitle:'Silakan unggah foto dokumen yang diperlukan\n(Item yang tidak diperlukan dapat dilewati)',
-    tapToAdd:'📷 Ketuk untuk menambah foto', hint:'JPG / PNG / PDF', btnSubmit:'Kirim',
-    noFile:'Belum dipilih', selected:'Dipilih ✓',
-    msgSuccess:'✅ Unggah berhasil!\nDokumen Anda telah diterima.',
-    msgError:'❌ Unggah gagal.\nSilakan coba lagi.',
-    msgNoFile:'Silakan pilih setidaknya satu foto',
-    docs:{ zairyu_front:'Kartu Izin Tinggal (Depan)', zairyu_back:'Kartu Izin Tinggal (Belakang)', passport:'Paspor', cert_jp:'Sertifikat (Bahasa Jepang)', cert_skill:'Sertifikat (Uji Keterampilan)', cert_specialist:'Sertifikat (Spesialis/Level 3)', tax_payment:'Bukti Pembayaran Pajak', tax_cert:'Surat Keterangan Pajak', withholding:'Slip Pemotongan Pajak', medical:'Sertifikat Kesehatan', mugshot:'Foto', health_ins:'Kartu Asuransi Kesehatan', health_ins_cert:'Sertifikat Pembayaran Asuransi Kesehatan', graduation:'Ijazah', transcript:'Transkrip Nilai', nenkin:'Buku Pensiun', other:'Lainnya' }
-  },
-  th: {
-    label:'ไทย', title:'อัปโหลดเอกสาร',
-    subtitle:'กรุณาอัปโหลดรูปภาพเอกสารที่จำเป็น\n(สามารถข้ามรายการที่ไม่จำเป็นได้)',
-    tapToAdd:'📷 แตะเพื่อเพิ่มรูปภาพ', hint:'JPG / PNG / PDF', btnSubmit:'ส่ง',
-    noFile:'ยังไม่ได้เลือก', selected:'เลือกแล้ว ✓',
-    msgSuccess:'✅ อัปโหลดสำเร็จ!\nได้รับเอกสารของคุณแล้ว',
-    msgError:'❌ อัปโหลดล้มเหลว\nกรุณาลองใหม่อีกครั้ง',
-    msgNoFile:'กรุณาเลือกรูปภาพอย่างน้อยหนึ่งภาพ',
-    docs:{ zairyu_front:'บัตรถิ่นที่อยู่ (ด้านหน้า)', zairyu_back:'บัตรถิ่นที่อยู่ (ด้านหลัง)', passport:'หนังสือเดินทาง', cert_jp:'ใบรับรอง (ภาษาญี่ปุ่น)', cert_skill:'ใบรับรอง (การสอบทักษะ)', cert_specialist:'ใบรับรอง (ผู้เชี่ยวชาญ/ระดับ 3)', tax_payment:'ใบรับรองการชำระภาษี', tax_cert:'ใบรับรองภาษี', withholding:'ใบหักภาษี ณ ที่จ่าย', medical:'ใบรับรองสุขภาพ', mugshot:'รูปถ่าย', health_ins:'บัตรประกันสุขภาพ', health_ins_cert:'ใบรับรองการชำระประกันสุขภาพ', graduation:'ใบประกาศนียบัตร', transcript:'ผลการเรียน', nenkin:'สมุดบัญชีเงินบำนาญชรา', other:'อื่นๆ' }
-  },
-  my: {
-    label:'မြန်မာ', title:'စာရွက်စာတမ်းတင်ရန်',
-    subtitle:'လိုအပ်သောစာရွက်စာတမ်းများ၏ဓာတ်ပုံတင်ပါ\n(မလိုအပ်သောအရာများကိုကျော်နိုင်သည်)',
-    tapToAdd:'📷 ဓာတ်ပုံထည့်ရန်နှိပ်ပါ', hint:'JPG / PNG / PDF', btnSubmit:'ပေးပို့ရန်',
-    noFile:'မရွေးချယ်ရသေး', selected:'ရွေးချယ်ပြီး ✓',
-    msgSuccess:'✅ တင်ခြင်းအောင်မြင်သည်!\nသင့်စာရွက်စာတမ်းကိုလက်ခံရရှိပြီ။',
-    msgError:'❌ တင်ခြင်းမအောင်မြင်ပါ။\nထပ်မံကြိုးစားပါ။',
-    msgNoFile:'ဓာတ်ပုံတစ်ပုံရွေးချယ်ပါ',
-    docs:{ zairyu_front:'နေထိုင်ခွင့်ကတ် (ရှေ့ဘက်)', zairyu_back:'နေထိုင်ခွင့်ကတ် (နောက်ဘက်)', passport:'နိုင်ငံကူးလက်မှတ်', cert_jp:'လက်မှတ် (ဂျပန်ဘာသာ)', cert_skill:'လက်မှတ် (ကျွမ်းကျင်မှုစာမေးပွဲ)', cert_specialist:'လက်မှတ် (ကျွမ်းကျင်ရည်မှန်း/အဆင့် 3)', tax_payment:'အခွန်ပေးဆောင်မှုသက်သေခံ', tax_cert:'အခွန်သက်သေခံလက်မှတ်', withholding:'အခွန်နုတ်ယူသည့်ဖော်ပြချက်', medical:'ကျန်းမာရေးသက်သေခံ', mugshot:'ဒာတ်ပုံ', health_ins:'ကျန်မာရေရောေမ်ကာတ်', health_ins_cert:'အမျိုးသာမ်ကာတ်ရသိက်အထိအမ်မှတ်တမ်', graduation:'ဘွီလက်မှတ်တမ်', transcript:'ကျောင်းသာမှတ်တမ်', nenkin:'年金手帳', other:'အခြား' }
-  },
-  si: {
-    label:'සිංහල', title:'ලේඛන උඩුගත කිරීම',
-    subtitle:'අවශ්‍ය ලේඛනවල ඡායාරූප උඩුගත කරන්න\n(අනවශ්‍ය අයිතම මඟ හැරිය හැකිය)',
-    tapToAdd:'📷 ඡායාරූප එකතු කිරීමට තට්ටු කරන්න', hint:'JPG / PNG / PDF', btnSubmit:'යොමු කරන්න',
-    noFile:'තෝරා නැත', selected:'තෝරා ඇත ✓',
-    msgSuccess:'✅ උඩුගත කිරීම සාර්ථකයි!\nඔබේ ලේඛන ලැබී ඇත.',
-    msgError:'❌ උඩුගත කිරීම අසාර්ථකයි.\nනැවත උත්සාහ කරන්න.',
-    msgNoFile:'අවම වශයෙන් ඡායාරූපයක් තෝරන්න',
-    docs:{ zairyu_front:'පදිංචිකාර්ඩ් (ඉදිරිපස)', zairyu_back:'පදිංචිකාර්ඩ් (පිටුපස)', passport:'ගමන් බලපත්‍රය', cert_jp:'සහතිකය (ජපන් භාෂාව)', cert_skill:'සහතිකය (කුසලතා විභාගය)', cert_specialist:'සහතිකය (විශේෂඥ/මට්ටම 3)', tax_payment:'බදු ගෙවීමේ සහතිකය', tax_cert:'බදු සහතිකය', withholding:'රඳවා ගත් බදු ප්‍රකාශය', medical:'වෛද්‍ය සහතිකය', mugshot:'ජායාරූපය', health_ins:'සෙනැත් ප්‍රතිකා කාර්ඩුව', health_ins_cert:'ජාතික සේනීදු දැහැනවිම සහතිකය', graduation:'උපාදි සහතිකය', transcript:'ශ්‍රේණි ලිපිය', nenkin:'පැන්ෂන් හඩුව', other:'වෙනත්' }
-  },
-  ko: {
-    label:'한국어', title:'서류 업로드',
-    subtitle:'필요한 서류의 사진을 업로드해 주세요\n(불필요한 항목은 건너뛸 수 있습니다)',
-    tapToAdd:'📷 탭하여 사진 추가', hint:'JPG / PNG / PDF', btnSubmit:'제출',
-    noFile:'미선택', selected:'선택됨 ✓',
-    msgSuccess:'✅ 업로드 완료!\n담당자에게 전달되었습니다.',
-    msgError:'❌ 업로드 실패.\n다시 시도해 주세요.',
-    msgNoFile:'사진을 최소 한 장 선택해 주세요',
-    docs:{ zairyu_front:'재류카드 (앞면)', zairyu_back:'재류카드 (뒷면)', passport:'여권', cert_jp:'합격증 (일본어)', cert_skill:'합격증 (기능시험)', cert_specialist:'합격증 (전문급·3급)', tax_payment:'납세증명서', tax_cert:'과세증명서', withholding:'원천징수영수증', medical:'건강진단서', mugshot:'사진', health_ins:'건강보험증', health_ins_cert:'국인건강보험료 납부증명서', graduation:'졸업증명서', transcript:'성적증명서', nenkin:'연금수첩', other:'기타' }
-  },
-  ne: {
-    label:'नेपाली', title:'कागजात अपलोड',
-    subtitle:'आवश्यक कागजातको फोटो अपलोड गर्नुहोस्\n(अनावश्यक वस्तुहरू छोड्न सकिन्छ)',
-    tapToAdd:'📷 फोटो थप्न थिच्नुहोस्', hint:'JPG / PNG / PDF', btnSubmit:'पेश गर्नुहोस्',
-    noFile:'छनोट गरिएको छैन', selected:'छनोट भयो ✓',
-    msgSuccess:'✅ अपलोड सफल भयो!\nतपाईंको कागजात प्राप्त भयो।',
-    msgError:'❌ अपलोड असफल भयो।\nपुनः प्रयास गर्नुहोस्।',
-    msgNoFile:'कम्तीमा एउटा फोटो छनोट गर्नुहोस्',
-    docs:{ zairyu_front:'आवास कार्ड (अगाडि)', zairyu_back:'आवास कार्ड (पछाडि)', passport:'राहदानी', cert_jp:'प्रमाणपत्र (जापानी भाषा)', cert_skill:'प्रमाणपत्र (सीप परीक्षण)', cert_specialist:'प्रमाणपत्र (विशेषज्ञ/स्तर ३)', tax_payment:'कर तिरेको प्रमाणपत्र', tax_cert:'कर प्रमाणपत्र', withholding:'स्रोतमा कर कटौती विवरण', medical:'स्वास्थ्य परीक्षण प्रमाणपत्र', mugshot:'फोटो', health_ins:'स्वास्थ्य बिमा कार्ड', health_ins_cert:'राष्ट्रिय स्वास्थ्य बिमा भुक्तानी प्रमाणपत्र', graduation:'उपाधि', transcript:'अङ्कतालिका', nenkin:'年金手帳', other:'अन्य' }
-  },
+  ja:{label:'日本語',title:'書類アップロード',subtitle:'必要な書類の写真をアップロードしてください\n（不要な項目はスキップできます）',tapToAdd:'📷 タップして写真を追加',hint:'JPG / PNG / PDF',btnSubmit:'送信する',noFile:'未選択',selected:'選択済み ✓',msgSuccess:'✅ アップロード完了しました！\n担当者に届きました。',msgError:'❌ 送信に失敗しました。\nもう一度お試しください。',msgNoFile:'少なくとも1枚の写真を選択してください',docs:{zairyu_front:'在留カード（表）',zairyu_back:'在留カード（裏）',passport:'パスポート',cert_jp:'合格証（日本語）',cert_skill:'合格証（技能試験）',cert_specialist:'合格証（専門級・3級）',tax_payment:'納税証明書',tax_cert:'課税証明書',withholding:'源泉徴収票',medical:'健康診断証',mugshot:'顔写真',health_ins:'健康保険証',health_ins_cert:'国民健康保険料納付証明書',graduation:'卒業証明書',transcript:'成績証明書',nenkin:'年金手帳',other:'その他'}},
+  en:{label:'English',title:'Document Upload',subtitle:'Please upload photos of required documents\n(You can skip items that are not needed)',tapToAdd:'📷 Tap to add photo',hint:'JPG / PNG / PDF',btnSubmit:'Submit',noFile:'Not selected',selected:'Selected ✓',msgSuccess:'✅ Upload complete!\nYour documents have been received.',msgError:'❌ Upload failed.\nPlease try again.',msgNoFile:'Please select at least one photo',docs:{zairyu_front:'Residence Card (Front)',zairyu_back:'Residence Card (Back)',passport:'Passport',cert_jp:'Certificate (Japanese)',cert_skill:'Certificate (Skills Test)',cert_specialist:'Certificate (Specialist/Level 3)',tax_payment:'Tax Payment Certificate',tax_cert:'Taxation Certificate',withholding:'Withholding Tax Statement',medical:'Medical Certificate',mugshot:'Photo',health_ins:'Health Insurance Card',health_ins_cert:'National Health Insurance Payment Certificate',graduation:'Graduation Certificate',transcript:'Academic Transcript',nenkin:'Pension Booklet',other:'Other'}},
+  vi:{label:'Tiếng Việt',title:'Tải lên tài liệu',subtitle:'Vui lòng tải ảnh các tài liệu cần thiết\n(Có thể bỏ qua các mục không cần thiết)',tapToAdd:'📷 Nhấn để thêm ảnh',hint:'JPG / PNG / PDF',btnSubmit:'Gửi',noFile:'Chưa chọn',selected:'Đã chọn ✓',msgSuccess:'✅ Tải lên thành công!\nTài liệu của bạn đã được nhận.',msgError:'❌ Tải lên thất bại.\nVui lòng thử lại.',msgNoFile:'Vui lòng chọn ít nhất một ảnh',docs:{zairyu_front:'Thẻ cư trú (Mặt trước)',zairyu_back:'Thẻ cư trú (Mặt sau)',passport:'Hộ chiếu',cert_jp:'Chứng chỉ (Tiếng Nhật)',cert_skill:'Chứng chỉ (Kỳ thi kỹ năng)',cert_specialist:'Chứng chỉ (Chuyên ngành/Cấp 3)',tax_payment:'Giấy chứng nhận nộp thuế',tax_cert:'Giấy chứng nhận thuế',withholding:'Phiếu khấu trừ thuế',medical:'Giấy khám sức khỏe',mugshot:'Ảnh',health_ins:'Thẻ bảo hiểm y tế',health_ins_cert:'Chứng nhận đóng bảo hiểm y tế',graduation:'Bằng tốt nghiệp',transcript:'Bảng điểm',nenkin:'Sổ hưu trí',other:'Khác'}},
+  id:{label:'Indonesia',title:'Unggah Dokumen',subtitle:'Silakan unggah foto dokumen yang diperlukan\n(Item yang tidak diperlukan dapat dilewati)',tapToAdd:'📷 Ketuk untuk menambah foto',hint:'JPG / PNG / PDF',btnSubmit:'Kirim',noFile:'Belum dipilih',selected:'Dipilih ✓',msgSuccess:'✅ Unggah berhasil!\nDokumen Anda telah diterima.',msgError:'❌ Unggah gagal.\nSilakan coba lagi.',msgNoFile:'Silakan pilih setidaknya satu foto',docs:{zairyu_front:'Kartu Izin Tinggal (Depan)',zairyu_back:'Kartu Izin Tinggal (Belakang)',passport:'Paspor',cert_jp:'Sertifikat (Bahasa Jepang)',cert_skill:'Sertifikat (Uji Keterampilan)',cert_specialist:'Sertifikat (Spesialis/Level 3)',tax_payment:'Bukti Pembayaran Pajak',tax_cert:'Surat Keterangan Pajak',withholding:'Slip Pemotongan Pajak',medical:'Sertifikat Kesehatan',mugshot:'Foto',health_ins:'Kartu Asuransi Kesehatan',health_ins_cert:'Sertifikat Pembayaran Asuransi Kesehatan',graduation:'Ijazah',transcript:'Transkrip Nilai',nenkin:'Buku Pensiun',other:'Lainnya'}},
+  my:{label:'မြန်မာ',title:'စာရွက်စာတမ်းတင်ရန်',subtitle:'လိုအပ်သောစာရွက်စာတမ်းများ၏ဓာတ်ပုံတင်ပါ\n(မလိုအပ်သောအရာများကိုကျော်နိုင်သည်)',tapToAdd:'📷 ဓာတ်ပုံထည့်ရန်နှိပ်ပါ',hint:'JPG / PNG / PDF',btnSubmit:'ပေးပို့ရန်',noFile:'မရွေးချယ်ရသေး',selected:'ရွေးချယ်ပြီး ✓',msgSuccess:'✅ တင်ခြင်းအောင်မြင်သည်!\nသင့်စာရွက်စာတမ်းကိုလက်ခံရရှိပြီ။',msgError:'❌ တင်ခြင်းမအောင်မြင်ပါ။\nထပ်မံကြိုးစားပါ။',msgNoFile:'ဓာတ်ပုံတစ်ပုံရွေးချယ်ပါ',docs:{zairyu_front:'နေထိုင်ခွင့်ကတ် (ရှေ့ဘက်)',zairyu_back:'နေထိုင်ခွင့်ကတ် (နောက်ဘက်)',passport:'နိုင်ငံကူးလက်မှတ်',cert_jp:'လက်မှတ် (ဂျပန်ဘာသာ)',cert_skill:'လက်မှတ် (ကျွမ်းကျင်မှုစာမေးပွဲ)',cert_specialist:'လက်မှတ် (ကျွမ်းကျင်ရည်မှန်း/အဆင့် 3)',tax_payment:'အခွန်ပေးဆောင်မှုသက်သေခံ',tax_cert:'အခွန်သက်သေခံလက်မှတ်',withholding:'အခွန်နုတ်ယူသည့်ဖော်ပြချက်',medical:'ကျန်းမာရေးသက်သေခံ',mugshot:'ဒာတ်ပုံ',health_ins:'ကျန်မာရေးကာတ်',health_ins_cert:'မှတ်တမ်',graduation:'ဘွဲ့လက်မှတ်',transcript:'ကျောင်းမှတ်တမ်း',nenkin:'年金手帳',other:'အခြား'}},
+  ko:{label:'한국어',title:'서류 업로드',subtitle:'필요한 서류의 사진을 업로드해 주세요\n(불필요한 항목은 건너뛸 수 있습니다)',tapToAdd:'📷 탭하여 사진 추가',hint:'JPG / PNG / PDF',btnSubmit:'제출',noFile:'미선택',selected:'선택됨 ✓',msgSuccess:'✅ 업로드 완료!\n담당자에게 전달되었습니다.',msgError:'❌ 업로드 실패.\n다시 시도해 주세요.',msgNoFile:'사진을 최소 한 장 선택해 주세요',docs:{zairyu_front:'재류카드 (앞면)',zairyu_back:'재류카드 (뒷면)',passport:'여권',cert_jp:'합격증 (일본어)',cert_skill:'합격증 (기능시험)',cert_specialist:'합격증 (전문급·3급)',tax_payment:'납세증명서',tax_cert:'과세증명서',withholding:'원천징수영수증',medical:'건강진단서',mugshot:'사진',health_ins:'건강보험증',health_ins_cert:'국민건강보험료 납부증명서',graduation:'졸업증명서',transcript:'성적증명서',nenkin:'연금수첩',other:'기타'}},
+  ne:{label:'नेपाली',title:'कागजात अपलोड',subtitle:'आवश्यक कागजातको फोटो अपलोड गर्नुहोस्\n(अनावश्यक वस्तुहरू छोड्न सकिन्छ)',tapToAdd:'📷 फोटो थप्न थिच्नुहोस्',hint:'JPG / PNG / PDF',btnSubmit:'पेश गर्नुहोस्',noFile:'छनोट गरिएको छैन',selected:'छनोट भयो ✓',msgSuccess:'✅ अपलोड सफल भयो!\nतपाईंको कागजात प्राप्त भयो।',msgError:'❌ अपलोड असफल भयो।\nपुनः प्रयास गर्नुहोस्।',msgNoFile:'कम्तीमा एउटा फोटो छनोट गर्नुहोस्',docs:{zairyu_front:'आवास कार्ड (अगाडि)',zairyu_back:'आवास कार्ड (पछाडि)',passport:'राहदानी',cert_jp:'प्रमाणपत्र (जापानी भाषा)',cert_skill:'प्रमाणपत्र (सीप परीक्षण)',cert_specialist:'प्रमाणपत्र (विशेषज्ञ/स्तर ३)',tax_payment:'कर तिरेको प्रमाणपत्र',tax_cert:'कर प्रमाणपत्र',withholding:'स्रोतमा कर कटौती विवरण',medical:'स्वास्थ्य परीक्षण प्रमाणपत्र',mugshot:'फोटो',health_ins:'स्वास्थ्य बिमा कार्ड',health_ins_cert:'राष्ट्रिय स्वास्थ्य बिमा भुक्तानी प्रमाणपत्र',graduation:'उपाधि',transcript:'अङ्कतालिका',nenkin:'年金手帳',other:'अन्य'}},
+  zh:{label:'中文',title:'文件上传',subtitle:'请上传所需文件的照片\n（不需要的项目可以跳过）',tapToAdd:'📷 点击添加照片',hint:'JPG / PNG / PDF',btnSubmit:'提交',noFile:'未选择',selected:'已选择 ✓',msgSuccess:'✅ 上传成功！\n您的文件已收到。',msgError:'❌ 上传失败。\n请重试。',msgNoFile:'请至少选择一张照片',docs:{zairyu_front:'居留卡（正面）',zairyu_back:'居留卡（背面）',passport:'护照',cert_jp:'合格证（日语）',cert_skill:'合格证（技能考试）',cert_specialist:'合格证（专项级·3级）',tax_payment:'纳税证明',tax_cert:'课税证明',withholding:'扣缴凭证',medical:'健康诊断证明',mugshot:'照片',health_ins:'健康保险证',health_ins_cert:'国民健康保险缴费证明',graduation:'毕业证明书',transcript:'成绩单',nenkin:'年金手帳',other:'其他'}},
+  th:{label:'ไทย',title:'อัปโหลดเอกสาร',subtitle:'กรุณาอัปโหลดรูปภาพเอกสารที่จำเป็น\n(สามารถข้ามรายการที่ไม่จำเป็นได้)',tapToAdd:'📷 แตะเพื่อเพิ่มรูปภาพ',hint:'JPG / PNG / PDF',btnSubmit:'ส่ง',noFile:'ยังไม่ได้เลือก',selected:'เลือกแล้ว ✓',msgSuccess:'✅ อัปโหลดสำเร็จ!\nได้รับเอกสารของคุณแล้ว',msgError:'❌ อัปโหลดล้มเหลว\nกรุณาลองใหม่อีกครั้ง',msgNoFile:'กรุณาเลือกรูปภาพอย่างน้อยหนึ่งภาพ',docs:{zairyu_front:'บัตรถิ่นที่อยู่ (ด้านหน้า)',zairyu_back:'บัตรถิ่นที่อยู่ (ด้านหลัง)',passport:'หนังสือเดินทาง',cert_jp:'ใบรับรอง (ภาษาญี่ปุ่น)',cert_skill:'ใบรับรอง (การสอบทักษะ)',cert_specialist:'ใบรับรอง (ผู้เชี่ยวชาญ/ระดับ 3)',tax_payment:'ใบรับรองการชำระภาษี',tax_cert:'ใบรับรองภาษี',withholding:'ใบหักภาษี ณ ที่จ่าย',medical:'ใบรับรองสุขภาพ',mugshot:'รูปถ่าย',health_ins:'บัตรประกันสุขภาพ',health_ins_cert:'ใบรับรองการชำระประกันสุขภาพ',graduation:'ใบประกาศนียบัตร',transcript:'ผลการเรียน',nenkin:'สมุดบัญชีเงินบำนาญชรา',other:'อื่นๆ'}},
+  km:{label:'ខ្មែរ',title:'បង្ហោះឯកសារ',subtitle:'សូមបង្ហោះរូបថតឯកសារដែលត្រូវការ\n(អ្នកអាចរំលងធាតុដែលមិនចាំបាច់)',tapToAdd:'📷 ចុចដើម្បីបន្ថែមរូបថត',hint:'JPG / PNG / PDF',btnSubmit:'បញ្ជូន',noFile:'មិនទាន់ជ្រើសរើស',selected:'បានជ្រើសរើស ✓',msgSuccess:'✅ បង្ហោះបានជោគជ័យ!\nឯកសាររបស់អ្នកត្រូវបានទទួល។',msgError:'❌ បង្ហោះបានបរាជ័យ។\nសូមព្យាយាមម្តងទៀត។',msgNoFile:'សូមជ្រើសរើសរូបថតយ៉ាងហោចណាស់មួយ',docs:{zairyu_front:'កាតស្នាក់នៅ (ខាងមុខ)',zairyu_back:'កាតស្នាក់នៅ (ខាងក្រោយ)',passport:'លិខិតឆ្លងដែន',cert_jp:'វិញ្ញាបនបត្រ (ភាសាជប៉ុន)',cert_skill:'វិញ្ញាបនបត្រ (ការប្រឡងជំនាញ)',cert_specialist:'វិញ្ញាបនបត្រ (ថ្នាក់ជំនាញ/កម្រិត 3)',tax_payment:'វិញ្ញាបនបត្របង់ពន្ធ',tax_cert:'វិញ្ញាបនបត្រពន្ធ',withholding:'លិខិតកាត់ពន្ធ',medical:'វិញ្ញាបនបត្រសុខភាព',mugshot:'រូបថត',health_ins:'កាតប្រកញសុខភាព',health_ins_cert:'វិញ្ញាបនបត្របង់ប្រកញសុខ',graduation:'សញ្ញាបត្រ',transcript:'លត្តផល',nenkin:'年金手帳',other:'ផ្សេងទៀត'}},
+  mn:{label:'Монгол',title:'Баримт бичиг байршуулах',subtitle:'Шаардлагатай баримт бичгийн зургийг байршуулна уу\n(Шаардлагагүй зүйлийг алгасаж болно)',tapToAdd:'📷 Зураг нэмэхийн тулд дарна уу',hint:'JPG / PNG / PDF',btnSubmit:'Илгээх',noFile:'Сонгоогүй',selected:'Сонгосон ✓',msgSuccess:'✅ Байршуулалт амжилттай!\nТаны баримт бичиг хүлээн авагдлаа.',msgError:'❌ Илгээхэд алдаа гарлаа.\nДахин оролдоно уу.',msgNoFile:'Дор хаяж нэг зураг сонгоно уу',docs:{zairyu_front:'Оршин суух карт (Урд тал)',zairyu_back:'Оршин суух карт (Арын тал)',passport:'Паспорт',cert_jp:'Гэрчилгээ (Япон хэл)',cert_skill:'Гэрчилгээ (Ур чадварын шалгалт)',cert_specialist:'Гэрчилгээ (Мэргэжлийн/3-р түвшин)',tax_payment:'Татвар төлсний гэрчилгээ',tax_cert:'Татварын гэрчилгээ',withholding:'Татварын тодорхойлолт',medical:'Эрүүл мэндийн гэрчилгээ',mugshot:'Зураг',health_ins:'Даатгалын карт',health_ins_cert:'Даатгалын төлбөрийн тодорхойлолт',graduation:'Дипломын гэрчилгээ',transcript:'Дүнгийн гэрчилгээ',nenkin:'Тэтгэврийн дэвтэр',other:'Бусад'}},
+  si:{label:'සිංහල',title:'ලේඛන උඩුගත කිරීම',subtitle:'අවශ්‍ය ලේඛනවල ඡායාරූප උඩුගත කරන්න\n(අනවශ්‍ය අයිතම මඟ හැරිය හැකිය)',tapToAdd:'📷 ඡායාරූප එකතු කිරීමට තට්ටු කරන්න',hint:'JPG / PNG / PDF',btnSubmit:'යොමු කරන්න',noFile:'තෝරා නැත',selected:'තෝරා ඇත ✓',msgSuccess:'✅ උඩුගත කිරීම සාර්ථකයි!\nඔබේ ලේඛන ලැබී ඇත.',msgError:'❌ උඩුගත කිරීම අසාර්ථකයි.\nනැවත උත්සාහ කරන්න.',msgNoFile:'අවම වශයෙන් ඡායාරූපයක් තෝරන්න',docs:{zairyu_front:'පදිංචිකාර්ඩ් (ඉදිරිපස)',zairyu_back:'පදිංචිකාර්ඩ් (පිටුපස)',passport:'ගමන් බලපත්‍රය',cert_jp:'සහතිකය (ජපන් භාෂාව)',cert_skill:'සහතිකය (කුසලතා විභාගය)',cert_specialist:'සහතිකය (විශේෂඥ/මට්ටම 3)',tax_payment:'බදු ගෙවීමේ සහතිකය',tax_cert:'බදු සහතිකය',withholding:'රඳවා ගත් බදු ප්‍රකාශය',medical:'වෛද්‍ය සහතිකය',mugshot:'ජායාරූපය',health_ins:'සෞඛ්‍ය රක්ෂණ කාඩ්පත',health_ins_cert:'ජාතික සෞඛ්‍ය රක්ෂණ ගෙවීම් සහතිකය',graduation:'උපාධි සහතිකය',transcript:'ශ්‍රේණි ලිපිය',nenkin:'විශ්‍රාම වේතන පොත',other:'වෙනත්'}},
 };
-
-const LANG_ORDER = ['ja','en','mn','zh','km','vi','id','th','my','si','ko','ne'];
+const LANG_ORDER = ['ja','en','vi','id','my','ko','ne','zh','th','km','mn','si'];
 let currentLang = 'ja';
 const fileData = {};
-
 const langBar = document.getElementById('langBar');
 const fieldsList = document.getElementById('fieldsList');
 const submitBtn = document.getElementById('submitBtn');
@@ -445,6 +159,7 @@ const progressBar = document.getElementById('progressBar');
 const statusMsg = document.getElementById('statusMsg');
 
 LANG_ORDER.forEach(code => {
+  if (!LANGS[code]) return;
   const btn = document.createElement('button');
   btn.className = 'lang-btn' + (code === 'ja' ? ' active' : '');
   btn.textContent = LANGS[code].label;
@@ -456,283 +171,109 @@ function buildFields() {
   const L = LANGS[currentLang];
   fieldsList.innerHTML = '';
   let firstEmptyOpened = false;
-
-  const requiredTags = getRequiredTags();
   const pattern = APP_TYPE ? getDocPattern() : null;
-
   DOC_KEYS.forEach(key => {
     const hasFiles = fileData[key] && fileData[key].length > 0;
     const isRequired = pattern && pattern[key] === 'required';
     const row = document.createElement('div');
     row.className = 'field-row' + (hasFiles ? ' has-file' : '');
     row.dataset.key = key;
-
-    // Header
     const header = document.createElement('div');
     header.className = 'field-header';
-
     const label = document.createElement('span');
     label.className = 'field-label';
-    const labelText = L.docs[key] || key;
-    if (isRequired) {
-      label.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + labelText;
-    } else {
-      label.textContent = labelText;
-    }
-
+    const labelText = (L.docs && L.docs[key]) || key;
+    if (isRequired) { label.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + labelText; }
+    else { label.textContent = labelText; }
     const status = document.createElement('span');
     status.className = 'field-status' + (hasFiles ? ' ready' : '');
     status.textContent = hasFiles ? L.selected : L.noFile;
-
     const chevron = document.createElement('span');
     chevron.className = 'chevron';
     chevron.textContent = '▼';
-
-    header.appendChild(label);
-    header.appendChild(status);
-    header.appendChild(chevron);
+    header.appendChild(label); header.appendChild(status); header.appendChild(chevron);
     header.addEventListener('click', () => row.classList.toggle('open'));
-
-    // Body
     const body = document.createElement('div');
     body.className = 'field-body';
-
     if (hasFiles) {
       fileData[key].forEach((fd, fi) => {
-        const previewWrap = document.createElement('div');
-        previewWrap.className = 'preview-wrap';
-        if (fd.isPdf) {
-          const pdfIcon = document.createElement('div');
-          pdfIcon.style.cssText = 'padding:12px;background:#fef2f2;border-radius:8px;text-align:center;font-size:13px;color:#dc2626;font-weight:600;';
-          pdfIcon.textContent = '📄 ' + fd.name;
-          previewWrap.appendChild(pdfIcon);
-        } else {
-          const img = document.createElement('img');
-          img.src = fd.dataUrl;
-          previewWrap.appendChild(img);
-        }
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'remove-btn';
-        removeBtn.textContent = '×';
-        removeBtn.addEventListener('click', () => {
-          fileData[key].splice(fi, 1);
-          if (fileData[key].length === 0) delete fileData[key];
-          buildFields();
-          updateSubmitBtn();
-        });
-        previewWrap.appendChild(removeBtn);
-        body.appendChild(previewWrap);
+        const pw = document.createElement('div');
+        pw.className = 'preview-wrap';
+        if (fd.isPdf) { const pi = document.createElement('div'); pi.style.cssText='padding:12px;background:#fef2f2;border-radius:8px;text-align:center;font-size:13px;color:#dc2626;font-weight:600;'; pi.textContent='📄 '+fd.name; pw.appendChild(pi); }
+        else { const img = document.createElement('img'); img.src = fd.dataUrl; pw.appendChild(img); }
+        const rb = document.createElement('button'); rb.className='remove-btn'; rb.textContent='×';
+        rb.addEventListener('click', () => { fileData[key].splice(fi,1); if(!fileData[key].length) delete fileData[key]; buildFields(); updateSubmitBtn(); });
+        pw.appendChild(rb); body.appendChild(pw);
       });
-      // 追加ボタン
-      const addMore = document.createElement('div');
-      addMore.className = 'mini-drop';
-      addMore.style.cssText = 'margin-top:4px;';
-      const addInput = document.createElement('input');
-      addInput.type = 'file';
-      addInput.accept = 'image/*,application/pdf';
-      addInput.multiple = true;
-      addInput.addEventListener('change', e => {
-        const files = Array.from(e.target.files);
-        if (!files.length) return;
-        if (!fileData[key]) fileData[key] = [];
-        let loaded = 0;
-        files.forEach(file => {
-          const reader = new FileReader();
-          reader.onload = ev => {
-            fileData[key].push({ dataUrl: ev.target.result, name: file.name, mimeType: file.type, base64: ev.target.result.split(',')[1], isPdf: file.type === 'application/pdf' });
-            loaded++;
-            if (loaded === files.length) { buildFields(); updateSubmitBtn(); }
-          };
-          reader.readAsDataURL(file);
-        });
-        e.target.value = '';
-      });
-      const addText = document.createElement('div');
-      addText.className = 'mini-drop-text';
-      addText.textContent = '➕ 追加';
-      addMore.appendChild(addInput);
-      addMore.appendChild(addText);
-      body.appendChild(addMore);
+      const am = document.createElement('div'); am.className='mini-drop'; am.style.cssText='margin-top:4px;';
+      const ai = document.createElement('input'); ai.type='file'; ai.accept='image/*,application/pdf'; ai.multiple=true;
+      ai.addEventListener('change', e => { const files=Array.from(e.target.files); if(!files.length) return; if(!fileData[key]) fileData[key]=[]; let loaded=0; files.forEach(file => { const r=new FileReader(); r.onload=ev => { fileData[key].push({dataUrl:ev.target.result,name:file.name,mimeType:file.type,base64:ev.target.result.split(',')[1],isPdf:file.type==='application/pdf'}); loaded++; if(loaded===files.length){buildFields();updateSubmitBtn();} }; r.readAsDataURL(file); }); e.target.value=''; });
+      const at2 = document.createElement('div'); at2.className='mini-drop-text'; at2.textContent='➕ 追加';
+      am.appendChild(ai); am.appendChild(at2); body.appendChild(am);
     } else {
-      const mini = document.createElement('div');
-      mini.className = 'mini-drop';
-
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*,application/pdf';
-      input.multiple = true;
-      input.addEventListener('change', e => {
-        const files = Array.from(e.target.files);
-        if (!files.length) return;
-        if (!fileData[key]) fileData[key] = [];
-        let loaded = 0;
-        files.forEach(file => {
-          const reader = new FileReader();
-          reader.onload = ev => {
-            fileData[key].push({
-              dataUrl: ev.target.result,
-              name: file.name,
-              mimeType: file.type,
-              base64: ev.target.result.split(',')[1],
-              isPdf: file.type === 'application/pdf',
-            });
-            loaded++;
-            if (loaded === files.length) {
-              buildFields();
-              updateSubmitBtn();
-              // Open next empty field
-              const idx = DOC_KEYS.indexOf(key);
-              const nextKey = DOC_KEYS.slice(idx + 1).find(k => !fileData[k] || !fileData[k].length);
-              if (nextKey) {
-                const nextRow = fieldsList.querySelector('[data-key="' + nextKey + '"]');
-                if (nextRow) nextRow.classList.add('open');
-              }
-            }
-          };
-          reader.readAsDataURL(file);
-        });
-        e.target.value = '';
-      });
-
-      const dropText = document.createElement('div');
-      dropText.className = 'mini-drop-text';
-      dropText.textContent = L.tapToAdd;
-
-      const dropHint = document.createElement('div');
-      dropHint.className = 'mini-drop-hint';
-      dropHint.textContent = L.hint;
-
-      mini.appendChild(input);
-      mini.appendChild(dropText);
-      mini.appendChild(dropHint);
-      body.appendChild(mini);
-
-      // Open first empty
-      if (!firstEmptyOpened) {
-        row.classList.add('open');
-        firstEmptyOpened = true;
-      }
+      const mini = document.createElement('div'); mini.className='mini-drop';
+      const input = document.createElement('input'); input.type='file'; input.accept='image/*,application/pdf'; input.multiple=true;
+      input.addEventListener('change', e => { const files=Array.from(e.target.files); if(!files.length) return; if(!fileData[key]) fileData[key]=[]; let loaded=0; files.forEach(file => { const r=new FileReader(); r.onload=ev => { fileData[key].push({dataUrl:ev.target.result,name:file.name,mimeType:file.type,base64:ev.target.result.split(',')[1],isPdf:file.type==='application/pdf'}); loaded++; if(loaded===files.length){ buildFields(); updateSubmitBtn(); const idx=DOC_KEYS.indexOf(key); const nk=DOC_KEYS.slice(idx+1).find(k=>!fileData[k]||!fileData[k].length); if(nk){const nr=fieldsList.querySelector('[data-key="'+nk+'"]');if(nr)nr.classList.add('open');} } }; r.readAsDataURL(file); }); e.target.value=''; });
+      const dt = document.createElement('div'); dt.className='mini-drop-text'; dt.textContent=L.tapToAdd;
+      const dh = document.createElement('div'); dh.className='mini-drop-hint'; dh.textContent=L.hint;
+      mini.appendChild(input); mini.appendChild(dt); mini.appendChild(dh); body.appendChild(mini);
+      if (!firstEmptyOpened) { row.classList.add('open'); firstEmptyOpened=true; }
     }
-
-    row.appendChild(header);
-    row.appendChild(body);
-    fieldsList.appendChild(row);
+    row.appendChild(header); row.appendChild(body); fieldsList.appendChild(row);
   });
 }
-
 function updateSubmitBtn() {
   const L = LANGS[currentLang];
   submitBtn.textContent = L.btnSubmit;
-  submitBtn.disabled = Object.keys(fileData).filter(k => fileData[k] && fileData[k].length > 0).length === 0;
+  submitBtn.disabled = Object.keys(fileData).filter(k=>fileData[k]&&fileData[k].length>0).length===0;
 }
-
 function setLang(code) {
+  if (!LANGS[code]) return;
   currentLang = code;
   const L = LANGS[code];
-  langBar.querySelectorAll('.lang-btn').forEach((b, i) => {
-    b.classList.toggle('active', LANG_ORDER[i] === code);
-  });
+  langBar.querySelectorAll('.lang-btn').forEach((b,i) => { b.classList.toggle('active', LANG_ORDER[i]===code); });
   document.getElementById('ttlMain').textContent = L.title;
-  // appTypeがある場合はサブタイトルにパターン名を追加
   let sub = L.subtitle;
-  if (APP_TYPE) {
-    const typeLabel = {'更新':'更新申請','変更':'変更申請','認定':'認定申請'}[APP_TYPE] || APP_TYPE;
-    sub = '【' + typeLabel + '】\n' + sub;
-    if (requiredCount() > 0) sub += '\n（赤字の書類は必須です）';
-  }
+  if (APP_TYPE) { const tl={'更新':'更新申請','変更':'変更申請','認定':'認定申請'}[APP_TYPE]||APP_TYPE; sub='【'+tl+'】\n'+sub; }
+  if (SKIP_DOCS.length > 0) sub += '\n（不要書類を除いた書類のみ表示しています）';
   document.getElementById('ttlSub').textContent = sub;
-  buildFields();
-  updateSubmitBtn();
+  buildFields(); updateSubmitBtn();
 }
-
-function requiredCount() {
-  if (!APP_TYPE) return 0;
-  const p = getDocPattern();
-  return DOC_KEYS.filter(k => p[k] === 'required').length;
-}
-
 setLang('ja');
 document.getElementById('verBadge').textContent = VERSION;
 
 submitBtn.addEventListener('click', async () => {
   const L = LANGS[currentLang];
-  const keys = Object.keys(fileData).filter(k => fileData[k] && fileData[k].length > 0);
-  if (keys.length === 0) { alert(L.msgNoFile); return; }
-
-  submitBtn.disabled = true;
-  progressWrap.style.display = 'block';
-  progressBar.style.width = '10%';
-  statusMsg.style.display = 'none';
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const keys = Object.keys(fileData).filter(k=>fileData[k]&&fileData[k].length>0);
+  if (!keys.length) { alert(L.msgNoFile); return; }
+  submitBtn.disabled=true; progressWrap.style.display='block'; progressBar.style.width='10%'; statusMsg.style.display='none';
+  const timestamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
   const filesPayload = [];
   keys.forEach(key => {
-    const arr = fileData[key] || [];
-    const docLabel = LANGS['ja'].docs[key];
-    arr.forEach((d, i) => {
-      const ext = d.name.split('.').pop() || 'jpg';
-      const suffix = arr.length > 1 ? '_' + (i + 1) : '';
-      filesPayload.push({ name: docLabel + suffix + '_' + timestamp + '.' + ext, mimeType: d.mimeType, data: d.base64 });
-    });
+    const arr = fileData[key]||[];
+    const docLabel = LANGS['ja'].docs[key]||key;
+    arr.forEach((d,i) => { const ext=d.name.split('.').pop()||'jpg'; const sfx=arr.length>1?'_'+(i+1):''; filesPayload.push({name:docLabel+sfx+'_'+timestamp+'.'+ext,mimeType:d.mimeType,data:d.base64}); });
   });
-
   try {
-    progressBar.style.width = '40%';
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      body: JSON.stringify({ files: filesPayload, folderId: FOLDER_ID }),
-    });
-    progressBar.style.width = '90%';
-    let json = { success: true }; // GASリダイレクト対策：デフォルトで成功とみなす
-    try {
-      const text = await res.text();
-      if (text && text.trim().startsWith('{')) {
-        json = JSON.parse(text);
-      }
-    } catch(parseErr) { /* ignore */ }
+    progressBar.style.width='40%';
+    const res = await fetch(GAS_URL,{method:'POST',redirect:'follow',body:JSON.stringify({files:filesPayload,folderId:FOLDER_ID})});
+    progressBar.style.width='90%';
+    let json={success:true};
+    try { const text=await res.text(); if(text&&text.trim().startsWith('{')) json=JSON.parse(text); } catch(e){}
     if (json.success) {
-      progressBar.style.width = '100%';
-      statusMsg.className = 'status-msg success';
-      statusMsg.textContent = L.msgSuccess;
-      statusMsg.style.display = 'block';
-      // Supabaseに通知を保存
+      progressBar.style.width='100%';
+      statusMsg.className='status-msg success'; statusMsg.textContent=L.msgSuccess; statusMsg.style.display='block';
       if (CASE_ID) {
         try {
-          await fetch('https://ehwlgbwpycglmopiqyty.supabase.co/rest/v1/upload_notifications', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u',
-              'Authorization': 'Bearer sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u',
-              'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-              case_id: CASE_ID,
-              folder_id: FOLDER_ID,
-              file_count: filesPayload.length,
-              file_names: filesPayload.map(f => f.name).join(', ')
-            })
-          });
-        } catch(e) { console.warn('通知保存失敗:', e); }
+          await fetch('https://ehwlgbwpycglmopiqyty.supabase.co/rest/v1/upload_notifications',{method:'POST',headers:{'Content-Type':'application/json','apikey':'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u','Authorization':'Bearer sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u','Prefer':'return=minimal'},body:JSON.stringify({case_id:CASE_ID,folder_id:FOLDER_ID,file_count:filesPayload.length,file_names:filesPayload.map(f=>f.name).join(', ')})});
+        } catch(e){ console.warn('通知保存失敗:',e); }
       }
-      DOC_KEYS.forEach(k => delete fileData[k]);
-      buildFields();
-      updateSubmitBtn();
-    } else {
-      throw new Error(json.error || 'error');
-    }
-  } catch (err) {
-    statusMsg.className = 'status-msg error';
-    statusMsg.textContent = L.msgError;
-    statusMsg.style.display = 'block';
-    submitBtn.disabled = false;
+      DOC_KEYS.forEach(k=>delete fileData[k]); buildFields(); updateSubmitBtn();
+    } else { throw new Error(json.error||'error'); }
+  } catch(err) {
+    statusMsg.className='status-msg error'; statusMsg.textContent=L.msgError; statusMsg.style.display='block'; submitBtn.disabled=false;
   }
-
-  setTimeout(() => {
-    progressWrap.style.display = 'none';
-    progressBar.style.width = '0%';
-  }, 1200);
+  setTimeout(()=>{progressWrap.style.display='none';progressBar.style.width='0%';},1200);
 });
 </script>
 </body>
