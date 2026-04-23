@@ -64,7 +64,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260420.04';
+const VERSION = 'ver.20260423.05';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -253,12 +253,13 @@ submitBtn.addEventListener('click', async () => {
   const keys = Object.keys(fileData).filter(k=>fileData[k]&&fileData[k].length>0);
   if (!keys.length) { alert(L.msgNoFile); return; }
   submitBtn.disabled=true; progressWrap.style.display='block'; progressBar.style.width='10%'; statusMsg.style.display='none';
-  const timestamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  // ファイル名: 書類名_連番.拡張子 （複数枚時のみ連番、単発は書類名のみ）
+  // 日付は外している（同名衝突時はGoogle Drive側で (1) (2) が付与される）
   const filesPayload = [];
   keys.forEach(key => {
     const arr = fileData[key]||[];
     const docLabel = LANGS['ja'].docs[key]||key;
-    arr.forEach((d,i) => { const ext=d.name.split('.').pop()||'jpg'; const sfx=arr.length>1?'_'+(i+1):''; filesPayload.push({name:docLabel+sfx+'_'+timestamp+'.'+ext,mimeType:d.mimeType,data:d.base64}); });
+    arr.forEach((d,i) => { const ext=d.name.split('.').pop()||'jpg'; const sfx=arr.length>1?'_'+(i+1):''; filesPayload.push({name:docLabel+sfx+'.'+ext,mimeType:d.mimeType,data:d.base64}); });
   });
   try {
     progressBar.style.width='40%';
