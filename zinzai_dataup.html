@@ -46,11 +46,61 @@
   .status-msg{display:none;margin-top:18px;padding:16px;border-radius:12px;font-size:14px;text-align:center;line-height:1.7;white-space:pre-line;}
   .status-msg.success{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border);}
   .status-msg.error{background:var(--error-bg);color:var(--error);border:1px solid var(--error-border);}
+  /* 名前確認モーダル */
+  .name-confirm-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;}
+  .name-confirm-modal{background:#fff;border-radius:16px;width:100%;max-width:420px;padding:24px 20px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .name-confirm-modal .nc-title{font-size:16px;font-weight:800;color:#0f2040;text-align:center;margin-bottom:6px;}
+  .name-confirm-modal .nc-subtitle{font-size:12px;color:#64748b;text-align:center;margin-bottom:18px;}
+  .name-confirm-modal .nc-name-box{background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:2px solid #2563eb;border-radius:12px;padding:18px 14px;margin-bottom:16px;text-align:center;}
+  .name-confirm-modal .nc-name-box .nc-label{font-size:11px;color:#2563eb;font-weight:700;margin-bottom:6px;letter-spacing:.5px;}
+  .name-confirm-modal .nc-name-box .nc-name{font-size:24px;font-weight:800;color:#1e3a8a;letter-spacing:.3px;word-break:break-word;line-height:1.3;}
+  .name-confirm-modal .nc-warn{font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 12px;margin-bottom:16px;line-height:1.5;}
+  .name-confirm-modal .nc-buttons{display:flex;flex-direction:column;gap:8px;}
+  .name-confirm-modal .nc-btn-yes{padding:14px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;}
+  .name-confirm-modal .nc-btn-yes:active{background:#15803d;transform:scale(.98);}
+  .name-confirm-modal .nc-btn-no{padding:12px;background:#fff;color:#dc2626;border:2px solid #fca5a5;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .name-confirm-modal .nc-btn-no:active{background:#fef2f2;}
+  /* 名前バナー（確認後・常時表示） */
+  .name-banner{background:#eff6ff;border-radius:10px;padding:12px 14px;margin-bottom:20px;border:1px solid #bfdbfe;text-align:left;}
+  .name-banner .nb-name{display:block;font-size:18px;font-weight:800;color:#1e3a8a;margin-bottom:2px;letter-spacing:.3px;word-break:break-word;}
+  .name-banner .nb-desc{display:block;font-size:11px;color:#2563eb;}
 </style>
 </head>
 <body>
 <div style="position:fixed;top:6px;left:8px;font-size:9px;color:rgba(0,0,0,.3);z-index:9999;pointer-events:none;" id="verBadge"></div>
-<div class="card">
+
+<!-- 名前確認モーダル -->
+<div id="nameConfirmOverlay" class="name-confirm-overlay" style="display:none;">
+  <div class="name-confirm-modal">
+    <div class="nc-title">🔍 お名前のご確認</div>
+    <div class="nc-subtitle">下記のお名前で間違いありませんか？</div>
+    <div class="nc-name-box">
+      <div class="nc-label">📋 ご依頼者</div>
+      <div class="nc-name" id="nameConfirmName"></div>
+    </div>
+    <div class="nc-warn">※ ご自身のお名前と異なる場合は「いいえ」を押してください。書類のアップロードに進まず、ご連絡先をご案内いたします。</div>
+    <div class="nc-buttons">
+      <button class="nc-btn-yes" onclick="confirmName(true)">✅ はい、私の名前です</button>
+      <button class="nc-btn-no" onclick="confirmName(false)">❌ いいえ、違います</button>
+    </div>
+  </div>
+</div>
+
+<!-- 名前が違う場合の画面 -->
+<div id="nameMismatchScreen" style="display:none;padding:20px;max-width:480px;margin:20px auto;">
+  <div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:12px;padding:16px;">
+    <div style="font-size:14px;font-weight:800;color:#991b1b;margin-bottom:8px;">⚠️ お名前にご相違があります</div>
+    <div style="font-size:12px;color:#7f1d1d;line-height:1.6;margin-bottom:10px;">恐れ入りますが、書類のアップロードは控えていただき、お手数ですが下記までご連絡をお願いいたします。</div>
+    <div style="background:white;border-radius:8px;padding:10px 12px;font-size:12px;color:#374151;line-height:1.7;">
+      <strong style="color:#0f2040;">大房行政書士法人</strong><br>
+      📞 03-6424-8849<br>
+      📧 info@gyosei-cambo.com<br>
+      🏢 〒144-0052 東京都大田区蒲田5-11-10 FUNDES蒲田8階
+    </div>
+  </div>
+</div>
+
+<div class="card" id="mainCard" style="display:none;">
   <div class="lang-bar" id="langBar"></div>
   <div class="header">
     <div class="page-icon">📄</div>
@@ -58,13 +108,17 @@
     <h1 id="ttlMain"></h1>
     <p class="subtitle" id="ttlSub"></p>
   </div>
+  <div class="name-banner" id="nameBanner" style="display:none;">
+    <span class="nb-name" id="nameBannerName"></span>
+    <span class="nb-desc">大房行政書士法人より書類アップロードのご依頼です。</span>
+  </div>
   <div class="fields-list" id="fieldsList"></div>
   <button class="btn-submit" id="submitBtn" disabled></button>
   <div class="progress-bar-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260423.05';
+const VERSION = 'ver.20260511.01';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -247,6 +301,58 @@ function setLang(code) {
 }
 setLang('ja');
 document.getElementById('verBadge').textContent = VERSION;
+
+// 名前確認モーダル処理
+function _escName(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function _showMainCard(applicantName){
+  if(applicantName){
+    const _en=_escName(applicantName);
+    const nb=document.getElementById('nameBanner');
+    const nbn=document.getElementById('nameBannerName');
+    if(nbn) nbn.innerHTML=_en;
+    if(nb) nb.style.display='block';
+  }
+  document.getElementById('mainCard').style.display='block';
+}
+function confirmName(isMatch){
+  const overlay=document.getElementById('nameConfirmOverlay');
+  if(overlay) overlay.style.display='none';
+  if(isMatch){
+    // 確認済みフラグをlocalStorageに保存（同案件で再表示防止）
+    try{ localStorage.setItem('ofusa_upload_name_confirmed_'+CASE_ID,'1'); }catch(e){}
+    _showMainCard(window._applicantName||'');
+  } else {
+    // 名前違いの連絡画面を表示
+    document.getElementById('nameMismatchScreen').style.display='block';
+  }
+}
+
+// case_idから申請者名を取得して名前確認モーダルを表示
+(async function _initNameConfirm(){
+  if(!CASE_ID){
+    // case_idがない場合は確認なしで表示
+    _showMainCard('');
+    return;
+  }
+  // 既に確認済みならスキップ
+  let _alreadyConfirmed=false;
+  try{ _alreadyConfirmed=!!localStorage.getItem('ofusa_upload_name_confirmed_'+CASE_ID); }catch(e){}
+  // Supabaseからcases.applicantを取得
+  let applicantName='';
+  try{
+    const _url='https://ehwlgbwpycglmopiqyty.supabase.co/rest/v1/cases?id=eq.'+encodeURIComponent(CASE_ID)+'&select=applicant';
+    const _res=await fetch(_url,{headers:{'apikey':'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u','Authorization':'Bearer sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u'}});
+    const _data=await _res.json();
+    if(_data && _data.length && _data[0].applicant) applicantName=_data[0].applicant;
+  } catch(e){ console.warn('applicant取得失敗:',e); }
+  window._applicantName=applicantName;
+  if(applicantName && !_alreadyConfirmed){
+    document.getElementById('nameConfirmName').innerHTML=_escName(applicantName);
+    document.getElementById('nameConfirmOverlay').style.display='flex';
+  } else {
+    _showMainCard(applicantName);
+  }
+})();
 
 submitBtn.addEventListener('click', async () => {
   const L = LANGS[currentLang];
