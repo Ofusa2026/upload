@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>書類アップロード</title>
+<!-- 画像圧縮・HEIC変換ライブラリ（アップロード失敗対策） -->
+<script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600&family=Noto+Sans:wght@400;600&display=swap');
   :root{--primary:#1a56db;--primary-dark:#1341a8;--success:#057a55;--success-bg:#f0fdf4;--success-border:#bbf7d0;--error:#9b1c1c;--error-bg:#fef2f2;--error-border:#fecaca;--bg:#f0f4f8;--card:#ffffff;--text:#1a202c;--sub:#718096;--border:#e2e8f0;--hover:#eff6ff;}
@@ -118,7 +121,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260511.01';
+const VERSION = 'ver.20260514.01';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -266,13 +269,13 @@ function buildFields() {
         pw.appendChild(rb); body.appendChild(pw);
       });
       const am = document.createElement('div'); am.className='mini-drop'; am.style.cssText='margin-top:4px;';
-      const ai = document.createElement('input'); ai.type='file'; ai.accept='image/*,application/pdf'; ai.multiple=true;
+      const ai = document.createElement('input'); ai.type='file'; ai.accept='image/*,image/heic,image/heif,application/pdf'; ai.multiple=true;
       ai.addEventListener('change', e => { const files=Array.from(e.target.files); if(!files.length) return; if(!fileData[key]) fileData[key]=[]; let loaded=0; files.forEach(file => { const r=new FileReader(); r.onload=ev => { fileData[key].push({dataUrl:ev.target.result,name:file.name,mimeType:file.type,base64:ev.target.result.split(',')[1],isPdf:file.type==='application/pdf'}); loaded++; if(loaded===files.length){buildFields();updateSubmitBtn();} }; r.readAsDataURL(file); }); e.target.value=''; });
       const at2 = document.createElement('div'); at2.className='mini-drop-text'; at2.textContent='➕ 追加';
       am.appendChild(ai); am.appendChild(at2); body.appendChild(am);
     } else {
       const mini = document.createElement('div'); mini.className='mini-drop';
-      const input = document.createElement('input'); input.type='file'; input.accept='image/*,application/pdf'; input.multiple=true;
+      const input = document.createElement('input'); input.type='file'; input.accept='image/*,image/heic,image/heif,application/pdf'; input.multiple=true;
       input.addEventListener('change', e => { const files=Array.from(e.target.files); if(!files.length) return; if(!fileData[key]) fileData[key]=[]; let loaded=0; files.forEach(file => { const r=new FileReader(); r.onload=ev => { fileData[key].push({dataUrl:ev.target.result,name:file.name,mimeType:file.type,base64:ev.target.result.split(',')[1],isPdf:file.type==='application/pdf'}); loaded++; if(loaded===files.length){ buildFields(); updateSubmitBtn(); const idx=DOC_KEYS.indexOf(key); const nk=DOC_KEYS.slice(idx+1).find(k=>!fileData[k]||!fileData[k].length); if(nk){const nr=fieldsList.querySelector('[data-key="'+nk+'"]');if(nr)nr.classList.add('open');} } }; r.readAsDataURL(file); }); e.target.value=''; });
       const dt = document.createElement('div'); dt.className='mini-drop-text'; dt.textContent=L.tapToAdd;
       const dh = document.createElement('div'); dh.className='mini-drop-hint'; dh.textContent=L.hint;
@@ -354,39 +357,243 @@ function confirmName(isMatch){
   }
 })();
 
+// ============================================================
+// 画像前処理：HEIC → JPEG変換 + 圧縮
+// ============================================================
+async function preprocessFile(fileBlob, fileName, mimeType) {
+  // PDFはそのまま返す
+  if (mimeType === 'application/pdf' || /\.pdf$/i.test(fileName)) {
+    return { blob: fileBlob, name: fileName, mimeType: 'application/pdf' };
+  }
+  
+  let workBlob = fileBlob;
+  let workName = fileName;
+  let workMime = mimeType || 'image/jpeg';
+  
+  // HEIC/HEIF判定（拡張子 or MIME or 両方）
+  const isHeic = /\.(heic|heif)$/i.test(fileName) || 
+                 mimeType === 'image/heic' || 
+                 mimeType === 'image/heif' ||
+                 mimeType === '';
+  
+  // HEIC → JPEG変換
+  if (isHeic && typeof heic2any !== 'undefined') {
+    try {
+      const converted = await heic2any({ blob: fileBlob, toType: 'image/jpeg', quality: 0.85 });
+      workBlob = Array.isArray(converted) ? converted[0] : converted;
+      workName = fileName.replace(/\.(heic|heif)$/i, '.jpg');
+      if (!/\.(jpg|jpeg)$/i.test(workName)) workName += '.jpg';
+      workMime = 'image/jpeg';
+      console.log('HEIC変換成功:', fileName, '→', workName);
+    } catch (e) {
+      console.warn('HEIC変換失敗（そのまま続行）:', fileName, e);
+    }
+  }
+  
+  // 画像圧縮（image系のみ）
+  if (workMime.startsWith('image/') && typeof imageCompression !== 'undefined') {
+    try {
+      const compressed = await imageCompression(workBlob, {
+        maxSizeMB: 1.5,
+        maxWidthOrHeight: 2000,
+        useWebWorker: true,
+        fileType: 'image/jpeg',
+        initialQuality: 0.8
+      });
+      workBlob = compressed;
+      workMime = 'image/jpeg';
+      if (!/\.(jpg|jpeg)$/i.test(workName)) {
+        workName = workName.replace(/\.[^.]+$/, '') + '.jpg';
+      }
+      console.log('圧縮成功:', fileName, '→', (compressed.size/1024).toFixed(0) + 'KB');
+    } catch (e) {
+      console.warn('圧縮失敗（元ファイルで続行）:', fileName, e);
+    }
+  }
+  
+  return { blob: workBlob, name: workName, mimeType: workMime };
+}
+
+// Blob → base64
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+// dataURL → Blob（既存fileDataがdataUrl形式のため）
+function dataUrlToBlob(dataUrl, mimeType) {
+  const arr = dataUrl.split(',');
+  const bstr = atob(arr[1]);
+  const u8 = new Uint8Array(bstr.length);
+  for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
+  return new Blob([u8], { type: mimeType || 'application/octet-stream' });
+}
+
+// ============================================================
+// 1ファイルずつ送信（直列処理）
+// ============================================================
+async function uploadOneFile(payload) {
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    body: JSON.stringify({ files: [payload], folderId: FOLDER_ID })
+  });
+  let json = { success: true };
+  try {
+    const text = await res.text();
+    if (text && text.trim().startsWith('{')) json = JSON.parse(text);
+  } catch (e) {}
+  if (!json.success) throw new Error(json.error || 'upload failed');
+  return json;
+}
+
 submitBtn.addEventListener('click', async () => {
   const L = LANGS[currentLang];
-  const keys = Object.keys(fileData).filter(k=>fileData[k]&&fileData[k].length>0);
+  const keys = Object.keys(fileData).filter(k => fileData[k] && fileData[k].length > 0);
   if (!keys.length) { alert(L.msgNoFile); return; }
-  submitBtn.disabled=true; progressWrap.style.display='block'; progressBar.style.width='10%'; statusMsg.style.display='none';
-  // ファイル名: 書類名_連番.拡張子 （複数枚時のみ連番、単発は書類名のみ）
-  // 日付は外している（同名衝突時はGoogle Drive側で (1) (2) が付与される）
-  const filesPayload = [];
+  
+  submitBtn.disabled = true;
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '2%';
+  statusMsg.style.display = 'none';
+  
+  // 全ファイルをフラットにペイロード化（前処理前）
+  const allFiles = [];
   keys.forEach(key => {
-    const arr = fileData[key]||[];
-    const docLabel = LANGS['ja'].docs[key]||key;
-    arr.forEach((d,i) => { const ext=d.name.split('.').pop()||'jpg'; const sfx=arr.length>1?'_'+(i+1):''; filesPayload.push({name:docLabel+sfx+'.'+ext,mimeType:d.mimeType,data:d.base64}); });
+    const arr = fileData[key] || [];
+    const docLabel = LANGS['ja'].docs[key] || key;
+    arr.forEach((d, i) => {
+      const ext = (d.name.split('.').pop() || 'jpg').toLowerCase();
+      const sfx = arr.length > 1 ? '_' + (i + 1) : '';
+      allFiles.push({
+        key: key,
+        idx: i,
+        docLabel: docLabel,
+        originalName: d.name,
+        ext: ext,
+        dataUrl: d.dataUrl,
+        mimeType: d.mimeType,
+        isPdf: d.isPdf
+      });
+    });
   });
-  try {
-    progressBar.style.width='40%';
-    const res = await fetch(GAS_URL,{method:'POST',redirect:'follow',body:JSON.stringify({files:filesPayload,folderId:FOLDER_ID})});
-    progressBar.style.width='90%';
-    let json={success:true};
-    try { const text=await res.text(); if(text&&text.trim().startsWith('{')) json=JSON.parse(text); } catch(e){}
-    if (json.success) {
-      progressBar.style.width='100%';
-      statusMsg.className='status-msg success'; statusMsg.textContent=L.msgSuccess; statusMsg.style.display='block';
+  
+  const total = allFiles.length;
+  const failed = [];
+  const successKeys = []; // 成功した {key, idx} を記録
+  
+  // ステータス表示要素
+  statusMsg.style.display = 'block';
+  statusMsg.className = 'status-msg';
+  statusMsg.style.background = '#eff6ff';
+  statusMsg.style.color = '#1e40af';
+  statusMsg.style.border = '1px solid #bfdbfe';
+  
+  for (let i = 0; i < allFiles.length; i++) {
+    const f = allFiles[i];
+    const stepLabel = '(' + (i + 1) + '/' + total + ')';
+    
+    try {
+      // ステップ1: 前処理表示
+      statusMsg.textContent = stepLabel + ' ' + f.docLabel + ' を準備中…';
+      progressBar.style.width = Math.round((i / total) * 90 + 2) + '%';
+      
+      // dataUrl → Blob → 前処理
+      const srcBlob = dataUrlToBlob(f.dataUrl, f.mimeType);
+      const processed = await preprocessFile(srcBlob, f.originalName, f.mimeType);
+      const base64 = await blobToBase64(processed.blob);
+      
+      // ファイル名生成（書類名_連番.拡張子）
+      const arrLen = (fileData[f.key] || []).length;
+      const newExt = processed.name.split('.').pop() || 'jpg';
+      const sfx = arrLen > 1 ? '_' + (f.idx + 1) : '';
+      const finalName = f.docLabel + sfx + '.' + newExt;
+      
+      const payload = {
+        name: finalName,
+        mimeType: processed.mimeType,
+        data: base64
+      };
+      
+      // ステップ2: 送信表示
+      statusMsg.textContent = stepLabel + ' ' + f.docLabel + ' を送信中…';
+      progressBar.style.width = Math.round(((i + 0.5) / total) * 90 + 2) + '%';
+      
+      await uploadOneFile(payload);
+      
+      // Supabase通知（1ファイルごと）
       if (CASE_ID) {
         try {
-          await fetch('https://ehwlgbwpycglmopiqyty.supabase.co/rest/v1/upload_notifications',{method:'POST',headers:{'Content-Type':'application/json','apikey':'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u','Authorization':'Bearer sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u','Prefer':'return=minimal'},body:JSON.stringify({case_id:CASE_ID,folder_id:FOLDER_ID,file_count:filesPayload.length,file_names:filesPayload.map(f=>f.name).join(', ')})});
-        } catch(e){ console.warn('通知保存失敗:',e); }
+          await fetch('https://ehwlgbwpycglmopiqyty.supabase.co/rest/v1/upload_notifications', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u',
+              'Authorization': 'Bearer sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              case_id: CASE_ID,
+              folder_id: FOLDER_ID,
+              file_count: 1,
+              file_names: finalName
+            })
+          });
+        } catch (e) { console.warn('通知保存失敗:', e); }
       }
-      DOC_KEYS.forEach(k=>delete fileData[k]); buildFields(); updateSubmitBtn();
-    } else { throw new Error(json.error||'error'); }
-  } catch(err) {
-    statusMsg.className='status-msg error'; statusMsg.textContent=L.msgError; statusMsg.style.display='block'; submitBtn.disabled=false;
+      
+      successKeys.push({ key: f.key, idx: f.idx });
+      progressBar.style.width = Math.round(((i + 1) / total) * 90 + 2) + '%';
+      
+    } catch (err) {
+      console.error('アップロード失敗:', f.docLabel, err);
+      failed.push({ docLabel: f.docLabel, error: err.message || 'error' });
+    }
   }
-  setTimeout(()=>{progressWrap.style.display='none';progressBar.style.width='0%';},1200);
+  
+  // 成功したファイルだけ fileData から削除（失敗したのは残してリトライ可能に）
+  // 後ろから消さないとidxがずれる
+  const successByKey = {};
+  successKeys.forEach(s => {
+    if (!successByKey[s.key]) successByKey[s.key] = [];
+    successByKey[s.key].push(s.idx);
+  });
+  Object.keys(successByKey).forEach(key => {
+    const indices = successByKey[key].sort((a, b) => b - a);
+    indices.forEach(idx => {
+      if (fileData[key]) fileData[key].splice(idx, 1);
+    });
+    if (fileData[key] && fileData[key].length === 0) delete fileData[key];
+  });
+  
+  // 結果表示
+  progressBar.style.width = '100%';
+  statusMsg.style.background = '';
+  statusMsg.style.color = '';
+  statusMsg.style.border = '';
+  
+  if (failed.length === 0) {
+    statusMsg.className = 'status-msg success';
+    statusMsg.textContent = L.msgSuccess;
+  } else if (failed.length === total) {
+    statusMsg.className = 'status-msg error';
+    statusMsg.textContent = L.msgError + '\n失敗：' + failed.map(f => f.docLabel).join('、');
+    submitBtn.disabled = false;
+  } else {
+    // 一部成功
+    statusMsg.className = 'status-msg error';
+    const successCount = total - failed.length;
+    statusMsg.textContent = '✅ ' + successCount + '件 送信完了\n❌ ' + failed.length + '件 失敗：' + failed.map(f => f.docLabel).join('、') + '\nもう一度「' + L.btnSubmit + '」を押してください。';
+    submitBtn.disabled = false;
+  }
+  
+  buildFields();
+  updateSubmitBtn();
+  setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 1500);
 });
 </script>
 </body>
