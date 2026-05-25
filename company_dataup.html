@@ -327,6 +327,26 @@ const urlParams = new URLSearchParams(window.location.search);
 const FOLDER_ID = urlParams.get('folder') || '';
 const COMPANY_ID = urlParams.get('company') || '';
 const COMPANY_NAME = urlParams.get('name') ? decodeURIComponent(urlParams.get('name')) : '';
+// ver.20260525.01: 新パラメータ docs=BASE64URL(JSON [{l,r,t}])
+const DOCS_PARAM = urlParams.get('docs') || '';
+function _decodeDocsParam(s){
+  if(!s) return null;
+  try {
+    var b64 = s.replace(/-/g,'+').replace(/_/g,'/');
+    while(b64.length % 4) b64 += '=';
+    var bin = atob(b64);
+    var txt = decodeURIComponent(escape(bin));
+    var arr = JSON.parse(txt);
+    if(!Array.isArray(arr)) return null;
+    return arr;
+  } catch(e){
+    console.warn('docs param decode err:', e);
+    return null;
+  }
+}
+const DOCS_LIST = _decodeDocsParam(DOCS_PARAM);
+const USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
+console.log('📋 USE_NEW_DOCS:', USE_NEW_DOCS, 'DOCS_LIST:', DOCS_LIST);
 
 if (COMPANY_NAME) {
   const bar = document.getElementById('companyNameBar');
@@ -470,6 +490,60 @@ function renderFileList(key, container) {
 }
 
 function buildAllFields() {
+  // ver.20260525.01: docsパラメータがあれば、それに従って書類リストを構築
+  if (USE_NEW_DOCS) {
+    // 新ロジック: DOCS_LIST = [{l: '書類名', r: 1, t: 'large'|'normal'|'kojin'}, ...]
+    // 各書類に安定キー 'd0', 'd1', ... を割り当てて、tでタブ振り分け
+    const buckets = { large: [], normal: [], kojin: [] };
+    const labelMap = {};  // key → 日本語ラベル
+    DOCS_LIST.forEach(function(d, i){
+      const key = 'd' + i;
+      const t = d.t || 'normal';
+      labelMap[key] = d.l || '';
+      if (!buckets[t]) buckets[t] = [];
+      buckets[t].push({key: key, label: d.l || '', req: !!d.r});
+    });
+    window._docLabelMap = labelMap;
+
+    // バッジ更新用に各タブの書類数表示
+    const renderBucket = function(listEl, items){
+      listEl.innerHTML = '';
+      if (!items.length) {
+        const empty = document.createElement('div');
+        empty.style.cssText = 'padding:20px;text-align:center;color:#94a3b8;font-size:13px;';
+        empty.textContent = 'この区分の書類はありません';
+        listEl.appendChild(empty);
+        return;
+      }
+      // docsMap を動的構築
+      const docsMap = {};
+      items.forEach(function(it){ docsMap[it.key] = it.label; });
+      items.forEach(function(it){
+        const row = buildFieldRow(it.key, docsMap);
+        // 必須マークを付ける
+        if (it.req) {
+          const labelEl = row.querySelector('.field-label');
+          if (labelEl && labelEl.innerHTML.indexOf('必須') === -1) {
+            labelEl.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + labelEl.innerHTML;
+          }
+        }
+        listEl.appendChild(row);
+      });
+    };
+    renderBucket(document.getElementById('fieldsListLarge'),  buckets.large || []);
+    renderBucket(document.getElementById('fieldsListNormal'), buckets.normal || []);
+    renderBucket(document.getElementById('fieldsListKojin'),  buckets.kojin || []);
+
+    // 書類があるタブを初期表示にする（normal優先 → kojin → large）
+    if ((buckets.normal||[]).length === 0 && (buckets.kojin||[]).length > 0) {
+      switchTab('kojin');
+    } else if ((buckets.normal||[]).length === 0 && (buckets.kojin||[]).length === 0 && (buckets.large||[]).length > 0) {
+      switchTab('large');
+    }
+    return;
+  }
+
+  // 旧ロジック（後方互換）
   // 大企業タブ
   const listLarge = document.getElementById('fieldsListLarge');
   listLarge.innerHTML = '';
@@ -515,8 +589,15 @@ function toBase64(file) {
 buildAllFields();
 
 document.getElementById('submitBtn').addEventListener('click', async () => {
-  const allKeys = [...LARGE_KEYS, ...NORMAL_KEYS, ...KOJIN_KEYS];
-  const allDocs = { ...LARGE_DOCS, ...NORMAL_DOCS, ...KOJIN_DOCS };
+  // ver.20260525.01: 新ロジックでは window._docLabelMap、旧ロジックでは LARGE/NORMAL/KOJIN_DOCS を結合
+  let allKeys, allDocs;
+  if (USE_NEW_DOCS && window._docLabelMap) {
+    allKeys = Object.keys(window._docLabelMap);
+    allDocs = window._docLabelMap;
+  } else {
+    allKeys = [...LARGE_KEYS, ...NORMAL_KEYS, ...KOJIN_KEYS];
+    allDocs = { ...LARGE_DOCS, ...NORMAL_DOCS, ...KOJIN_DOCS };
+  }
   const hasAny = allKeys.some(k => fileData[k] && fileData[k].length > 0);
   if (!hasAny) { alert('少なくとも1つのファイルを選択してください'); return; }
 
