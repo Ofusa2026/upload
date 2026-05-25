@@ -121,7 +121,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260525.01';
+const VERSION = 'ver.20260525.02';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -156,36 +156,55 @@ const DOCS_LIST = _decodeDocsParam(DOCS_PARAM);
 const USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
 console.log('📋 USE_NEW_DOCS:', USE_NEW_DOCS, 'DOCS_LIST:', DOCS_LIST, 'SKIP_DOCS:', SKIP_DOCS);
 
-// 多言語翻訳辞書（日本語ラベル → 各言語）。マッチしない書類は日本語のまま表示
+// 多言語翻訳辞書（日本語ラベル → 各言語 + ruby: 日本語表示用ふりがな付きHTML）
+// マッチしない書類は日本語のまま表示
 const DOC_TRANSLATIONS = {
-  '在留カード':                  {en:'Residence Card',vi:'Thẻ cư trú',id:'Kartu Izin Tinggal',my:'နေထိုင်ခွင့်ကတ်',ko:'재류카드',ne:'आवास कार्ड',zh:'居留卡',th:'บัตรถิ่นที่อยู่',km:'កាតស្នាក់នៅ',mn:'Оршин суух карт',si:'පදිංචිකාර්ඩ්'},
-  '在留カード（表）':             {en:'Residence Card (Front)',vi:'Thẻ cư trú (Mặt trước)',id:'Kartu Izin Tinggal (Depan)',ko:'재류카드 (앞면)',zh:'居留卡（正面）',th:'บัตรถิ่นที่อยู่ (ด้านหน้า)'},
-  '在留カード（裏）':             {en:'Residence Card (Back)',vi:'Thẻ cư trú (Mặt sau)',id:'Kartu Izin Tinggal (Belakang)',ko:'재류카드 (뒷면)',zh:'居留卡（背面）',th:'บัตรถิ่นที่อยู่ (ด้านหลัง)'},
-  'パスポート':                  {en:'Passport',vi:'Hộ chiếu',id:'Paspor',my:'နိုင်ငံကူးလက်မှတ်',ko:'여권',ne:'राहदानी',zh:'护照',th:'หนังสือเดินทาง',km:'លិខិតឆ្លងដែន',mn:'Паспорт',si:'ගමන් බලපත්‍රය'},
-  '合格証（日本語）':             {en:'Certificate (Japanese)',vi:'Chứng chỉ (Tiếng Nhật)',id:'Sertifikat (Bahasa Jepang)',ko:'합격증 (일본어)',zh:'合格证（日语）'},
-  '合格証（技能）':               {en:'Certificate (Skills Test)',vi:'Chứng chỉ (Kỳ thi kỹ năng)',id:'Sertifikat (Uji Keterampilan)',ko:'합격증 (기능시험)',zh:'合格证（技能考试）'},
-  '合格証（技能試験）':           {en:'Certificate (Skills Test)',vi:'Chứng chỉ (Kỳ thi kỹ năng)',id:'Sertifikat (Uji Keterampilan)',ko:'합격증 (기능시험)',zh:'合格证（技能考试）'},
-  '合格証（専門級・3級）':       {en:'Certificate (Specialist/Level 3)',vi:'Chứng chỉ (Chuyên ngành/Cấp 3)',id:'Sertifikat (Spesialis/Level 3)',ko:'합격증 (전문급·3급)',zh:'合格证（专项级·3级）'},
-  '所得・課税証明書':             {en:'Income/Taxation Certificate',vi:'Giấy chứng nhận thu nhập/thuế',id:'Surat Keterangan Penghasilan/Pajak',ko:'소득·과세증명서',zh:'收入·课税证明'},
-  '課税証明書':                  {en:'Taxation Certificate',vi:'Giấy chứng nhận thuế',id:'Surat Keterangan Pajak',ko:'과세증명서',zh:'课税证明'},
-  '納税証明書':                  {en:'Tax Payment Certificate',vi:'Giấy chứng nhận nộp thuế',id:'Bukti Pembayaran Pajak',ko:'납세증명서',zh:'纳税证明'},
-  '源泉徴収票':                  {en:'Withholding Tax Statement',vi:'Phiếu khấu trừ thuế',id:'Slip Pemotongan Pajak',ko:'원천징수영수증',zh:'扣缴凭证'},
-  '健康診断票':                  {en:'Medical Certificate',vi:'Giấy khám sức khỏe',id:'Sertifikat Kesehatan',ko:'건강진단서',zh:'健康诊断证明'},
-  '健康診断証':                  {en:'Medical Certificate',vi:'Giấy khám sức khỏe',id:'Sertifikat Kesehatan',ko:'건강진단서',zh:'健康诊断证明'},
-  '顔写真':                      {en:'Photo',vi:'Ảnh',id:'Foto',ko:'사진',zh:'照片'},
-  '健康保険証':                  {en:'Health Insurance Card',vi:'Thẻ bảo hiểm y tế',id:'Kartu Asuransi Kesehatan',ko:'건강보험증',zh:'健康保险证'},
-  '国民健康保険料納付証明書':     {en:'National Health Insurance Payment Certificate',ko:'국민건강보험료 납부증명서',zh:'国民健康保险缴费证明'},
-  '卒業証明書':                  {en:'Graduation Certificate',vi:'Bằng tốt nghiệp',id:'Ijazah',ko:'졸업증명서',zh:'毕业证明书'},
-  '成績証明書':                  {en:'Academic Transcript',vi:'Bảng điểm',id:'Transkrip Nilai',ko:'성적증명서',zh:'成绩单'},
-  '年金手帳':                    {en:'Pension Booklet',vi:'Sổ hưu trí',id:'Buku Pensiun',ko:'연금수첩',zh:'年金手帐'},
-  '大使館推薦票':                {en:'Embassy Recommendation Letter'},
-  '推薦状（送出機関）':          {en:'Recommendation Letter (Sending Agency)'},
-  '無犯罪証明書（カンボジア）':  {en:'Police Clearance Certificate (Cambodia)'},
-  '無犯罪証明書（ミャンマー）':  {en:'Police Clearance Certificate (Myanmar)'},
-  '推薦票':                      {en:'Recommendation'},
-  '技能者ID':                    {en:'Technician ID'},
-  '住民票':                      {en:'Residence Certificate',vi:'Giấy chứng nhận cư trú',id:'Surat Keterangan Domisili',ko:'주민표',zh:'住民票'},
-  'その他':                      {en:'Other',vi:'Khác',id:'Lainnya',my:'အခြား',ko:'기타',ne:'अन्य',zh:'其他',th:'อื่นๆ',km:'ផ្សេងទៀត',mn:'Бусад',si:'වෙනත්'}
+  // ── 人材書類（基本） ──
+  '顔写真':                      {ruby:'<ruby>顔写真<rt>かおじゃしん</rt></ruby>',en:'Photo',vi:'Ảnh',id:'Foto',my:'ဓာတ်ပုံ',ko:'사진',ne:'फोटो',zh:'照片',th:'รูปถ่าย',km:'រូបថត',mn:'Зураг',si:'ඡායාරූපය'},
+  'パスポート':                  {ruby:'パスポート',en:'Passport',vi:'Hộ chiếu',id:'Paspor',my:'နိုင်ငံကူးလက်မှတ်',ko:'여권',ne:'राहदानी',zh:'护照',th:'หนังสือเดินทาง',km:'លិខិតឆ្លងដែន',mn:'Паспорт',si:'ගමන් බලපත්‍රය'},
+  '在留カード':                  {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード',en:'Residence Card',vi:'Thẻ cư trú',id:'Kartu Izin Tinggal',my:'နေထိုင်ခွင့်ကတ်',ko:'재류카드',ne:'आवास कार्ड',zh:'居留卡',th:'บัตรถิ่นที่อยู่',km:'កាតស្នាក់នៅ',mn:'Оршин суух карт',si:'පදිංචිකාර්ඩ්'},
+  '在留カード（表）':             {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード（<ruby>表<rt>おもて</rt></ruby>）',en:'Residence Card (Front)',vi:'Thẻ cư trú (Mặt trước)',id:'Kartu Izin Tinggal (Depan)',my:'နေထိုင်ခွင့်ကတ်(ရှေ့)',ko:'재류카드 (앞면)',ne:'आवास कार्ड (अगाडि)',zh:'居留卡（正面）',th:'บัตรถิ่นที่อยู่ (ด้านหน้า)',km:'កាតស្នាក់នៅ(មុខ)',mn:'Оршин суух карт (нүүр)',si:'පදිංචිකාර්ඩ් (ඉදිරිපස)'},
+  '在留カード（裏）':             {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード（<ruby>裏<rt>うら</rt></ruby>）',en:'Residence Card (Back)',vi:'Thẻ cư trú (Mặt sau)',id:'Kartu Izin Tinggal (Belakang)',my:'နေထိုင်ခွင့်ကတ်(နောက်)',ko:'재류카드 (뒷면)',ne:'आवास कार्ड (पछाडि)',zh:'居留卡（背面）',th:'บัตรถิ่นที่อยู่ (ด้านหลัง)',km:'កាតស្នាក់នៅ(ក្រោយ)',mn:'Оршин суух карт (ар)',si:'පදිංචිකාර්ඩ් (පිටුපස)'},
+  '健康診断票':                  {ruby:'<ruby>健康診断票<rt>けんこうしんだんひょう</rt></ruby>',en:'Medical Examination Certificate',vi:'Giấy khám sức khỏe',id:'Sertifikat Pemeriksaan Kesehatan',my:'ကျန်းမာရေးစစ်ဆေးမှုလက်မှတ်',ko:'건강진단서',ne:'स्वास्थ्य परीक्षण प्रमाणपत्र',zh:'健康诊断书',th:'ใบรับรองตรวจสุขภาพ',km:'វិញ្ញាបនបត្រពិនិត្យសុខភាព',mn:'Эрүүл мэндийн үзлэгийн дүгнэлт',si:'සෞඛ්‍ය පරීක්ෂණ සහතිකය'},
+  '健康診断証':                  {ruby:'<ruby>健康診断証<rt>けんこうしんだんしょう</rt></ruby>',en:'Medical Certificate',vi:'Giấy khám sức khỏe',id:'Sertifikat Kesehatan',ko:'건강진단서',zh:'健康诊断证',th:'ใบรับรองสุขภาพ',km:'វិញ្ញាបនបត្រសុខភាព'},
+  // ── 試験合格証 ──
+  '合格証（技能）':               {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>技能<rt>ぎのう</rt></ruby>）',en:'Certificate (Skills Test)',vi:'Chứng chỉ (Kỳ thi kỹ năng)',id:'Sertifikat (Uji Keterampilan)',my:'အောင်လက်မှတ်(ကျွမ်းကျင်မှု)',ko:'합격증 (기능시험)',ne:'प्रमाणपत्र (सीप परीक्षा)',zh:'合格证（技能考试）',th:'ใบรับรอง (ทักษะ)',km:'វិញ្ញាបនបត្រ (ជំនាញ)',mn:'Гэрчилгээ (ур чадварын)',si:'සහතිකය (කුසලතා)'},
+  '合格証（技能試験）':           {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>技能試験<rt>ぎのうしけん</rt></ruby>）',en:'Certificate (Skills Test)',vi:'Chứng chỉ (Kỳ thi kỹ năng)',id:'Sertifikat (Uji Keterampilan)',ko:'합격증 (기능시험)',zh:'合格证（技能考试）',th:'ใบรับรอง (สอบทักษะ)',km:'វិញ្ញាបនបត្រ (ប្រឡងជំនាញ)'},
+  '合格証（日本語）':             {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>日本語<rt>にほんご</rt></ruby>）',en:'Certificate (Japanese)',vi:'Chứng chỉ (Tiếng Nhật)',id:'Sertifikat (Bahasa Jepang)',my:'အောင်လက်မှတ်(ဂျပန်ဘာသာ)',ko:'합격증 (일본어)',ne:'प्रमाणपत्र (जापानी भाषा)',zh:'合格证（日语）',th:'ใบรับรอง (ภาษาญี่ปุ่น)',km:'វិញ្ញាបនបត្រ (ភាសាជប៉ុន)',mn:'Гэрчилгээ (япон хэл)',si:'සහතිකය (ජපන් භාෂාව)'},
+  '合格証（専門級・3級）':       {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>専門級<rt>せんもんきゅう</rt></ruby>・3<ruby>級<rt>きゅう</rt></ruby>）',en:'Certificate (Specialist/Level 3)',vi:'Chứng chỉ (Chuyên ngành/Cấp 3)',id:'Sertifikat (Spesialis/Level 3)',ko:'합격증 (전문급·3급)',zh:'合格证（专项级·3级）',th:'ใบรับรอง (เฉพาะทาง/ระดับ 3)',km:'វិញ្ញាបនបត្រ (កម្រិតឯកទេស/កម្រិត3)'},
+  '専門級':                      {ruby:'<ruby>専門級<rt>せんもんきゅう</rt></ruby>',en:'Specialist Level',vi:'Cấp chuyên ngành',id:'Tingkat Spesialis',my:'အထူးပြုအဆင့်',ko:'전문급',ne:'विशेष तह',zh:'专项级',th:'ระดับเฉพาะทาง',km:'កម្រិតឯកទេស',mn:'Мэргэжлийн зэрэг',si:'විශේෂඥ මට්ටම'},
+  '技能実習の合格証':             {ruby:'<ruby>技能実習<rt>ぎのうじっしゅう</rt></ruby>の<ruby>合格証<rt>ごうかくしょう</rt></ruby>',en:'Technical Intern Training Certificate',vi:'Chứng chỉ thực tập kỹ năng',id:'Sertifikat Pemagangan Teknis',ko:'기능실습 합격증',zh:'技能实习合格证',th:'ใบรับรองฝึกงานทักษะ',km:'វិញ្ញាបនបត្រកម្មសិក្សាជំនាញ'},
+  // ── 税関係 ──
+  '所得・課税証明書':             {ruby:'<ruby>所得<rt>しょとく</rt></ruby>・<ruby>課税証明書<rt>かぜいしょうめいしょ</rt></ruby>',en:'Income/Taxation Certificate',vi:'Giấy chứng nhận thu nhập/thuế',id:'Surat Keterangan Penghasilan/Pajak',my:'ဝင်ငွေ/အခွန်လက်မှတ်',ko:'소득·과세증명서',ne:'आय/कर प्रमाणपत्र',zh:'收入·课税证明',th:'ใบรับรองรายได้/ภาษี',km:'វិញ្ញាបនបត្រប្រាក់ចំណូល/ពន្ធ',mn:'Орлого/татварын тодорхойлолт',si:'ආදායම්/බදු සහතිකය'},
+  '課税証明書':                  {ruby:'<ruby>課税証明書<rt>かぜいしょうめいしょ</rt></ruby>',en:'Taxation Certificate',vi:'Giấy chứng nhận thuế',id:'Surat Keterangan Pajak',ko:'과세증명서',zh:'课税证明',th:'ใบรับรองภาษี',km:'វិញ្ញាបនបត្រពន្ធ'},
+  '納税証明書':                  {ruby:'<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>',en:'Tax Payment Certificate',vi:'Giấy chứng nhận nộp thuế',id:'Bukti Pembayaran Pajak',my:'အခွန်ပေးဆောင်ပြီးကြောင်းလက်မှတ်',ko:'납세증명서',ne:'कर तिर्ने प्रमाणपत्र',zh:'纳税证明',th:'ใบรับรองการชำระภาษี',km:'វិញ្ញាបនបត្របង់ពន្ធ',mn:'Татвар төлсний тодорхойлолт',si:'බදු ගෙවීමේ සහතිකය'},
+  '源泉徴収票':                  {ruby:'<ruby>源泉徴収票<rt>げんせんちょうしゅうひょう</rt></ruby>',en:'Withholding Tax Statement',vi:'Phiếu khấu trừ thuế',id:'Slip Pemotongan Pajak',my:'အခွန်ဖြတ်တောက်လွှာ',ko:'원천징수영수증',ne:'स्रोत कर कट्टी विवरण',zh:'扣缴凭证',th:'ใบหักภาษี ณ ที่จ่าย',km:'របាយការណ៍ដកពន្ធទុក',mn:'Татварын суутгалын баримт',si:'උපුටාගත් බදු ප්‍රකාශය'},
+  // ── 保険・年金関係 ──
+  '健康保険証':                  {ruby:'<ruby>健康保険証<rt>けんこうほけんしょう</rt></ruby>',en:'Health Insurance Card',vi:'Thẻ bảo hiểm y tế',id:'Kartu Asuransi Kesehatan',ko:'건강보험증',zh:'健康保险证',th:'บัตรประกันสุขภาพ',km:'កាតធានារ៉ាប់រងសុខភាព'},
+  '国民健康保険被保険者証':       {ruby:'<ruby>国民健康保険被保険者証<rt>こくみんけんこうほけんひほけんしゃしょう</rt></ruby>',en:'National Health Insurance Card',vi:'Thẻ bảo hiểm y tế quốc dân',id:'Kartu Asuransi Kesehatan Nasional',ko:'국민건강보험증',zh:'国民健康保险被保险者证',th:'บัตรประกันสุขภาพแห่งชาติ',km:'កាតធានារ៉ាប់រងសុខភាពជាតិ'},
+  '国民健康保険料納付証明書':     {ruby:'<ruby>国民健康保険料納付証明書<rt>こくみんけんこうほけんりょうのうふしょうめいしょ</rt></ruby>',en:'National Health Insurance Payment Certificate',vi:'Giấy chứng nhận đóng bảo hiểm y tế quốc dân',id:'Bukti Pembayaran Asuransi Kesehatan Nasional',ko:'국민건강보험료 납부증명서',zh:'国民健康保险费缴费证明',th:'ใบรับรองการชำระค่าประกันสุขภาพแห่งชาติ',km:'វិញ្ញាបនបត្របង់ប្រាក់ធានារ៉ាប់រងសុខភាពជាតិ'},
+  '国民健康保険料（税）納付証明書':{ruby:'<ruby>国民健康保険料<rt>こくみんけんこうほけんりょう</rt></ruby>（<ruby>税<rt>ぜい</rt></ruby>）<ruby>納付証明書<rt>のうふしょうめいしょ</rt></ruby>',en:'National Health Insurance Premium (Tax) Payment Certificate',vi:'Giấy chứng nhận nộp phí (thuế) bảo hiểm y tế quốc dân',id:'Bukti Pembayaran Iuran (Pajak) Asuransi Kesehatan Nasional',ko:'국민건강보험료(세) 납부증명서',zh:'国民健康保险费(税)缴费证明',th:'ใบรับรองการชำระค่า(ภาษี)ประกันสุขภาพแห่งชาติ',km:'វិញ្ញាបនបត្របង់ប្រាក់(ពន្ធ)ធានារ៉ាប់រងសុខភាពជាតិ'},
+  '年金手帳':                    {ruby:'<ruby>年金手帳<rt>ねんきんてちょう</rt></ruby>',en:'Pension Booklet',vi:'Sổ hưu trí',id:'Buku Pensiun',my:'အငြိမ်းစားလက်စွဲ',ko:'연금수첩',ne:'पेन्सन पुस्तिका',zh:'养老金手册',th:'สมุดบำนาญ',km:'សៀវភៅសោធននិវត្តន៍',mn:'Тэтгэврийн дэвтэр',si:'විශ්‍රාම වැටුප් පොත'},
+  '資格確認書':                  {ruby:'<ruby>資格確認書<rt>しかくかくにんしょ</rt></ruby>',en:'Qualification Confirmation Document',vi:'Giấy xác nhận tư cách',id:'Surat Konfirmasi Kualifikasi',ko:'자격확인서',zh:'资格确认书',th:'หนังสือยืนยันคุณสมบัติ',km:'លិខិតបញ្ជាក់សិទ្ធិ'},
+  '被保険者記録照会回答票':       {ruby:'<ruby>被保険者記録照会回答票<rt>ひほけんしゃきろくしょうかいかいとうひょう</rt></ruby>',en:'Insured Person Record Inquiry Response',vi:'Phiếu trả lời tra cứu hồ sơ người được bảo hiểm',id:'Tanggapan Permintaan Catatan Tertanggung',ko:'피보험자 기록조회 회답표',zh:'被保险人记录查询回答表',th:'แบบตอบสอบถามบันทึกผู้เอาประกัน',km:'លិខិតឆ្លើយតបការសាកសួរកំណត់ត្រាអ្នកត្រូវបានធានារ៉ាប់រង'},
+  '被保険者記録照会回答表':       {ruby:'<ruby>被保険者記録照会回答表<rt>ひほけんしゃきろくしょうかいかいとうひょう</rt></ruby>',en:'Insured Person Record Inquiry Response',vi:'Bảng trả lời tra cứu hồ sơ người được bảo hiểm',id:'Tabel Tanggapan Catatan Tertanggung',ko:'피보험자 기록조회 회답표',zh:'被保险人记录查询回答表',th:'ตารางตอบสอบถามบันทึกผู้เอาประกัน',km:'តារាងឆ្លើយតបការសាកសួរកំណត់ត្រាអ្នកធានារ៉ាប់រង'},
+  '被保険者記録照会（納付Ⅱ）':   {ruby:'<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>（<ruby>納付<rt>のうふ</rt></ruby>Ⅱ）',en:'Insured Person Record Inquiry (Payment II)',vi:'Tra cứu hồ sơ người được bảo hiểm (Thanh toán II)',id:'Permintaan Catatan Tertanggung (Pembayaran II)',ko:'피보험자 기록조회 (납부Ⅱ)',zh:'被保险人记录查询(缴付Ⅱ)',th:'การสอบถามบันทึกผู้เอาประกัน (ชำระII)',km:'ការសាកសួរកំណត់ត្រាអ្នកធានារ៉ាប់រង(បង់Ⅱ)'},
+  '被保険者記録照会(納付Ⅱ)':     {ruby:'<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>(<ruby>納付<rt>のうふ</rt></ruby>Ⅱ)',en:'Insured Person Record Inquiry (Payment II)',vi:'Tra cứu hồ sơ người được bảo hiểm (Thanh toán II)',ko:'피보험자 기록조회(납부Ⅱ)',zh:'被保险人记录查询(缴付Ⅱ)',km:'ការសាកសួរកំណត់ត្រាអ្នកធានារ៉ាប់រង(បង់Ⅱ)'},
+  // ── 学歴関係 ──
+  '卒業証明書':                  {ruby:'<ruby>卒業証明書<rt>そつぎょうしょうめいしょ</rt></ruby>',en:'Graduation Certificate',vi:'Bằng tốt nghiệp',id:'Ijazah',my:'ဘွဲ့လက်မှတ်',ko:'졸업증명서',ne:'स्नातक प्रमाणपत्र',zh:'毕业证明书',th:'ใบรับรองจบการศึกษา',km:'វិញ្ញាបនបត្របញ្ចប់ការសិក្សា',mn:'Төгссөн тухай гэрчилгээ',si:'උපාධි සහතිකය'},
+  '卒業証明書（または卒業見込証明書）':{ruby:'<ruby>卒業証明書<rt>そつぎょうしょうめいしょ</rt></ruby>（または<ruby>卒業見込証明書<rt>そつぎょうみこみしょうめいしょ</rt></ruby>）',en:'Graduation Certificate (or Expected Graduation Certificate)',vi:'Bằng tốt nghiệp (hoặc Giấy chứng nhận sắp tốt nghiệp)',id:'Ijazah (atau Surat Keterangan Akan Lulus)',ko:'졸업증명서 (또는 졸업예정증명서)',zh:'毕业证明书（或预计毕业证明书）',th:'ใบรับรองจบการศึกษา (หรือใบคาดว่าจะจบ)',km:'វិញ្ញាបនបត្របញ្ចប់ការសិក្សា (ឬរំពឹងបញ្ចប់)'},
+  '成績証明書':                  {ruby:'<ruby>成績証明書<rt>せいせきしょうめいしょ</rt></ruby>',en:'Academic Transcript',vi:'Bảng điểm',id:'Transkrip Nilai',my:'အမှတ်လက်မှတ်',ko:'성적증명서',ne:'अंकपत्र',zh:'成绩单',th:'ใบรับรองผลการเรียน',km:'សន្លឹកពិន្ទុ',mn:'Үнэлгээний тодорхойлолт',si:'ශාස්ත්‍රීය පිටපත'},
+  '出席証明書':                  {ruby:'<ruby>出席証明書<rt>しゅっせきしょうめいしょ</rt></ruby>',en:'Attendance Certificate',vi:'Giấy chứng nhận đi học',id:'Surat Keterangan Kehadiran',ko:'출석증명서',zh:'出席证明书',th:'ใบรับรองการเข้าเรียน',km:'វិញ្ញាបនបត្រវត្តមាន'},
+  // ── 推薦関係 ──
+  '大使館推薦票':                {ruby:'<ruby>大使館推薦票<rt>たいしかんすいせんひょう</rt></ruby>',en:'Embassy Recommendation Letter',vi:'Giấy giới thiệu của Đại sứ quán',id:'Surat Rekomendasi Kedutaan',ko:'대사관 추천서',zh:'大使馆推荐书',th:'หนังสือแนะนำสถานทูต',km:'លិខិតណែនាំស្ថានទូត'},
+  '推薦状（送出機関）':          {ruby:'<ruby>推薦状<rt>すいせんじょう</rt></ruby>（<ruby>送出機関<rt>そうしゅつきかん</rt></ruby>）',en:'Recommendation Letter (Sending Agency)',vi:'Giấy giới thiệu (Cơ quan phái cử)',id:'Surat Rekomendasi (Lembaga Pengirim)',ko:'추천장 (송출기관)',zh:'推荐书（派遣机构）',th:'หนังสือแนะนำ (หน่วยงานส่งออก)',km:'លិខិតណែនាំ (ស្ថាប័នបញ្ជូន)'},
+  '推薦票':                      {ruby:'<ruby>推薦票<rt>すいせんひょう</rt></ruby>',en:'Recommendation',vi:'Phiếu giới thiệu',id:'Rekomendasi',ko:'추천표',zh:'推荐票',km:'សន្លឹកណែនាំ'},
+  '無犯罪証明書（カンボジア）':  {ruby:'<ruby>無犯罪証明書<rt>むはんざいしょうめいしょ</rt></ruby>（カンボジア）',en:'Police Clearance Certificate (Cambodia)',vi:'Lý lịch tư pháp (Campuchia)',id:'SKCK (Kamboja)',ko:'무범죄증명서 (캄보디아)',zh:'无犯罪证明书（柬埔寨）',km:'លិខិតបញ្ជាក់គ្មានបទល្មើស (កម្ពុជា)'},
+  '無犯罪証明書（ミャンマー）':  {ruby:'<ruby>無犯罪証明書<rt>むはんざいしょうめいしょ</rt></ruby>（ミャンマー）',en:'Police Clearance Certificate (Myanmar)',vi:'Lý lịch tư pháp (Myanmar)',id:'SKCK (Myanmar)',ko:'무범죄증명서 (미얀마)',zh:'无犯罪证明书（缅甸）',my:'ပြစ်မှုကင်းရှင်းကြောင်းလက်မှတ်(မြန်မာ)',km:'លិខិតបញ្ជាក់គ្មានបទល្មើស (មីយ៉ាន់ម៉ា)'},
+  // ── その他人材書類 ──
+  '住民票':                      {ruby:'<ruby>住民票<rt>じゅうみんひょう</rt></ruby>',en:'Residence Certificate',vi:'Giấy chứng nhận cư trú',id:'Surat Keterangan Domisili',my:'နေထိုင်ခွင့်လက်မှတ်',ko:'주민표',ne:'बसोबास प्रमाणपत्र',zh:'住民票',th:'ทะเบียนบ้าน',km:'លិខិតបញ្ជាក់ទីលំនៅ',mn:'Оршин суугчийн гэрчилгээ',si:'පදිංචිකරුවා සහතිකය'},
+  '技能者ID':                    {ruby:'<ruby>技能者<rt>ぎのうしゃ</rt></ruby>ID',en:'Technician ID',vi:'ID kỹ thuật viên',id:'ID Teknisi',ko:'기능자 ID',zh:'技能者ID',th:'ID ช่างเทคนิค',km:'លេខសម្គាល់ជាងជំនាញ'},
+  'その他':                      {ruby:'その<ruby>他<rt>た</rt></ruby>',en:'Other',vi:'Khác',id:'Lainnya',my:'အခြား',ko:'기타',ne:'अन्य',zh:'其他',th:'อื่นๆ',km:'ផ្សេងទៀត',mn:'Бусад',si:'වෙනත්'}
 };
 
 // 旧ロジック用（USE_NEW_DOCS=false のときだけ使用）
@@ -318,20 +337,32 @@ function buildFields() {
     const label = document.createElement('span');
     label.className = 'field-label';
     // ver.20260525.01: 新ロジックではDOC_LABELS_JA経由で日本語ラベル取得→翻訳辞書で多言語化
+    // ver.20260525.22: 日本語表示時はふりがな(ruby)付きHTMLを使用
     let labelText;
+    let labelIsHtml = false;
     if (USE_NEW_DOCS) {
       const ja = DOC_LABELS_JA[key] || key;
+      const tr = DOC_TRANSLATIONS[ja];
       if (currentLang === 'ja') {
-        labelText = ja;
+        // 日本語：ふりがな(ruby)付きがあればそれを、なければそのまま
+        if (tr && tr.ruby) {
+          labelText = tr.ruby;
+          labelIsHtml = true;
+        } else {
+          labelText = ja;
+        }
       } else {
-        const tr = DOC_TRANSLATIONS[ja];
         labelText = (tr && tr[currentLang]) ? tr[currentLang] : ja;
       }
     } else {
       labelText = (L.docs && L.docs[key]) || key;
     }
-    if (isRequired) { label.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + labelText; }
-    else { label.textContent = labelText; }
+    // ruby タグ等の HTML を含む可能性があるため、innerHTML を使う（テキストは esc 済み or 信頼できる）
+    if (isRequired) {
+      label.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + (labelIsHtml ? labelText : _escName(labelText));
+    } else {
+      label.innerHTML = labelIsHtml ? labelText : _escName(labelText);
+    }
     const status = document.createElement('span');
     status.className = 'field-status' + (hasFiles ? ' ready' : '');
     status.textContent = hasFiles ? L.selected : L.noFile;

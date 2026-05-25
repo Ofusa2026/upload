@@ -348,6 +348,71 @@ const DOCS_LIST = _decodeDocsParam(DOCS_PARAM);
 const USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
 console.log('📋 USE_NEW_DOCS:', USE_NEW_DOCS, 'DOCS_LIST:', DOCS_LIST);
 
+// ver.20260525.22: 書類名にふりがな(ruby)を付与する辞書
+// マッチしない書類は日本語のまま表示
+const DOC_RUBY = {
+  // ── 会社（中小） ──
+  '決算文書の写し（損益計算書及び貸借対照表）': '<ruby>決算文書<rt>けっさんぶんしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し（<ruby>損益計算書<rt>そんえきけいさんしょ</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>貸借対照表<rt>たいしゃくたいしょうひょう</rt></ruby>）',
+  '決算文書の写し3期分（損益計算書及び貸借対照表）': '<ruby>決算文書<rt>けっさんぶんしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し3<ruby>期分<rt>きぶん</rt></ruby>（<ruby>損益計算書<rt>そんえきけいさんしょ</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>貸借対照表<rt>たいしゃくたいしょうひょう</rt></ruby>）',
+  '登記事項証明書（履歴事項全部証明書）': '<ruby>登記事項証明書<rt>とうきじこうしょうめいしょ</rt></ruby>（<ruby>履歴事項全部証明書<rt>りれきじこうぜんぶしょうめいしょ</rt></ruby>）',
+  '役員（代表で1名分）の住民票の写し': '<ruby>役員<rt>やくいん</rt></ruby>（<ruby>代表<rt>だいひょう</rt></ruby>で1<ruby>名分<rt>めいぶん</rt></ruby>）の<ruby>住民票<rt>じゅうみんひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '業務に関わる役員（最低1名分）の住民票の写し': '<ruby>業務<rt>ぎょうむ</rt></ruby>に<ruby>関<rt>かか</rt></ruby>わる<ruby>役員<rt>やくいん</rt></ruby>（<ruby>最低<rt>さいてい</rt></ruby>1<ruby>名分<rt>めいぶん</rt></ruby>）の<ruby>住民票<rt>じゅうみんひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '労働保険料等納付証明書（未納なし証明）': '<ruby>労働保険料等納付証明書<rt>ろうどうほけんりょうとうのうふしょうめいしょ</rt></ruby>（<ruby>未納<rt>みのう</rt></ruby>なし<ruby>証明<rt>しょうめい</rt></ruby>）',
+  '労働保険料等納付証明書': '<ruby>労働保険料等納付証明書<rt>ろうどうほけんりょうとうのうふしょうめいしょ</rt></ruby>',
+  '社会保険料納入状況照会回答票': '<ruby>社会保険料納入状況照会回答票<rt>しゃかいほけんりょうのうにゅうじょうきょうしょうかいかいとうひょう</rt></ruby>',
+  '社会保険料納入状況照会回答票または領収書24ヶ月分': '<ruby>社会保険料納入状況照会回答票<rt>しゃかいほけんりょうのうにゅうじょうきょうしょうかいかいとうひょう</rt></ruby>または<ruby>領収書<rt>りょうしゅうしょ</rt></ruby>24ヶ<ruby>月分<rt>げつぶん</rt></ruby>',
+  '納税証明書（その３）源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税 ＊税務署発行': '<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（その３）<ruby>源泉所得税<rt>げんせんしょとくぜい</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>復興特別所得税<rt>ふっこうとくべつしょとくぜい</rt></ruby>・<ruby>法人税<rt>ほうじんぜい</rt></ruby>・<ruby>消費税<rt>しょうひぜい</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>地方消費税<rt>ちほうしょうひぜい</rt></ruby> ＊<ruby>税務署発行<rt>ぜいむしょはっこう</rt></ruby>',
+  '納税証明書（地方税）法人住民税 ＊市町村発行': '<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（<ruby>地方税<rt>ちほうぜい</rt></ruby>）<ruby>法人住民税<rt>ほうじんじゅうみんぜい</rt></ruby> ＊<ruby>市町村発行<rt>しちょうそんはっこう</rt></ruby>',
+  '就業規則': '<ruby>就業規則<rt>しゅうぎょうきそく</rt></ruby>',
+  '賃金規定': '<ruby>賃金規定<rt>ちんぎんきてい</rt></ruby>',
+  '36協定届出書': '36<ruby>協定届出書<rt>きょうていとどけでしょ</rt></ruby>',
+  '変形労働届出書': '<ruby>変形労働届出書<rt>へんけいろうどうとどけでしょ</rt></ruby>',
+  '年間カレンダー': '<ruby>年間<rt>ねんかん</rt></ruby>カレンダー',
+  '③ 居住予定物件の物件資料': '③ <ruby>居住予定物件<rt>きょじゅうよていぶっけん</rt></ruby>の<ruby>物件資料<rt>ぶっけんしりょう</rt></ruby>',
+  '予定物件の間取り図、物件資料など': '<ruby>予定物件<rt>よていぶっけん</rt></ruby>の<ruby>間取<rt>まど</rt></ruby>り<ruby>図<rt>ず</rt></ruby>、<ruby>物件資料<rt>ぶっけんしりょう</rt></ruby>など',
+  '協議会加入証明書': '<ruby>協議会加入証明書<rt>きょうぎかいかにゅうしょうめいしょ</rt></ruby>',
+  // ── 会社（大企業） ──
+  '四季報の写しまたは法定調書合計表の写し': '<ruby>四季報<rt>しきほう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>しまたは<ruby>法定調書合計表<rt>ほうていちょうしょごうけいひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '四季報の写し、または上場証明書類': '<ruby>四季報<rt>しきほう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し、または<ruby>上場証明書類<rt>じょうじょうしょうめいしょるい</rt></ruby>',
+  '法定調書合計表の写し（税務署発行）': '<ruby>法定調書合計表<rt>ほうていちょうしょごうけいひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し（<ruby>税務署発行<rt>ぜいむしょはっこう</rt></ruby>）',
+  // ── 会社（個人事業主） ──
+  '個人事業主納税証明書その3(5項目)': '<ruby>個人事業主納税証明書<rt>こじんじぎょうぬしのうぜいしょうめいしょ</rt></ruby>その3(5<ruby>項目<rt>こうもく</rt></ruby>)',
+  '個人事業主の住民票の写し': '<ruby>個人事業主<rt>こじんじぎょうぬし</rt></ruby>の<ruby>住民票<rt>じゅうみんひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '住民税の納税証明書': '<ruby>住民税<rt>じゅうみんぜい</rt></ruby>の<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>',
+  '個人住民税の納税証明書（直近2年度分）＊市区町村発行': '<ruby>個人住民税<rt>こじんじゅうみんぜい</rt></ruby>の<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（<ruby>直近<rt>ちょっきん</rt></ruby>2<ruby>年度分<rt>ねんどぶん</rt></ruby>）＊<ruby>市区町村発行<rt>しくちょうそんはっこう</rt></ruby>',
+  '住民票': '<ruby>住民票<rt>じゅうみんひょう</rt></ruby>',
+  'マイナポータルからダウンロードした医療保険の資格情報の写し': 'マイナポータルからダウンロードした<ruby>医療保険<rt>いりょうほけん</rt></ruby>の<ruby>資格情報<rt>しかくじょうほう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  'マイナポータルからダウンロードした医療保険の資格情報の写し、または資格確認書の写し': 'マイナポータルからダウンロードした<ruby>医療保険<rt>いりょうほけん</rt></ruby>の<ruby>資格情報<rt>しかくじょうほう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し、または<ruby>資格確認書<rt>しかくかくにんしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '国民健康保険料(税)納付証明書(直近1年度)': '<ruby>国民健康保険料<rt>こくみんけんこうほけんりょう</rt></ruby>(<ruby>税<rt>ぜい</rt></ruby>)<ruby>納付証明書<rt>のうふしょうめいしょ</rt></ruby>(<ruby>直近<rt>ちょっきん</rt></ruby>1<ruby>年度<rt>ねんど</rt></ruby>)',
+  '国民健康保険料（税）納付証明書（直近2年分）': '<ruby>国民健康保険料<rt>こくみんけんこうほけんりょう</rt></ruby>（<ruby>税<rt>ぜい</rt></ruby>）<ruby>納付証明書<rt>のうふしょうめいしょ</rt></ruby>（<ruby>直近<rt>ちょっきん</rt></ruby>2<ruby>年分<rt>ねんぶん</rt></ruby>）',
+  '被保険者記録照会回答表': '<ruby>被保険者記録照会回答表<rt>ひほけんしゃきろくしょうかいかいとうひょう</rt></ruby>',
+  '被保険者記録照会(納付Ⅱ)': '<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>(<ruby>納付<rt>のうふ</rt></ruby>Ⅱ)',
+  '被保険者記録照会（納付Ⅱ）または国民年金保険料領収証書の写し（直近24ヶ月分）': '<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>（<ruby>納付<rt>のうふ</rt></ruby>Ⅱ）または<ruby>国民年金保険料領収証書<rt>こくみんねんきんほけんりょうりょうしゅうしょうしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し（<ruby>直近<rt>ちょっきん</rt></ruby>24ヶ<ruby>月分<rt>げつぶん</rt></ruby>）',
+  '納税証明書（その３）＊税務署発行　税目）源泉所得税及び復興特別所得税、法人税、消費税及び地方消費税': '<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（その３）＊<ruby>税務署発行<rt>ぜいむしょはっこう</rt></ruby>　<ruby>税目<rt>ぜいもく</rt></ruby>）<ruby>源泉所得税<rt>げんせんしょとくぜい</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>復興特別所得税<rt>ふっこうとくべつしょとくぜい</rt></ruby>、<ruby>法人税<rt>ほうじんぜい</rt></ruby>、<ruby>消費税<rt>しょうひぜい</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>地方消費税<rt>ちほうしょうひぜい</rt></ruby>',
+  '納税証明書（その３）＊税務署発行　税目）源泉所得税・申告所得税・消費税・地方消費税・相続税・贈与税': '<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（その３）＊<ruby>税務署発行<rt>ぜいむしょはっこう</rt></ruby>　<ruby>税目<rt>ぜいもく</rt></ruby>）<ruby>源泉所得税<rt>げんせんしょとくぜい</rt></ruby>・<ruby>申告所得税<rt>しんこくしょとくぜい</rt></ruby>・<ruby>消費税<rt>しょうひぜい</rt></ruby>・<ruby>地方消費税<rt>ちほうしょうひぜい</rt></ruby>・<ruby>相続税<rt>そうぞくぜい</rt></ruby>・<ruby>贈与税<rt>ぞうよぜい</rt></ruby>',
+  // ── 分野別 ──
+  '造船・舶用工業分野 特定技能評価試験結果': '<ruby>造船<rt>ぞうせん</rt></ruby>・<ruby>舶用工業分野<rt>はくようこうぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '自動車整備分野 特定技能評価試験結果': '<ruby>自動車整備分野<rt>じどうしゃせいびぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '認定自動車整備士資格証（写し）': '<ruby>認定自動車整備士資格証<rt>にんていじどうしゃせいびししかくしょう</rt></ruby>（<ruby>写<rt>うつ</rt></ruby>し）',
+  '航空分野 特定技能評価試験結果': '<ruby>航空分野<rt>こうくうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '宿泊分野 特定技能評価試験結果': '<ruby>宿泊分野<rt>しゅくはくぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '農業分野 特定技能評価試験結果': '<ruby>農業分野<rt>のうぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '漁業分野 特定技能評価試験結果': '<ruby>漁業分野<rt>ぎょぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '飲食料品製造業分野 特定技能評価試験結果': '<ruby>飲食料品製造業分野<rt>いんしょくりょうひんせいぞうぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '外食業分野 特定技能評価試験結果': '<ruby>外食業分野<rt>がいしょくぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  'ビルクリーニング分野 特定技能評価試験結果': 'ビルクリーニング<ruby>分野<rt>ぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '素形材・産業機械・電気電子情報産業分野 特定技能評価試験結果': '<ruby>素形材<rt>そけいざい</rt></ruby>・<ruby>産業機械<rt>さんぎょうきかい</rt></ruby>・<ruby>電気電子情報産業分野<rt>でんきでんしじょうほうさんぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '林業分野 特定技能評価試験結果': '<ruby>林業分野<rt>りんぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '木材産業分野 特定技能評価試験結果': '<ruby>木材産業分野<rt>もくざいさんぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  // ── その他 ──
+  'その他': 'その<ruby>他<rt>た</rt></ruby>'
+};
+
+function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');}
+function _labelWithRuby(ja){
+  return DOC_RUBY[ja] || _esc(ja);
+}
+
 if (COMPANY_NAME) {
   const bar = document.getElementById('companyNameBar');
   bar.textContent = '🏢 ' + COMPANY_NAME;
@@ -424,7 +489,7 @@ function buildFieldRow(key, docsMap) {
   const header = document.createElement('div');
   header.className = 'field-header';
   header.innerHTML = `
-    <span class="field-label">${docsMap[key]}</span>
+    <span class="field-label">${_labelWithRuby(docsMap[key])}</span>
     <span class="field-status${hasFile ? ' ready' : ''}">${hasFile ? arr.length + '件選択済み ✓' : '未選択'}</span>
     <span class="chevron">▼</span>
   `;
