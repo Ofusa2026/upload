@@ -121,7 +121,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260525.02';
+const VERSION = 'ver.20260525.34';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -152,8 +152,40 @@ function _decodeDocsParam(s){
     return null;
   }
 }
-const DOCS_LIST = _decodeDocsParam(DOCS_PARAM);
-const USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
+// ver.20260525.34: docs パラメータが長すぎてLINEでハイパーリンク化されない問題対応
+//   - docs パラメータが空でも CASE_ID があれば upload_docs_cache から取得する
+//   - これらは初期は null/false、_loadDocsFromCache() で確定
+let DOCS_LIST = _decodeDocsParam(DOCS_PARAM);
+let USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
+
+// Supabaseの upload_docs_cache から書類リストを取得
+const SUPABASE_URL_UPL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
+const SUPABASE_KEY_UPL = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
+function _loadDocsFromCache(){
+  return new Promise(function(resolve){
+    if(USE_NEW_DOCS){ resolve(DOCS_LIST); return; }  // URLパラメータ優先
+    if(!CASE_ID){ resolve(null); return; }
+    var url = SUPABASE_URL_UPL + '/rest/v1/upload_docs_cache?case_id=eq.' + encodeURIComponent(CASE_ID) + '&kind=eq.person&select=docs';
+    fetch(url, {
+      headers: {
+        'apikey': SUPABASE_KEY_UPL,
+        'Authorization': 'Bearer ' + SUPABASE_KEY_UPL,
+        'Accept': 'application/json'
+      }
+    }).then(function(r){ return r.ok ? r.json() : []; }).then(function(rows){
+      if(rows && rows[0] && Array.isArray(rows[0].docs) && rows[0].docs.length){
+        DOCS_LIST = rows[0].docs;
+        USE_NEW_DOCS = true;
+        resolve(DOCS_LIST);
+      } else {
+        resolve(null);
+      }
+    }).catch(function(e){
+      console.warn('upload_docs_cache fetch err:', e);
+      resolve(null);
+    });
+  });
+}
 console.log('📋 USE_NEW_DOCS:', USE_NEW_DOCS, 'DOCS_LIST:', DOCS_LIST, 'SKIP_DOCS:', SKIP_DOCS);
 
 // 多言語翻訳辞書（日本語ラベル → 各言語 + ruby: 日本語表示用ふりがな付きHTML）
@@ -269,23 +301,27 @@ function getDocKeys() {
   }).map(d => d.key);
 }
 // ver.20260525.01: docs パラメータがあれば新ロジック、なければ旧ロジック
+// ver.20260525.34: DBキャッシュから取得した場合も新ロジックを使う（_initDocKeys を _loadDocsFromCache 完了後に呼ぶ）
 let DOC_KEYS, DOC_LABELS_JA, DOC_REQUIRED;
-if (USE_NEW_DOCS) {
-  // 新ロジック: DOCS_LIST = [{l: '書類名', r: 1}, ...]
-  DOC_KEYS = DOCS_LIST.map(function(d, i){ return 'd' + i; });
-  DOC_LABELS_JA = {};
-  DOC_REQUIRED = {};
-  DOCS_LIST.forEach(function(d, i){
-    var key = 'd' + i;
-    DOC_LABELS_JA[key] = d.l || '';
-    DOC_REQUIRED[key] = !!d.r;
-  });
-} else {
-  // 旧ロジック
-  DOC_KEYS = getDocKeys();
-  DOC_LABELS_JA = null;  // 旧ロジックは LANGS[].docs[key] を使う
-  DOC_REQUIRED = null;
+function _initDocKeys(){
+  if (USE_NEW_DOCS) {
+    // 新ロジック: DOCS_LIST = [{l: '書類名', r: 1}, ...]
+    DOC_KEYS = DOCS_LIST.map(function(d, i){ return 'd' + i; });
+    DOC_LABELS_JA = {};
+    DOC_REQUIRED = {};
+    DOCS_LIST.forEach(function(d, i){
+      var key = 'd' + i;
+      DOC_LABELS_JA[key] = d.l || '';
+      DOC_REQUIRED[key] = !!d.r;
+    });
+  } else {
+    // 旧ロジック
+    DOC_KEYS = getDocKeys();
+    DOC_LABELS_JA = null;  // 旧ロジックは LANGS[].docs[key] を使う
+    DOC_REQUIRED = null;
+  }
 }
+_initDocKeys();
 
 const LANGS = {
   ja:{label:'日本語',title:'書類アップロード',subtitle:'必要な書類の写真をアップロードしてください\n（不要な項目はスキップできます）',tapToAdd:'📷 タップして写真を追加',hint:'JPG / PNG / PDF',btnSubmit:'送信する',noFile:'未選択',selected:'選択済み ✓',msgSuccess:'✅ アップロード完了しました！\n担当者に届きました。',msgError:'❌ 送信に失敗しました。\nもう一度お試しください。',msgNoFile:'少なくとも1枚の写真を選択してください',docs:{zairyu_front:'在留カード（表）',zairyu_back:'在留カード（裏）',passport:'パスポート',cert_jp:'合格証（日本語）',cert_skill:'合格証（技能試験）',cert_specialist:'合格証（専門級・3級）',tax_payment:'納税証明書',tax_cert:'課税証明書',withholding:'源泉徴収票',medical:'健康診断証',mugshot:'顔写真',health_ins:'健康保険証',health_ins_cert:'国民健康保険料納付証明書',graduation:'卒業証明書',transcript:'成績証明書',nenkin:'年金手帳',embassy_rec:'大使館推薦票',other:'その他'}},
@@ -417,7 +453,14 @@ function setLang(code) {
   document.getElementById('ttlSub').textContent = sub;
   buildFields(); updateSubmitBtn();
 }
-setLang('ja');
+// ver.20260525.34: DBキャッシュから書類リストを取得してから初期描画
+(async function _initDocsAndLang(){
+  try {
+    await _loadDocsFromCache();
+    _initDocKeys();
+  } catch(e){ console.warn('_initDocsAndLang err:', e); }
+  setLang('ja');
+})();
 document.getElementById('verBadge').textContent = VERSION;
 
 // 名前確認モーダル処理

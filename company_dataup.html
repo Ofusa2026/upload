@@ -344,8 +344,37 @@ function _decodeDocsParam(s){
     return null;
   }
 }
-const DOCS_LIST = _decodeDocsParam(DOCS_PARAM);
-const USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
+// ver.20260525.34: docs パラメータが空でも COMPANY_ID があれば upload_docs_cache から取得
+let DOCS_LIST = _decodeDocsParam(DOCS_PARAM);
+let USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
+
+const SUPABASE_URL_UPL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
+const SUPABASE_KEY_UPL = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
+function _loadDocsFromCache(){
+  return new Promise(function(resolve){
+    if(USE_NEW_DOCS){ resolve(DOCS_LIST); return; }
+    if(!COMPANY_ID){ resolve(null); return; }
+    var url = SUPABASE_URL_UPL + '/rest/v1/upload_docs_cache?case_id=eq.' + encodeURIComponent(COMPANY_ID) + '&kind=eq.company&select=docs';
+    fetch(url, {
+      headers: {
+        'apikey': SUPABASE_KEY_UPL,
+        'Authorization': 'Bearer ' + SUPABASE_KEY_UPL,
+        'Accept': 'application/json'
+      }
+    }).then(function(r){ return r.ok ? r.json() : []; }).then(function(rows){
+      if(rows && rows[0] && Array.isArray(rows[0].docs) && rows[0].docs.length){
+        DOCS_LIST = rows[0].docs;
+        USE_NEW_DOCS = true;
+        resolve(DOCS_LIST);
+      } else {
+        resolve(null);
+      }
+    }).catch(function(e){
+      console.warn('upload_docs_cache fetch err:', e);
+      resolve(null);
+    });
+  });
+}
 console.log('📋 USE_NEW_DOCS:', USE_NEW_DOCS, 'DOCS_LIST:', DOCS_LIST);
 
 // ver.20260525.22: 書類名にふりがな(ruby)を付与する辞書
@@ -651,7 +680,11 @@ function toBase64(file) {
   });
 }
 
-buildAllFields();
+// ver.20260525.34: DBキャッシュから書類リストを取得してから初期描画
+(async function _initDocsAndBuild(){
+  try { await _loadDocsFromCache(); } catch(e){ console.warn('_initDocsAndBuild err:', e); }
+  buildAllFields();
+})();
 
 document.getElementById('submitBtn').addEventListener('click', async () => {
   // ver.20260525.01: 新ロジックでは window._docLabelMap、旧ロジックでは LARGE/NORMAL/KOJIN_DOCS を結合
