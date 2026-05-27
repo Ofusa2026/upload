@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260526.test.01';
+const VERSION = 'ver.20260526.test.02';
 console.log('📄 zinzai_dataup_test.html', VERSION);
 
 // ===== 年度設定（毎年4-5月頃に更新する） =====
@@ -675,17 +675,6 @@ function buildFields() {
     } else {
       label.innerHTML = labelIsHtml ? labelText : _escName(labelText);
     }
-    // ver.20260526.test.01: サンプル画像「💡見本」ボタンを追加
-    const sampleBtn = document.createElement('button');
-    sampleBtn.type = 'button';
-    sampleBtn.className = 'sample-btn';
-    sampleBtn.style.cssText = 'background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;padding:3px 8px;margin-left:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;';
-    sampleBtn.textContent = '💡見本';
-    sampleBtn.addEventListener('click', (e) => {
-      e.stopPropagation(); // 親のtoggle openを発火させない
-      showDocSample(key);
-    });
-    label.appendChild(sampleBtn);
     const status = document.createElement('span');
     status.className = 'field-status' + (hasFiles ? ' ready' : '');
     status.textContent = hasFiles ? L.selected : L.noFile;
@@ -696,6 +685,36 @@ function buildFields() {
     header.addEventListener('click', () => row.classList.toggle('open'));
     const body = document.createElement('div');
     body.className = 'field-body';
+    // ver.20260526.test.02: 開いた時だけ表示される「📷 見本を見る」リンク（DOC_SAMPLESに登録された書類のみ）
+    if (DOC_SAMPLES && DOC_SAMPLES[key]) {
+      const sampleLink = document.createElement('div');
+      sampleLink.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px;';
+      const sampleA = document.createElement('a');
+      sampleA.href = 'javascript:void(0)';
+      sampleA.style.cssText = 'display:inline-flex;align-items:center;gap:4px;color:#3b82f6;text-decoration:none;font-size:12px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:6px;background:#eff6ff;border:1px solid #bfdbfe;';
+      // 言語ごとのリンクテキスト
+      const linkLabels = {
+        ja: '📷 見本を見る',
+        en: '📷 View Sample',
+        vi: '📷 Xem mẫu',
+        id: '📷 Lihat Contoh',
+        my: '📷 နမူနာကြည့်ရန်',
+        ko: '📷 견본 보기',
+        ne: '📷 नमूना हेर्नुहोस्',
+        zh: '📷 查看样本',
+        th: '📷 ดูตัวอย่าง',
+        km: '📷 មើលគំរូ',
+        mn: '📷 Жишээ үзэх',
+        si: '📷 උදාහරණය බලන්න'
+      };
+      sampleA.textContent = linkLabels[currentLang] || linkLabels.en;
+      sampleA.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showDocSample(key);
+      });
+      sampleLink.appendChild(sampleA);
+      body.appendChild(sampleLink);
+    }
     if (hasFiles) {
       fileData[key].forEach((fd, fi) => {
         const pw = document.createElement('div');
