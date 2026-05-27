@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260527.test.08';
+const VERSION = 'ver.20260527.test.09';
 console.log('📄 zinzai_dataup_test.html', VERSION);
 
 // ===== 年度設定（毎年4-5月頃に更新する） =====
@@ -313,12 +313,12 @@ const DOC_SAMPLES = {
       zh: '市役所·区役所发放的纳税证明（令和7年度）'
     },
     where: {
-      ja: '🏛️ お住まいの市役所・区役所で取得。在留カード持参で200〜400円程度。コンビニ発行できる市区町村もあります',
-      en: '🏛️ Get at your city/ward office. Bring Residence Card. Costs ~200-400 yen. Some cities allow convenience store issuance',
-      vi: '🏛️ Lấy tại tòa thị chính/văn phòng quận. Mang Thẻ cư trú. Khoảng 200-400 yên. Một số nơi có thể lấy ở cửa hàng tiện lợi',
-      id: '🏛️ Ambil di Balai Kota/Kantor Distrik. Bawa Kartu Izin Tinggal. Sekitar 200-400 yen. Beberapa kota bisa di minimarket',
-      ko: '🏛️ 거주지 시청·구청에서 발급. 재류카드 지참, 200~400엔. 일부 시구는 편의점 발급 가능',
-      zh: '🏛️ 在居住地的市役所/区役所办理。携带在留卡，约200~400日元。部分市区町村可在便利店发行'
+      ja: '🏛️ 出どころ：市役所・区役所（住民登録のある自治体）\n📋 取得方法：窓口またはコンビニ（マイナンバーカードがあれば）で発行\n💴 費用：200〜400円程度\n📅 持ち物：在留カード\n💡 補足：「住民税を払った」ことを証明する書類です。給与から自動で引かれている人も発行できます',
+      en: '🏛️ Source: City/Ward Office (where you are registered)\n📋 How to get: Counter or convenience store (with My Number Card)\n💴 Cost: ~200-400 yen\n📅 Bring: Residence Card\n💡 Note: Proves you have paid resident tax. Available even if tax is auto-deducted from salary',
+      vi: '🏛️ Nguồn: Tòa thị chính/Văn phòng quận (nơi đăng ký cư trú)\n📋 Cách lấy: Tại quầy hoặc cửa hàng tiện lợi (nếu có thẻ My Number)\n💴 Chi phí: Khoảng 200-400 yên\n📅 Mang theo: Thẻ cư trú\n💡 Ghi chú: Chứng minh đã nộp thuế cư trú. Có thể lấy ngay cả khi thuế bị trừ tự động từ lương',
+      id: '🏛️ Sumber: Balai Kota/Kantor Distrik (tempat Anda terdaftar)\n📋 Cara: Counter atau minimarket (jika punya My Number Card)\n💴 Biaya: Sekitar 200-400 yen\n📅 Bawa: Kartu Izin Tinggal\n💡 Catatan: Membuktikan pembayaran pajak penduduk. Tersedia meski pajak otomatis dipotong dari gaji',
+      ko: '🏛️ 발급처: 시청·구청 (주민등록된 자치단체)\n📋 취득 방법: 창구 또는 편의점 (마이넘버 카드 소지 시)\n💴 비용: 200~400엔 정도\n📅 지참물: 재류카드\n💡 보충: 주민세를 납부했음을 증명하는 서류. 급여에서 자동공제되는 사람도 발급 가능',
+      zh: '🏛️ 出处：市役所·区役所（户籍所在地）\n📋 取得方法：窗口或便利店（持有My Number卡时）\n💴 费用：约200~400日元\n📅 携带物：在留卡\n💡 补充：证明已缴纳住民税的文件。即使是从工资中自动扣除的人也可以申请'
     }
   },
   tax_cert: {
@@ -332,12 +332,12 @@ const DOC_SAMPLES = {
       zh: '市役所·区役所发放的课税证明（令和7年度）'
     },
     where: {
-      ja: '🏛️ お住まいの市役所・区役所で取得。在留カード持参で200〜400円程度。コンビニ発行できる市区町村もあります',
-      en: '🏛️ Get at your city/ward office. Bring Residence Card. Costs ~200-400 yen. Some cities allow convenience store issuance',
-      vi: '🏛️ Lấy tại tòa thị chính/văn phòng quận. Mang Thẻ cư trú. Khoảng 200-400 yên. Một số nơi có thể lấy ở cửa hàng tiện lợi',
-      id: '🏛️ Ambil di Balai Kota/Kantor Distrik. Bawa Kartu Izin Tinggal. Sekitar 200-400 yen. Beberapa kota bisa di minimarket',
-      ko: '🏛️ 거주지 시청·구청에서 발급. 재류카드 지참, 200~400엔. 일부 시구는 편의점 발급 가능',
-      zh: '🏛️ 在居住地的市役所/区役所办理。携带在留卡，约200~400日元。部分市区町村可在便利店发行'
+      ja: '🏛️ 出どころ：市役所・区役所（住民登録のある自治体）\n📋 取得方法：窓口またはコンビニ（マイナンバーカードがあれば）で発行\n💴 費用：200〜400円程度\n📅 持ち物：在留カード\n💡 補足：「いくら所得があって、いくら住民税がかかったか」を証明する書類です。納税証明書とセットで「所得・課税証明書」として1枚で発行される場合もあります',
+      en: '🏛️ Source: City/Ward Office (where you are registered)\n📋 How to get: Counter or convenience store (with My Number Card)\n💴 Cost: ~200-400 yen\n📅 Bring: Residence Card\n💡 Note: Proves your income and resident tax amount. Sometimes issued together with Tax Payment Certificate as one document',
+      vi: '🏛️ Nguồn: Tòa thị chính/Văn phòng quận\n📋 Cách lấy: Tại quầy hoặc cửa hàng tiện lợi (nếu có thẻ My Number)\n💴 Chi phí: Khoảng 200-400 yên\n📅 Mang theo: Thẻ cư trú\n💡 Ghi chú: Chứng minh thu nhập và số thuế cư trú. Đôi khi cấp chung với Giấy chứng nhận nộp thuế thành một tờ',
+      id: '🏛️ Sumber: Balai Kota/Kantor Distrik\n📋 Cara: Counter atau minimarket (jika punya My Number Card)\n💴 Biaya: Sekitar 200-400 yen\n📅 Bawa: Kartu Izin Tinggal\n💡 Catatan: Membuktikan penghasilan dan pajak penduduk. Kadang diterbitkan bersama Bukti Pembayaran Pajak sebagai 1 dokumen',
+      ko: '🏛️ 발급처: 시청·구청\n📋 취득 방법: 창구 또는 편의점 (마이넘버 카드 소지 시)\n💴 비용: 200~400엔 정도\n📅 지참물: 재류카드\n💡 보충: 소득액과 주민세액을 증명하는 서류. 납세증명서와 함께 1장으로 발급되는 경우도 있음',
+      zh: '🏛️ 出处：市役所·区役所\n📋 取得方法：窗口或便利店（持有My Number卡时）\n💴 费用：约200~400日元\n📅 携带物：在留卡\n💡 补充：证明收入金额和住民税额的文件。有时与纳税证明合并为「所得·课税证明书」一份发放'
     }
   },
   withholding: {
@@ -351,12 +351,12 @@ const DOC_SAMPLES = {
       zh: '公司在年末（12月-1月）发放的小纸条（令和7年分）'
     },
     where: {
-      ja: '🏢 ご自身の会社（勤務先）から発行されます。なくした場合は会社の経理担当者に再発行を依頼してください',
-      en: '🏢 Issued by your company (employer). If lost, ask your company\'s accounting staff for reissue',
-      vi: '🏢 Do công ty (nơi làm việc) phát hành. Nếu mất, yêu cầu bộ phận kế toán cấp lại',
-      id: '🏢 Diterbitkan oleh perusahaan (tempat kerja). Jika hilang, minta penerbitan ulang ke staf akuntansi perusahaan',
-      ko: '🏢 본인이 근무하는 회사에서 발급. 분실 시 회사 경리 담당자에게 재발급 요청',
-      zh: '🏢 由您所在公司（工作单位）发放。遗失时请向公司财务人员申请补发'
+      ja: '🏢 出どころ：勤務先の会社（経理・人事担当）\n📋 取得方法：会社から年末調整後に配布されます\n💴 費用：無料\n💡 補足：1年間の給与と差し引かれた所得税が書かれています。なくした場合は会社に再発行を依頼してください。普通12月〜1月に配布されますが、転職などで途中で退職した場合はその時点で発行されます',
+      en: '🏢 Source: Your company (accounting/HR dept)\n📋 How to get: Distributed by your company after year-end tax adjustment\n💴 Cost: Free\n💡 Note: Shows your annual salary and income tax withheld. If lost, ask company for reissue. Usually given in Dec-Jan, but issued at the time of resignation if you quit mid-year',
+      vi: '🏢 Nguồn: Công ty làm việc (kế toán/nhân sự)\n📋 Cách lấy: Công ty phát sau khi điều chỉnh thuế cuối năm\n💴 Chi phí: Miễn phí\n💡 Ghi chú: Ghi lương cả năm và thuế thu nhập đã khấu trừ. Nếu mất, yêu cầu công ty cấp lại. Thường phát vào tháng 12-1, nhưng cấp ngay khi nghỉ việc nếu nghỉ giữa năm',
+      id: '🏢 Sumber: Perusahaan tempat kerja (akuntansi/HR)\n📋 Cara: Dibagikan perusahaan setelah penyesuaian pajak akhir tahun\n💴 Biaya: Gratis\n💡 Catatan: Berisi gaji tahunan dan pajak pendapatan yang dipotong. Jika hilang, minta penerbitan ulang ke perusahaan. Biasanya dibagikan Des-Jan, atau saat resign jika berhenti di tengah tahun',
+      ko: '🏢 발급처: 근무처 회사 (경리/인사 담당)\n📋 취득 방법: 회사가 연말정산 후 배부\n💴 비용: 무료\n💡 보충: 1년간 급여와 차감된 소득세가 기재됨. 분실 시 회사에 재발급 요청. 보통 12~1월에 배부되지만, 연도 중 퇴직 시에는 그 시점에 발급됨',
+      zh: '🏢 出处：工作的公司（财务/人事部门）\n📋 取得方法：年末调整后由公司发放\n💴 费用：免费\n💡 补充：记载1年的工资和扣缴的所得税。遗失时请向公司申请补发。通常在12月~1月发放，但年中离职时则在离职时发放'
     }
   },
   medical: {
@@ -517,22 +517,22 @@ function showDocSample(docKey) {
     displayLabel = L.docs[docKey];
   }
   const helpText = sample.help[currentLang] || sample.help.en || sample.help.ja || '';
-  // ver.20260527.test.08: 取得場所「📍 どこで取得？」セクション
+  // ver.20260527.test.09: 取得場所・出どころ・補足を「📝 説明」セクションにまとめる
   const whereText = sample.where ? (sample.where[currentLang] || sample.where.en || sample.where.ja || '') : '';
   // セクション見出しの多言語化
   const whereLabels = {
-    ja: '📍 どこで取得？',
-    en: '📍 Where to get?',
-    vi: '📍 Lấy ở đâu?',
-    id: '📍 Di mana mendapatkannya?',
-    my: '📍 ဘယ်မှာရယူနိုင်မလဲ？',
-    ko: '📍 어디서 받나요?',
-    ne: '📍 कहाँ पाउने?',
-    zh: '📍 在哪里取得？',
-    th: '📍 รับได้ที่ไหน？',
-    km: '📍 ទទួលបាននៅឯណា？',
-    mn: '📍 Хаанаас авах вэ？',
-    si: '📍 කොහෙන් ලබා ගන්නේද？'
+    ja: '📝 説明（取得方法・出どころ）',
+    en: '📝 Description (How to get / Source)',
+    vi: '📝 Mô tả (Cách lấy / Nguồn)',
+    id: '📝 Penjelasan (Cara mendapatkan / Sumber)',
+    my: '📝 ရှင်းပြချက် (ရယူပုံ / ရင်းမြစ်)',
+    ko: '📝 설명 (취득 방법 / 발급처)',
+    ne: '📝 विवरण (कसरी पाउने / स्रोत)',
+    zh: '📝 说明（取得方法・出处）',
+    th: '📝 คำอธิบาย (วิธีรับ / แหล่งที่มา)',
+    km: '📝 ការពិពណ៌នា (របៀបទទួល / ប្រភព)',
+    mn: '📝 Тайлбар (Авах арга / Гарал үүсэл)',
+    si: '📝 විස්තරය (ලබා ගන්නා ආකාරය / මූලාශ්‍රය)'
   };
   const whereLabel = whereLabels[currentLang] || whereLabels.en;
   
@@ -549,8 +549,7 @@ function showDocSample(docKey) {
     '<div style="background:#f9fafb;border-radius:8px;padding:8px;margin-bottom:12px;text-align:center;">' +
     '<img src="' + sample.image + '" alt="sample" style="max-width:100%;max-height:50vh;border-radius:4px;" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<div style=&quot;padding:40px;color:#9ca3af;font-size:13px;&quot;>📷 サンプル画像準備中<br>Sample image coming soon</div>\';">' +
     '</div>' +
-    '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 12px;margin-bottom:10px;font-size:13px;color:#92400e;line-height:1.5;">' + helpText + '</div>' +
-    (whereText ? '<div style="background:#dbeafe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#1e40af;line-height:1.5;"><div style="font-weight:700;margin-bottom:4px;">' + whereLabel + '</div>' + whereText + '</div>' : '') +
+    (whereText ? '<div style="background:#dbeafe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#1e40af;line-height:1.6;white-space:pre-line;"><div style="font-weight:700;margin-bottom:6px;">' + whereLabel + '</div>' + whereText + '</div>' : '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#92400e;line-height:1.5;">' + helpText + '</div>') +
     '<button id="docSampleCloseBtn" style="width:100%;padding:12px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">OK</button>';
   
   overlay.appendChild(box);
