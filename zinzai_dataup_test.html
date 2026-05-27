@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260527.test.07';
+const VERSION = 'ver.20260527.test.08';
 console.log('📄 zinzai_dataup_test.html', VERSION);
 
 // ===== 年度設定（毎年4-5月頃に更新する） =====
@@ -166,7 +166,7 @@ const FISCAL_YEAR = {
 };
 
 // ===== サンプル画像（💡見本ボタン用、URLはダミー、本番用は後で差し替え） =====
-// 全書類17種類分のサンプル画像URLマップ。多言語の補足説明も含む。
+// 全書類17種類分のサンプル画像URLマップ。多言語の補足説明＋取得場所も含む。
 // 本番運用時は GitHub Pages 配下に samples/ ディレクトリを作って差し替える。
 const DOC_SAMPLES = {
   mugshot: {
@@ -178,6 +178,14 @@ const DOC_SAMPLES = {
       id: 'Tampak depan, latar polos, 4x3cm (ukuran paspor)',
       ko: '정면·무배경·세로4cm×가로3cm (여권 사이즈)',
       zh: '正面·无背景·4cm×3cm（护照尺寸）'
+    },
+    where: {
+      ja: '📷 写真館・スピード写真機（駅前にある自動撮影機）で撮れます',
+      en: '📷 Take at a photo studio or photo booth (auto-photo machine near stations)',
+      vi: '📷 Chụp tại tiệm ảnh hoặc máy chụp ảnh tự động (gần ga)',
+      id: '📷 Bisa di studio foto atau mesin foto otomatis (dekat stasiun)',
+      ko: '📷 사진관 또는 즉석 사진기(역 근처 자동 촬영기)에서 촬영',
+      zh: '📷 在照相馆或快速照相机（车站附近的自动拍照机）拍摄'
     }
   },
   zairyu_front: {
@@ -189,6 +197,14 @@ const DOC_SAMPLES = {
       id: 'Sisi depan Kartu Izin Tinggal (dengan foto)',
       ko: '재류카드 앞면 (사진이 있는 면)',
       zh: '在留卡正面（有照片的一面）'
+    },
+    where: {
+      ja: '💳 ご自身でお持ちのカードです。両面を写真に撮ってください',
+      en: '💳 The card you carry. Please take photos of both sides',
+      vi: '💳 Thẻ bạn mang theo. Vui lòng chụp cả 2 mặt',
+      id: '💳 Kartu yang Anda bawa. Mohon foto kedua sisi',
+      ko: '💳 본인이 소지한 카드입니다. 양면을 사진 찍어주세요',
+      zh: '💳 您本人持有的卡片。请拍摄正反两面'
     }
   },
   zairyu_back: {
@@ -200,6 +216,14 @@ const DOC_SAMPLES = {
       id: 'Sisi belakang Kartu Izin Tinggal',
       ko: '재류카드 뒷면',
       zh: '在留卡背面'
+    },
+    where: {
+      ja: '💳 在留カードの裏側です。住所が書いてあります',
+      en: '💳 Back of Residence Card. Your address is written here',
+      vi: '💳 Mặt sau Thẻ cư trú. Có ghi địa chỉ',
+      id: '💳 Sisi belakang Kartu Izin Tinggal. Berisi alamat',
+      ko: '💳 재류카드 뒷면. 주소가 기재되어 있습니다',
+      zh: '💳 在留卡背面，记载有地址'
     }
   },
   passport: {
@@ -211,6 +235,14 @@ const DOC_SAMPLES = {
       id: 'Halaman dengan foto dan nama',
       ko: '사진과 이름이 있는 페이지',
       zh: '有照片和姓名的页面'
+    },
+    where: {
+      ja: '📘 ご自身のパスポート。顔写真ページを撮ってください',
+      en: '📘 Your own passport. Please take a photo of the page with your photo',
+      vi: '📘 Hộ chiếu của bạn. Vui lòng chụp trang có ảnh',
+      id: '📘 Paspor Anda. Mohon foto halaman dengan foto Anda',
+      ko: '📘 본인의 여권. 사진 페이지를 찍어주세요',
+      zh: '📘 您本人的护照。请拍摄照片页'
     }
   },
   cert_jp: {
@@ -222,6 +254,14 @@ const DOC_SAMPLES = {
       id: 'Sertifikat ujian kemampuan bahasa Jepang',
       ko: '일본어능력시험 합격증',
       zh: '日语能力测试合格证'
+    },
+    where: {
+      ja: '🎓 試験に合格した時にもらった紙です。なくした場合は試験団体（JLPT/JFT等）に再発行を依頼',
+      en: '🎓 The certificate you received when you passed the test. If lost, request reissue from test organizer (JLPT/JFT etc.)',
+      vi: '🎓 Giấy bạn nhận khi đỗ kỳ thi. Nếu mất, yêu cầu cấp lại từ tổ chức thi (JLPT/JFT)',
+      id: '🎓 Sertifikat yang Anda terima saat lulus ujian. Jika hilang, minta penerbitan ulang ke penyelenggara (JLPT/JFT)',
+      ko: '🎓 시험에 합격했을 때 받은 증서. 분실 시 시험 주관 기관(JLPT/JFT 등)에 재발급 요청',
+      zh: '🎓 通过考试时获得的证书。遗失时请向考试机构（JLPT/JFT等）申请补发'
     }
   },
   cert_skill: {
@@ -233,6 +273,14 @@ const DOC_SAMPLES = {
       id: 'Sertifikat Ujian Evaluasi Keterampilan Khusus',
       ko: '특정기능 평가시험 합격증',
       zh: '特定技能评价测试合格证'
+    },
+    where: {
+      ja: '🎓 試験に合格した時にもらった紙です。分野ごとに発行団体が異なります',
+      en: '🎓 The certificate you received when you passed. Issuing organization differs by field',
+      vi: '🎓 Giấy bạn nhận khi đỗ. Tổ chức cấp khác nhau theo lĩnh vực',
+      id: '🎓 Sertifikat yang Anda terima saat lulus. Lembaga penerbit berbeda tergantung bidang',
+      ko: '🎓 시험에 합격했을 때 받은 증서. 분야별로 발급 기관이 다릅니다',
+      zh: '🎓 通过考试时获得的证书。各领域发证机构不同'
     }
   },
   cert_specialist: {
@@ -244,6 +292,14 @@ const DOC_SAMPLES = {
       id: 'Sertifikat Pemagangan (Spesialis/Level 3)',
       ko: '기능실습 (전문급/3급) 합격증',
       zh: '技能实习专项级·3级合格证'
+    },
+    where: {
+      ja: '🎓 技能実習で合格した時にもらった紙。なくした場合は監理団体または所属企業へ',
+      en: '🎓 Certificate from technical intern training. If lost, ask supervising org or employer',
+      vi: '🎓 Giấy nhận từ thực tập kỹ năng. Nếu mất, hỏi tổ chức quản lý hoặc công ty',
+      id: '🎓 Sertifikat dari pemagangan teknis. Jika hilang, tanya organisasi pengawas atau perusahaan',
+      ko: '🎓 기능실습 합격 시 받은 증서. 분실 시 감리단체 또는 소속 기업에 문의',
+      zh: '🎓 技能实习合格时获得的证书。遗失时请联系监理团体或所属企业'
     }
   },
   tax_payment: {
@@ -255,6 +311,14 @@ const DOC_SAMPLES = {
       id: 'Bukti Pembayaran Pajak dari Balai Kota (Tahun 2025)',
       ko: '시청·구청에서 발급한 납세증명서 (2025년도)',
       zh: '市役所·区役所发放的纳税证明（令和7年度）'
+    },
+    where: {
+      ja: '🏛️ お住まいの市役所・区役所で取得。在留カード持参で200〜400円程度。コンビニ発行できる市区町村もあります',
+      en: '🏛️ Get at your city/ward office. Bring Residence Card. Costs ~200-400 yen. Some cities allow convenience store issuance',
+      vi: '🏛️ Lấy tại tòa thị chính/văn phòng quận. Mang Thẻ cư trú. Khoảng 200-400 yên. Một số nơi có thể lấy ở cửa hàng tiện lợi',
+      id: '🏛️ Ambil di Balai Kota/Kantor Distrik. Bawa Kartu Izin Tinggal. Sekitar 200-400 yen. Beberapa kota bisa di minimarket',
+      ko: '🏛️ 거주지 시청·구청에서 발급. 재류카드 지참, 200~400엔. 일부 시구는 편의점 발급 가능',
+      zh: '🏛️ 在居住地的市役所/区役所办理。携带在留卡，约200~400日元。部分市区町村可在便利店发行'
     }
   },
   tax_cert: {
@@ -266,6 +330,14 @@ const DOC_SAMPLES = {
       id: 'Surat Keterangan Pajak dari Balai Kota (Tahun 2025)',
       ko: '시청·구청에서 발급한 과세증명서 (2025년도)',
       zh: '市役所·区役所发放的课税证明（令和7年度）'
+    },
+    where: {
+      ja: '🏛️ お住まいの市役所・区役所で取得。在留カード持参で200〜400円程度。コンビニ発行できる市区町村もあります',
+      en: '🏛️ Get at your city/ward office. Bring Residence Card. Costs ~200-400 yen. Some cities allow convenience store issuance',
+      vi: '🏛️ Lấy tại tòa thị chính/văn phòng quận. Mang Thẻ cư trú. Khoảng 200-400 yên. Một số nơi có thể lấy ở cửa hàng tiện lợi',
+      id: '🏛️ Ambil di Balai Kota/Kantor Distrik. Bawa Kartu Izin Tinggal. Sekitar 200-400 yen. Beberapa kota bisa di minimarket',
+      ko: '🏛️ 거주지 시청·구청에서 발급. 재류카드 지참, 200~400엔. 일부 시구는 편의점 발급 가능',
+      zh: '🏛️ 在居住地的市役所/区役所办理。携带在留卡，约200~400日元。部分市区町村可在便利店发行'
     }
   },
   withholding: {
@@ -277,6 +349,14 @@ const DOC_SAMPLES = {
       id: 'Lembar kecil dari perusahaan akhir tahun (Des-Jan), Tahun 2025',
       ko: '회사가 연말(12월~1월)에 발급하는 작은 종이 (2025년분)',
       zh: '公司在年末（12月-1月）发放的小纸条（令和7年分）'
+    },
+    where: {
+      ja: '🏢 ご自身の会社（勤務先）から発行されます。なくした場合は会社の経理担当者に再発行を依頼してください',
+      en: '🏢 Issued by your company (employer). If lost, ask your company\'s accounting staff for reissue',
+      vi: '🏢 Do công ty (nơi làm việc) phát hành. Nếu mất, yêu cầu bộ phận kế toán cấp lại',
+      id: '🏢 Diterbitkan oleh perusahaan (tempat kerja). Jika hilang, minta penerbitan ulang ke staf akuntansi perusahaan',
+      ko: '🏢 본인이 근무하는 회사에서 발급. 분실 시 회사 경리 담당자에게 재발급 요청',
+      zh: '🏢 由您所在公司（工作单位）发放。遗失时请向公司财务人员申请补发'
     }
   },
   medical: {
@@ -288,6 +368,14 @@ const DOC_SAMPLES = {
       id: 'Dokumen hasil pemeriksaan kesehatan',
       ko: '건강검진 결과가 적힌 종이',
       zh: '健康检查结果证明'
+    },
+    where: {
+      ja: '🏥 病院・クリニックで健康診断を受けて発行してもらいます。担当者に専用の用紙をもらってから受診してください',
+      en: '🏥 Get from hospital/clinic after a health checkup. Get the form from your contact first',
+      vi: '🏥 Khám sức khỏe tại bệnh viện/phòng khám. Hãy lấy mẫu giấy chuyên dụng từ người phụ trách trước',
+      id: '🏥 Pemeriksaan kesehatan di rumah sakit/klinik. Ambil formulir khusus dari penanggung jawab dulu',
+      ko: '🏥 병원·클리닉에서 건강검진 후 발급. 담당자에게 전용 양식을 받은 후 검진받으세요',
+      zh: '🏥 在医院/诊所接受健康检查后发放。请先从负责人处获取专用表格'
     }
   },
   health_ins: {
@@ -299,6 +387,14 @@ const DOC_SAMPLES = {
       id: 'Kartu Asuransi Kesehatan (kartu plastik)',
       ko: '건강보험증 (플라스틱 카드)',
       zh: '健康保险证（塑料卡）'
+    },
+    where: {
+      ja: '💳 ご自身でお持ちの保険証カード。会社の社会保険または国民健康保険',
+      en: '💳 The insurance card you have. Company social insurance or National Health Insurance',
+      vi: '💳 Thẻ bảo hiểm bạn có. Bảo hiểm xã hội công ty hoặc bảo hiểm y tế quốc dân',
+      id: '💳 Kartu asuransi yang Anda miliki. Asuransi sosial perusahaan atau Asuransi Kesehatan Nasional',
+      ko: '💳 본인이 소지한 보험증 카드. 회사 사회보험 또는 국민건강보험',
+      zh: '💳 您本人持有的保险证卡。公司社会保险或国民健康保险'
     }
   },
   health_ins_cert: {
@@ -310,6 +406,14 @@ const DOC_SAMPLES = {
       id: 'Sertifikat pembayaran Asuransi Kesehatan Nasional',
       ko: '국민건강보험료를 낸 증명서',
       zh: '国民健康保险费已缴纳证明'
+    },
+    where: {
+      ja: '🏛️ お住まいの市役所・区役所の国民健康保険課で発行（在留カード持参）',
+      en: '🏛️ Issued at the NHI section of your city/ward office (bring Residence Card)',
+      vi: '🏛️ Cấp tại phòng bảo hiểm y tế quốc dân của tòa thị chính (mang Thẻ cư trú)',
+      id: '🏛️ Diterbitkan di bagian Asuransi Kesehatan Nasional di Balai Kota (bawa Kartu Izin Tinggal)',
+      ko: '🏛️ 거주지 시청·구청 국민건강보험과에서 발급 (재류카드 지참)',
+      zh: '🏛️ 在居住地的市役所/区役所国民健康保险科办理（携带在留卡）'
     }
   },
   graduation: {
@@ -321,6 +425,14 @@ const DOC_SAMPLES = {
       id: 'Dokumen kelulusan dari sekolah',
       ko: '학교 졸업을 증명하는 서류',
       zh: '学校毕业证明文件'
+    },
+    where: {
+      ja: '🎓 卒業した学校に依頼して発行してもらいます（日本語学校の場合は学校事務局へ）',
+      en: '🎓 Request from your graduated school (if Japanese language school, contact the school office)',
+      vi: '🎓 Yêu cầu từ trường đã tốt nghiệp (trường tiếng Nhật: liên hệ văn phòng trường)',
+      id: '🎓 Minta dari sekolah tempat Anda lulus (untuk sekolah bahasa Jepang, hubungi kantor sekolah)',
+      ko: '🎓 졸업한 학교에 발급 요청 (일본어학교의 경우 학교 사무국)',
+      zh: '🎓 向毕业学校申请发放（日语学校请联系学校事务局）'
     }
   },
   transcript: {
@@ -332,6 +444,14 @@ const DOC_SAMPLES = {
       id: 'Transkrip nilai sekolah',
       ko: '학교 성적증명서',
       zh: '学校成绩单'
+    },
+    where: {
+      ja: '🎓 通っていた学校に依頼して発行してもらいます',
+      en: '🎓 Request from the school you attended',
+      vi: '🎓 Yêu cầu từ trường bạn đã học',
+      id: '🎓 Minta dari sekolah yang Anda hadiri',
+      ko: '🎓 다녔던 학교에 발급 요청',
+      zh: '🎓 向就读过的学校申请发放'
     }
   },
   nenkin: {
@@ -343,6 +463,14 @@ const DOC_SAMPLES = {
       id: 'Buku Pensiun (buku biru)',
       ko: '연금수첩 (파란색 수첩)',
       zh: '年金手帳（蓝色手册）'
+    },
+    where: {
+      ja: '📒 ご自身で保管している青色の手帳です。なくした場合は年金事務所で再発行（無料）',
+      en: '📒 The blue booklet you keep. If lost, reissue at Pension Office (free)',
+      vi: '📒 Sổ màu xanh bạn giữ. Nếu mất, cấp lại miễn phí tại Văn phòng hưu trí',
+      id: '📒 Buku biru yang Anda simpan. Jika hilang, dapat dicetak ulang gratis di Kantor Pensiun',
+      ko: '📒 본인이 보관하는 파란색 수첩. 분실 시 연금사무소에서 무료 재발급',
+      zh: '📒 您本人保管的蓝色手册。遗失时可在年金事务所免费补发'
     }
   },
   embassy_rec: {
@@ -354,6 +482,14 @@ const DOC_SAMPLES = {
       id: 'Surat rekomendasi dari kedutaan',
       ko: '대사관 발급 추천장',
       zh: '大使馆发放的推荐信'
+    },
+    where: {
+      ja: '🏛️ 自国の駐日大使館で発行してもらいます。担当者に確認してから取得してください',
+      en: '🏛️ Issued by your country\'s embassy in Japan. Check with your contact before requesting',
+      vi: '🏛️ Cấp tại đại sứ quán nước bạn tại Nhật. Xác nhận với người phụ trách trước',
+      id: '🏛️ Diterbitkan oleh kedutaan negara Anda di Jepang. Konfirmasi dengan penanggung jawab dulu',
+      ko: '🏛️ 본국 주일 대사관에서 발급. 담당자에게 확인 후 신청',
+      zh: '🏛️ 由本国驻日大使馆发放。请先与负责人确认后再申请'
     }
   }
 };
@@ -381,6 +517,24 @@ function showDocSample(docKey) {
     displayLabel = L.docs[docKey];
   }
   const helpText = sample.help[currentLang] || sample.help.en || sample.help.ja || '';
+  // ver.20260527.test.08: 取得場所「📍 どこで取得？」セクション
+  const whereText = sample.where ? (sample.where[currentLang] || sample.where.en || sample.where.ja || '') : '';
+  // セクション見出しの多言語化
+  const whereLabels = {
+    ja: '📍 どこで取得？',
+    en: '📍 Where to get?',
+    vi: '📍 Lấy ở đâu?',
+    id: '📍 Di mana mendapatkannya?',
+    my: '📍 ဘယ်မှာရယူနိုင်မလဲ？',
+    ko: '📍 어디서 받나요?',
+    ne: '📍 कहाँ पाउने?',
+    zh: '📍 在哪里取得？',
+    th: '📍 รับได้ที่ไหน？',
+    km: '📍 ទទួលបាននៅឯណា？',
+    mn: '📍 Хаанаас авах вэ？',
+    si: '📍 කොහෙන් ලබා ගන්නේද？'
+  };
+  const whereLabel = whereLabels[currentLang] || whereLabels.en;
   
   // モーダル生成
   const overlay = document.createElement('div');
@@ -395,7 +549,8 @@ function showDocSample(docKey) {
     '<div style="background:#f9fafb;border-radius:8px;padding:8px;margin-bottom:12px;text-align:center;">' +
     '<img src="' + sample.image + '" alt="sample" style="max-width:100%;max-height:50vh;border-radius:4px;" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<div style=&quot;padding:40px;color:#9ca3af;font-size:13px;&quot;>📷 サンプル画像準備中<br>Sample image coming soon</div>\';">' +
     '</div>' +
-    '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#92400e;line-height:1.5;">' + helpText + '</div>' +
+    '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 12px;margin-bottom:10px;font-size:13px;color:#92400e;line-height:1.5;">' + helpText + '</div>' +
+    (whereText ? '<div style="background:#dbeafe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#1e40af;line-height:1.5;"><div style="font-weight:700;margin-bottom:4px;">' + whereLabel + '</div>' + whereText + '</div>' : '') +
     '<button id="docSampleCloseBtn" style="width:100%;padding:12px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">OK</button>';
   
   overlay.appendChild(box);
