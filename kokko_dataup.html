@@ -590,9 +590,11 @@ function buildAllFields() {
       labelEl.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + labelEl.innerHTML;
     }
 
-    // 取得済み/不要: 薄く見せるだけ。pointerEvents:none / disabled は付けない（再提出アップロード可能）
+    // 取得済み/不要: 濃いめのグレーで暗く見せる。pointerEvents:none / disabled は付けない（再提出アップロード可能）
     if (d.done) {
-      row.style.background = '#f8fafc';
+      row.style.background = '#cbd5e1';
+      row.style.borderColor = '#94a3b8';
+      row.style.opacity = '0.7';
       if (labelEl) {
         const doneEl = document.createElement('span');
         doneEl.style.cssText = 'color:#16a34a;font-size:11px;font-weight:700;margin-left:4px;';
