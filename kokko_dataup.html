@@ -7,6 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>国交省書類アップロード（所属機関）</title>
+<!-- KOKKO_DATAUP_VERSION 20260602_08 タブ廃止・1リスト化 -->
 <style>
   :root {
     --primary: #1a56db;
@@ -245,41 +246,8 @@
   </div>
   <div class="company-name-bar" id="companyNameBar" style="display:none;"></div>
 
-  <!-- タブ -->
-  <div class="tabs-wrap">
-    <button class="tab-btn active" id="tabBtnLarge" onclick="switchTab('large')">
-      💹 大企業<br><small>源泉1,000万円以上</small>
-      <span class="tab-count hidden" id="countLarge"></span>
-    </button>
-    <button class="tab-btn" id="tabBtnNormal" onclick="switchTab('normal')">
-      🏭 中小企業
-      <span class="tab-count hidden" id="countNormal"></span>
-    </button>
-    <button class="tab-btn" id="tabBtnKojin" onclick="switchTab('kojin')">
-      👤 個人事業主
-      <span class="tab-count hidden" id="countKojin"></span>
-    </button>
-  </div>
-
-  <!-- 大企業パネル -->
-  <div class="tab-panel active" id="panelLarge">
-    <div class="fields-list" id="fieldsListLarge"></div>
-  </div>
-
-  <!-- 中小企業パネル -->
-  <div class="tab-panel" id="panelNormal">
-    <div class="notice-box">
-      ⚠️ 3年間継続した受入れ実績があり過去3年間債務超過なし（法人に限る）、または
-      <a href="https://www.moj.go.jp/isa/content/001378932.pdf" target="_blank">こちらの条件</a>
-      に当てはまる企業様は<strong>事前にお申し出ください</strong>。
-    </div>
-    <div class="fields-list" id="fieldsListNormal"></div>
-  </div>
-
-  <!-- 個人事業主パネル -->
-  <div class="tab-panel" id="panelKojin">
-    <div class="fields-list" id="fieldsListKojin"></div>
-  </div>
+  <!-- 書類リスト（タブ廃止・1コンテナに統一 ver.20260602.08） -->
+  <div class="fields-list" id="fieldsList"></div>
 
   <button class="submit-btn" id="submitBtn" disabled>送信する</button>
   <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
@@ -500,14 +468,18 @@ const KOJIN_DOCS = {
 
 const fileData = {};
 
-// ─── タブ切り替え ───
+// ─── タブ切り替え（タブUIは廃止。後方互換のためのガードのみ）───
 function switchTab(tab) {
-  ['large', 'normal', 'kojin'].forEach(t => {
-    const panelId = t === 'large' ? 'panelLarge' : t === 'normal' ? 'panelNormal' : 'panelKojin';
-    const btnId   = t === 'large' ? 'tabBtnLarge' : t === 'normal' ? 'tabBtnNormal' : 'tabBtnKojin';
-    document.getElementById(panelId).classList.toggle('active', t === tab);
-    document.getElementById(btnId).classList.toggle('active', t === tab);
-  });
+  try {
+    ['large', 'normal', 'kojin'].forEach(function(t){
+      var panelId = t === 'large' ? 'panelLarge' : t === 'normal' ? 'panelNormal' : 'panelKojin';
+      var btnId   = t === 'large' ? 'tabBtnLarge' : t === 'normal' ? 'tabBtnNormal' : 'tabBtnKojin';
+      var p = document.getElementById(panelId);
+      var b = document.getElementById(btnId);
+      if (p) p.classList.toggle('active', t === tab);
+      if (b) b.classList.toggle('active', t === tab);
+    });
+  } catch(e) { /* タブUI廃止済み: 何もしない */ }
 }
 
 // ─── フィールド行を生成 ───
@@ -587,103 +559,66 @@ function renderFileList(key, container) {
 }
 
 function buildAllFields() {
-  // ver.20260525.01: docsパラメータがあれば、それに従って書類リストを構築
-  if (USE_NEW_DOCS) {
-    // 新ロジック: DOCS_LIST = [{l: '書類名', r: 1, t: 'large'|'normal'|'kojin'}, ...]
-    // 各書類に安定キー 'd0', 'd1', ... を割り当てて、tでタブ振り分け
-    const buckets = { large: [], normal: [], kojin: [] };
-    const labelMap = {};  // key → 日本語ラベル
-    DOCS_LIST.forEach(function(d, i){
-      const key = 'd' + i;
-      const t = d.t || 'normal';
-      labelMap[key] = d.l || '';
-      if (!buckets[t]) buckets[t] = [];
-      buckets[t].push({key: key, label: d.l || '', req: !!d.r, done: !!d.done});
-    });
-    window._docLabelMap = labelMap;
+  // ver.20260602.08: タブ廃止・1リスト化。DBキャッシュ(kind=kokko)の DOCS_LIST=[{l,r,done,note}] を順次描画
+  const listEl = document.getElementById('fieldsList');
+  if (!listEl) return;
+  listEl.innerHTML = '';
 
-    // バッジ更新用に各タブの書類数表示
-    const renderBucket = function(listEl, items){
-      listEl.innerHTML = '';
-      if (!items.length) {
-        const empty = document.createElement('div');
-        empty.style.cssText = 'padding:20px;text-align:center;color:#94a3b8;font-size:13px;';
-        empty.textContent = 'この区分の書類はありません';
-        listEl.appendChild(empty);
-        return;
-      }
-      // docsMap を動的構築
-      const docsMap = {};
-      items.forEach(function(it){ docsMap[it.key] = it.label; });
-      items.forEach(function(it){
-        const row = buildFieldRow(it.key, docsMap);
-        // 必須マークを付ける
-        if (it.req) {
-          const labelEl = row.querySelector('.field-label');
-          if (labelEl && labelEl.innerHTML.indexOf('必須') === -1) {
-            labelEl.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + labelEl.innerHTML;
-          }
-        }
-        // ver.20260602: 取得済み/不要の書類はグレーアウト（アップロード不要）
-        if (it.done) {
-          row.style.opacity = '0.45';
-          row.style.pointerEvents = 'none';
-          row.style.background = '#f1f5f9';
-          var _ins = row.querySelectorAll('input,button,label');
-          _ins.forEach(function(el){ try{ el.disabled = true; }catch(e){} });
-          var labelEl2 = row.querySelector('.field-label');
-          if (labelEl2) {
-            labelEl2.innerHTML = labelEl2.innerHTML + ' <span style="color:#16a34a;font-size:11px;font-weight:700;margin-left:4px;">✓ 提出済み・対応不要</span>';
-          }
-        }
-        listEl.appendChild(row);
-      });
-    };
-    renderBucket(document.getElementById('fieldsListLarge'),  buckets.large || []);
-    renderBucket(document.getElementById('fieldsListNormal'), buckets.normal || []);
-    renderBucket(document.getElementById('fieldsListKojin'),  buckets.kojin || []);
-
-    // 書類があるタブを初期表示にする（normal優先 → kojin → large）
-    if ((buckets.normal||[]).length === 0 && (buckets.kojin||[]).length > 0) {
-      switchTab('kojin');
-    } else if ((buckets.normal||[]).length === 0 && (buckets.kojin||[]).length === 0 && (buckets.large||[]).length > 0) {
-      switchTab('large');
-    }
+  // DBキャッシュ(kind=kokko)が無い場合は旧入管書類を出さず、案内文のみ表示
+  if (!USE_NEW_DOCS || !Array.isArray(DOCS_LIST) || !DOCS_LIST.length) {
+    const msg = document.createElement('div');
+    msg.className = 'notice-box';
+    msg.style.marginBottom = '0';
+    msg.innerHTML = '📄 現在アップロードできる書類が設定されていません。<br>お手数ですが担当者までお問い合わせください。';
+    listEl.appendChild(msg);
+    window._docLabelMap = {};
     return;
   }
 
-  // 旧ロジック（後方互換）
-  // 大企業タブ
-  const listLarge = document.getElementById('fieldsListLarge');
-  listLarge.innerHTML = '';
-  LARGE_KEYS.forEach(key => listLarge.appendChild(buildFieldRow(key, LARGE_DOCS)));
+  // 各書類に安定キー d0, d1, ... を割り当て
+  const labelMap = {};
+  DOCS_LIST.forEach(function(d, i){ labelMap['d' + i] = d.l || ''; });
+  window._docLabelMap = labelMap;
 
-  // 中小企業タブ
-  const listNormal = document.getElementById('fieldsListNormal');
-  listNormal.innerHTML = '';
-  NORMAL_KEYS.forEach(key => listNormal.appendChild(buildFieldRow(key, NORMAL_DOCS)));
+  DOCS_LIST.forEach(function(d, i){
+    const key = 'd' + i;
+    const row = buildFieldRow(key, labelMap);
+    const labelEl = row.querySelector('.field-label');
 
-  // 個人事業主タブ
-  const listKojin = document.getElementById('fieldsListKojin');
-  listKojin.innerHTML = '';
-  KOJIN_KEYS.forEach(key => listKojin.appendChild(buildFieldRow(key, KOJIN_DOCS)));
+    // 必須マーク
+    if (d.r && labelEl && labelEl.innerHTML.indexOf('必須') === -1) {
+      labelEl.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + labelEl.innerHTML;
+    }
 
-  // タブバッジ更新
-  const cntL = LARGE_KEYS.filter(k => fileData[k] && fileData[k].length > 0).length;
-  const cntN = NORMAL_KEYS.filter(k => fileData[k] && fileData[k].length > 0).length;
-  const cntK = KOJIN_KEYS.filter(k => fileData[k] && fileData[k].length > 0).length;
-  document.getElementById('countLarge').textContent = cntL;
-  document.getElementById('countLarge').className = 'tab-count' + (cntL > 0 ? '' : ' hidden');
-  document.getElementById('countNormal').textContent = cntN;
-  document.getElementById('countNormal').className = 'tab-count' + (cntN > 0 ? '' : ' hidden');
-  document.getElementById('countKojin').textContent = cntK;
-  document.getElementById('countKojin').className = 'tab-count' + (cntK > 0 ? '' : ' hidden');
+    // 取得済み/不要: 薄く見せるだけ。pointerEvents:none / disabled は付けない（再提出アップロード可能）
+    if (d.done) {
+      row.style.background = '#f8fafc';
+      if (labelEl) {
+        const doneEl = document.createElement('span');
+        doneEl.style.cssText = 'color:#16a34a;font-size:11px;font-weight:700;margin-left:4px;';
+        doneEl.textContent = '✓ 提出済み（再提出が必要な場合のみ）';
+        labelEl.appendChild(doneEl);
+      }
+    }
+
+    // ラベル下に注意書き 💡 + note（絵文字はリテラルで直書き）
+    if (d.note && labelEl) {
+      const noteEl = document.createElement('div');
+      noteEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:400;margin-top:4px;line-height:1.6;';
+      noteEl.textContent = '💡 ' + d.note;
+      labelEl.appendChild(noteEl);
+    }
+
+    listEl.appendChild(row);
+  });
 }
 
 function updateSubmitBtn() {
-  const allKeys = [...LARGE_KEYS, ...NORMAL_KEYS, ...KOJIN_KEYS];
-  const hasAny = allKeys.some(k => fileData[k] && fileData[k].length > 0);
-  document.getElementById('submitBtn').disabled = !hasAny;
+  // ver.20260602.08: 新ロジック(DBキャッシュ)の window._docLabelMap で判定
+  var allKeys = (USE_NEW_DOCS && window._docLabelMap) ? Object.keys(window._docLabelMap) : [];
+  var hasAny = allKeys.some(function(k){ return fileData[k] && fileData[k].length > 0; });
+  var btn = document.getElementById('submitBtn');
+  if (btn) btn.disabled = !hasAny;
 }
 
 function toBase64(file) {
