@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- company_dataup ver.20260603.01 - ふりがな(ruby)廃止 / 取得済みグレーアウト(done)・note対応 -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -442,7 +443,7 @@ const DOC_RUBY = {
 
 function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');}
 function _labelWithRuby(ja){
-  return DOC_RUBY[ja] || _esc(ja);
+  return _esc(ja); // ver.20260603: ふりがな(ruby)を廃止し素のラベルを表示（DOC_RUBYは未使用）
 }
 
 if (COMPANY_NAME) {
@@ -598,7 +599,7 @@ function buildAllFields() {
       const t = d.t || 'normal';
       labelMap[key] = d.l || '';
       if (!buckets[t]) buckets[t] = [];
-      buckets[t].push({key: key, label: d.l || '', req: !!d.r});
+      buckets[t].push({key: key, label: d.l || '', req: !!d.r, done: !!d.done, note: d.note || ''});
     });
     window._docLabelMap = labelMap;
 
@@ -617,12 +618,28 @@ function buildAllFields() {
       items.forEach(function(it){ docsMap[it.key] = it.label; });
       items.forEach(function(it){
         const row = buildFieldRow(it.key, docsMap);
-        // 必須マークを付ける
-        if (it.req) {
-          const labelEl = row.querySelector('.field-label');
-          if (labelEl && labelEl.innerHTML.indexOf('必須') === -1) {
-            labelEl.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + labelEl.innerHTML;
+        const labelEl = row.querySelector('.field-label');
+        // 必須マーク
+        if (it.req && labelEl && labelEl.innerHTML.indexOf('必須') === -1) {
+          labelEl.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + labelEl.innerHTML;
+        }
+        // ver.20260603: 取得済み/不要はグレーアウト（国交省アップロードと同様・再提出は可能）
+        if (it.done) {
+          row.style.background = '#cbd5e1';
+          row.style.borderColor = '#94a3b8';
+          row.style.opacity = '0.7';
+          if (labelEl) {
+            const doneEl = document.createElement('span');
+            doneEl.style.cssText = 'color:#16a34a;font-size:11px;font-weight:700;margin-left:4px;';
+            doneEl.textContent = '✓ 提出済み（再提出が必要な場合のみ）';
+            labelEl.appendChild(doneEl);
           }
+        }
+        if (it.note && labelEl) {
+          const noteEl = document.createElement('div');
+          noteEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:400;margin-top:4px;line-height:1.6;';
+          noteEl.textContent = '💡 ' + it.note;
+          labelEl.appendChild(noteEl);
         }
         listEl.appendChild(row);
       });
