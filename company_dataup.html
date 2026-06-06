@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20260603.01 - ふりがな(ruby)廃止 / 取得済みグレーアウト(done)・note対応 -->
+<!-- company_dataup ver.20260607.01 - 取得済み/不要グレーアウトを co_doc_check ライブ読みに変更（再生成不要で最新反映） -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -700,9 +700,32 @@ function toBase64(file) {
   });
 }
 
+function _applyLiveDoneFromCoDocCheck(){
+  // ver.20260607.01: co_doc_check をライブ読みして done(取得済み/不要) を上書き（キャッシュのスナップショットに依存しない）
+  return new Promise(function(resolve){
+    if(!COMPANY_ID || !Array.isArray(DOCS_LIST) || !DOCS_LIST.length){ resolve(); return; }
+    var url = SUPABASE_URL_UPL + '/rest/v1/co_doc_check?co_id=eq.' + encodeURIComponent(COMPANY_ID) + '&select=doc_key,value';
+    fetch(url, { headers: { 'apikey': SUPABASE_KEY_UPL, 'Authorization': 'Bearer ' + SUPABASE_KEY_UPL, 'Accept': 'application/json' } })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(rows){
+      var doneSet = {};
+      (rows||[]).forEach(function(row){
+        var dk = row.doc_key || ''; var idx = dk.indexOf('::'); if(idx<0) return;
+        var prefix = dk.substring(0, idx); var name = dk.substring(idx+2);
+        var v = row.value; var truthy = (v!=null && v!=='' && v!=='false');
+        if((prefix==='staff' || prefix==='skip') && truthy){ doneSet[name] = true; }
+      });
+      DOCS_LIST.forEach(function(d){ if(d && d.l){ d.done = !!doneSet[d.l]; } });
+      resolve();
+    })
+    .catch(function(e){ console.warn('co_doc_check live fetch err:', e); resolve(); });
+  });
+}
+
 // ver.20260525.34: DBキャッシュから書類リストを取得してから初期描画
 (async function _initDocsAndBuild(){
   try { await _loadDocsFromCache(); } catch(e){ console.warn('_initDocsAndBuild err:', e); }
+  try { await _applyLiveDoneFromCoDocCheck(); } catch(e){ console.warn('live done err:', e); }
   buildAllFields();
 })();
 
