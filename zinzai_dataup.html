@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260607.02';
+const VERSION = 'ver.20260607.03';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -691,6 +691,30 @@ const DOC_SAMPLES = {
   }
 };
 
+// 書類名(日本語ラベル) → サンプルキー 変換。新ロジックでは key が 'd0','d1'... なので
+// DOC_LABELS_JA[key] の日本語ラベルから DOC_SAMPLES のキーを引き当てる。
+const DOC_NAME2KEY = {
+ 'パスポート':'passport',
+ '在留カード（表）':'zairyu_front','在留カード（裏）':'zairyu_back','在留カード':'zairyu_front',
+ '顔写真':'mugshot',
+ '健康診断票':'medical','健康診断証':'medical','健康診断書':'medical',
+ '合格証（技能）':'cert_skill','合格証（技能試験）':'cert_skill',
+ '合格証（日本語）':'cert_jp',
+ '専門級':'cert_specialist','合格証（専門級・3級）':'cert_specialist','合格証（専門級）':'cert_specialist',
+ '所得・課税証明書':'tax_cert','課税証明書':'tax_cert',
+ '納税証明書':'tax_payment',
+ '源泉徴収票':'withholding',
+ '健康保険証':'health_ins',
+ '国民健康保険料納付証明書':'health_ins_cert','国民健康保険料納付証明':'health_ins_cert',
+ '卒業証明書':'graduation','成績証明書':'transcript','年金手帳':'nenkin','大使館推薦票':'embassy_rec'
+};
+function _sampleKey(key){
+  if (DOC_SAMPLES[key]) return key; // 旧ロジック: 既にサンプルキー
+  var ja = (DOC_LABELS_JA && DOC_LABELS_JA[key]) ? DOC_LABELS_JA[key]
+         : ((typeof LANGS!=='undefined' && LANGS.ja && LANGS.ja.docs && LANGS.ja.docs[key]) ? LANGS.ja.docs[key] : key);
+  return DOC_NAME2KEY[ja] || DOC_NAME2KEY[String(ja).replace(/[（(].*$/,'').trim()] || null;
+}
+
 // 💡見本ボタンクリック時にモーダル表示
 function showDocSample(docKey) {
   const sample = DOC_SAMPLES[docKey];
@@ -818,7 +842,8 @@ function buildFields() {
     const body = document.createElement('div');
     body.className = 'field-body';
 // ver.20260526.test.02: 開いた時だけ表示される「📷 見本を見る」リンク（DOC_SAMPLESに登録された書類のみ）
-    if (DOC_SAMPLES && DOC_SAMPLES[key]) {
+    var __sk = _sampleKey(key);
+    if (__sk) {
       const sampleLink = document.createElement('div');
       sampleLink.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px;';
       const sampleA = document.createElement('a');
@@ -842,7 +867,7 @@ function buildFields() {
       sampleA.textContent = linkLabels[currentLang] || linkLabels.en;
       sampleA.addEventListener('click', (e) => {
         e.stopPropagation();
-        showDocSample(key);
+        showDocSample(__sk);
       });
       sampleLink.appendChild(sampleA);
       body.appendChild(sampleLink);
