@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260525.38';
+const VERSION = 'ver.20260607.01';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -305,23 +305,26 @@ function getDocKeys() {
 }
 // ver.20260525.01: docs パラメータがあれば新ロジック、なければ旧ロジック
 // ver.20260525.34: DBキャッシュから取得した場合も新ロジックを使う（_initDocKeys を _loadDocsFromCache 完了後に呼ぶ）
-let DOC_KEYS, DOC_LABELS_JA, DOC_REQUIRED;
+let DOC_KEYS, DOC_LABELS_JA, DOC_REQUIRED, DOC_DONE;
 function _initDocKeys(){
   if (USE_NEW_DOCS) {
     // 新ロジック: DOCS_LIST = [{l: '書類名', r: 1}, ...]
     DOC_KEYS = DOCS_LIST.map(function(d, i){ return 'd' + i; });
     DOC_LABELS_JA = {};
     DOC_REQUIRED = {};
+    DOC_DONE = {};
     DOCS_LIST.forEach(function(d, i){
       var key = 'd' + i;
       DOC_LABELS_JA[key] = d.l || '';
       DOC_REQUIRED[key] = !!d.r;
+      DOC_DONE[key] = !!d.done;
     });
   } else {
     // 旧ロジック
     DOC_KEYS = getDocKeys();
     DOC_LABELS_JA = null;  // 旧ロジックは LANGS[].docs[key] を使う
     DOC_REQUIRED = null;
+    DOC_DONE = null;
   }
 }
 _initDocKeys();
@@ -402,6 +405,13 @@ function buildFields() {
     } else {
       label.innerHTML = labelIsHtml ? labelText : _escName(labelText);
     }
+    if (USE_NEW_DOCS && DOC_DONE && DOC_DONE[key]) {
+      row.style.background = '#cbd5e1'; row.style.borderColor = '#94a3b8'; row.style.opacity = '0.7';
+      const _doneEl = document.createElement('span');
+      _doneEl.style.cssText = 'color:#16a34a;font-size:11px;font-weight:700;margin-left:4px;';
+      _doneEl.textContent = '✓ 提出済み（再提出が必要な場合のみ）';
+      label.appendChild(_doneEl);
+    }
     const status = document.createElement('span');
     status.className = 'field-status' + (hasFiles ? ' ready' : '');
     status.textContent = hasFiles ? L.selected : L.noFile;
@@ -457,9 +467,31 @@ function setLang(code) {
   buildFields(); updateSubmitBtn();
 }
 // ver.20260525.34: DBキャッシュから書類リストを取得してから初期描画
+// ver.20260607.01: doc_check をライブ読みして done(取得済み staff / 不要 skip) を付与（再生成不要）
+function _applyLiveDoneFromDocCheck(){
+  return new Promise(function(resolve){
+    if(!CASE_ID || !Array.isArray(DOCS_LIST) || !DOCS_LIST.length){ resolve(); return; }
+    var url = SUPABASE_URL_UPL + '/rest/v1/doc_check?case_id=eq.' + encodeURIComponent(CASE_ID) + '&select=doc_key,value';
+    fetch(url, { headers: { 'apikey': SUPABASE_KEY_UPL, 'Authorization': 'Bearer ' + SUPABASE_KEY_UPL, 'Accept': 'application/json' } })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(rows){
+      var doneSet = {};
+      (rows||[]).forEach(function(row){
+        var dk = row.doc_key || ''; var idx = dk.indexOf('::'); if(idx<0) return;
+        var prefix = dk.substring(0, idx); var name = dk.substring(idx+2);
+        var v = row.value; var truthy = (v!=null && v!=='' && v!=='false');
+        if((prefix==='staff' || prefix==='skip') && truthy){ doneSet[name] = true; }
+      });
+      DOCS_LIST.forEach(function(d){ if(d && d.l){ d.done = !!doneSet[d.l]; } });
+      resolve();
+    })
+    .catch(function(e){ console.warn('doc_check live fetch err:', e); resolve(); });
+  });
+}
 (async function _initDocsAndLang(){
   try {
     await _loadDocsFromCache();
+    await _applyLiveDoneFromDocCheck();
     _initDocKeys();
   } catch(e){ console.warn('_initDocsAndLang err:', e); }
   setLang('ja');
