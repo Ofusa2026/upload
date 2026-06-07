@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260607.01';
+const VERSION = 'ver.20260607.02';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -362,6 +362,401 @@ LANG_ORDER.forEach(code => {
   langBar.appendChild(btn);
 });
 
+// ===== サンプル画像（💡見本ボタン用、URLはダミー、本番用は後で差し替え） =====
+// 全書類17種類分のサンプル画像URLマップ。多言語の補足説明＋取得場所も含む。
+// 本番運用時は GitHub Pages 配下に samples/ ディレクトリを作って差し替える。
+const DOC_SAMPLES = {
+  mugshot: {
+    image: 'samples/mugshot_sample.jpg',
+    help: {
+      ja: '正面・無背景・縦4cm×横3cm（パスポートサイズ）',
+      en: 'Front view, plain background, 4x3cm (passport size)',
+      vi: 'Nhìn thẳng, nền trắng, 4x3cm (cỡ hộ chiếu)',
+      id: 'Tampak depan, latar polos, 4x3cm (ukuran paspor)',
+      ko: '정면·무배경·세로4cm×가로3cm (여권 사이즈)',
+      zh: '正面·无背景·4cm×3cm（护照尺寸）'
+    },
+    where: {
+      ja: '📷 出どころ：スマートフォンで撮影した写真で問題ございません。\n📋 規格：6か月以内に撮影したもの\n✅ 良い例：正面を向き、無帽、背景・影なし、顔がはっきり写っている\n❌ ダメな例：横向き、帽子、背景に影、ピンボケ、加工・美白した写真\n（出典：出入国在留管理庁「提出写真の規格」）',
+      en: '📷 Source: A photo taken with a smartphone is fine.\n📋 Spec: Taken within the last 6 months\n✅ Good: Facing front, no hat, no background/shadow, clear face\n❌ Bad: Side view, hat, shadow in background, blurry, edited/whitened photos\n(Source: Immigration Services Agency of Japan, "Photo Standards")',
+      vi: '📷 Nguồn: Ảnh chụp bằng điện thoại thông minh cũng được.\n📋 Quy cách: Chụp trong vòng 6 tháng\n✅ Đúng: Nhìn thẳng, không đội mũ, không nền/bóng, khuôn mặt rõ\n❌ Sai: Nhìn nghiêng, đội mũ, có bóng nền, mờ, ảnh chỉnh sửa/làm trắng\n(Nguồn: Cục Quản lý Xuất nhập cảnh Nhật Bản "Quy cách ảnh nộp")',
+      id: '📷 Sumber: Foto yang diambil dengan smartphone tidak masalah.\n📋 Spesifikasi: Diambil dalam 6 bulan terakhir\n✅ Baik: Menghadap depan, tanpa topi, tanpa latar/bayangan, wajah jelas\n❌ Buruk: Menyamping, bertopi, ada bayangan, buram, foto diedit/diputihkan\n(Sumber: Badan Imigrasi Jepang "Standar Foto")',
+      ko: '📷 발급처: 스마트폰으로 촬영한 사진도 괜찮습니다.\n📋 규격: 6개월 이내 촬영\n✅ 좋은 예: 정면, 무모, 배경·그림자 없음, 얼굴이 선명\n❌ 나쁜 예: 옆모습, 모자, 배경 그림자, 흐림, 보정·미백한 사진\n(출처: 일본 출입국재류관리청 「제출 사진 규격」)',
+      zh: '📷 出处：用智能手机拍摄的照片也没问题。\n📋 规格：6个月以内拍摄\n✅ 好例：正面、无帽、无背景·阴影、面部清晰\n❌ 坏例：侧脸、戴帽、背景有阴影、模糊、加工·美白照片\n（出处：日本出入国在留管理厅「提出照片规格」）'
+    }
+  },
+  zairyu_front: {
+    image: 'samples/zairyu_front_sample.jpg',
+    help: {
+      ja: '在留カードの表面（顔写真がある面）',
+      en: 'Front side of Residence Card (with photo)',
+      vi: 'Mặt trước Thẻ cư trú (có ảnh)',
+      id: 'Sisi depan Kartu Izin Tinggal (dengan foto)',
+      ko: '재류카드 앞면 (사진이 있는 면)',
+      zh: '在留卡正面（有照片的一面）'
+    },
+    where: {
+      ja: '💳 ご自身でお持ちのカードです。両面を写真に撮ってください',
+      en: '💳 The card you carry. Please take photos of both sides',
+      vi: '💳 Thẻ bạn mang theo. Vui lòng chụp cả 2 mặt',
+      id: '💳 Kartu yang Anda bawa. Mohon foto kedua sisi',
+      ko: '💳 본인이 소지한 카드입니다. 양면을 사진 찍어주세요',
+      zh: '💳 您本人持有的卡片。请拍摄正反两面'
+    }
+  },
+  zairyu_back: {
+    image: 'samples/zairyu_back_sample.jpg',
+    help: {
+      ja: '在留カードの裏面',
+      en: 'Back side of Residence Card',
+      vi: 'Mặt sau Thẻ cư trú',
+      id: 'Sisi belakang Kartu Izin Tinggal',
+      ko: '재류카드 뒷면',
+      zh: '在留卡背面'
+    },
+    where: {
+      ja: '💳 在留カードの裏側です。住所が書いてあります',
+      en: '💳 Back of Residence Card. Your address is written here',
+      vi: '💳 Mặt sau Thẻ cư trú. Có ghi địa chỉ',
+      id: '💳 Sisi belakang Kartu Izin Tinggal. Berisi alamat',
+      ko: '💳 재류카드 뒷면. 주소가 기재되어 있습니다',
+      zh: '💳 在留卡背面，记载有地址'
+    }
+  },
+  passport: {
+    image: 'samples/passport_sample.png',
+    help: {
+      ja: '顔写真と名前が載っているページ',
+      en: 'Page with your photo and name',
+      vi: 'Trang có ảnh và tên',
+      id: 'Halaman dengan foto dan nama',
+      ko: '사진과 이름이 있는 페이지',
+      zh: '有照片和姓名的页面'
+    },
+    where: {
+      ja: '📘 ご自身のパスポート。顔写真ページを撮ってください',
+      en: '📘 Your own passport. Please take a photo of the page with your photo',
+      vi: '📘 Hộ chiếu của bạn. Vui lòng chụp trang có ảnh',
+      id: '📘 Paspor Anda. Mohon foto halaman dengan foto Anda',
+      ko: '📘 본인의 여권. 사진 페이지를 찍어주세요',
+      zh: '📘 您本人的护照。请拍摄照片页'
+    }
+  },
+  cert_jp: {
+    image: 'samples/cert_jp_sample.png',
+    help: {
+      ja: '日本語能力試験の合格証',
+      en: 'Certificate of Japanese language proficiency test',
+      vi: 'Chứng chỉ kỳ thi năng lực tiếng Nhật',
+      id: 'Sertifikat ujian kemampuan bahasa Jepang',
+      ko: '일본어능력시험 합격증',
+      zh: '日语能力测试合格证'
+    },
+    where: {
+      ja: '🎓 試験に合格した時にもらった紙です。なくした場合は試験団体（JLPT/JFT等）に再発行を依頼',
+      en: '🎓 The certificate you received when you passed the test. If lost, request reissue from test organizer (JLPT/JFT etc.)',
+      vi: '🎓 Giấy bạn nhận khi đỗ kỳ thi. Nếu mất, yêu cầu cấp lại từ tổ chức thi (JLPT/JFT)',
+      id: '🎓 Sertifikat yang Anda terima saat lulus ujian. Jika hilang, minta penerbitan ulang ke penyelenggara (JLPT/JFT)',
+      ko: '🎓 시험에 합격했을 때 받은 증서. 분실 시 시험 주관 기관(JLPT/JFT 등)에 재발급 요청',
+      zh: '🎓 通过考试时获得的证书。遗失时请向考试机构（JLPT/JFT等）申请补发'
+    }
+  },
+  cert_skill: {
+    image: 'samples/cert_skill_sample.png',
+    help: {
+      ja: '特定技能評価試験の合格証',
+      en: 'Certificate of Specified Skills Evaluation Test',
+      vi: 'Chứng chỉ kỳ thi đánh giá kỹ năng đặc định',
+      id: 'Sertifikat Ujian Evaluasi Keterampilan Khusus',
+      ko: '특정기능 평가시험 합격증',
+      zh: '特定技能评价测试合格证'
+    },
+    where: {
+      ja: '🎓 試験に合格した時にもらった紙です。分野ごとに発行団体が異なります',
+      en: '🎓 The certificate you received when you passed. Issuing organization differs by field',
+      vi: '🎓 Giấy bạn nhận khi đỗ. Tổ chức cấp khác nhau theo lĩnh vực',
+      id: '🎓 Sertifikat yang Anda terima saat lulus. Lembaga penerbit berbeda tergantung bidang',
+      ko: '🎓 시험에 합격했을 때 받은 증서. 분야별로 발급 기관이 다릅니다',
+      zh: '🎓 通过考试时获得的证书。各领域发证机构不同'
+    }
+  },
+  cert_specialist: {
+    image: 'samples/cert_specialist_sample.png',
+    help: {
+      ja: '技能実習の専門級・3級の合格証',
+      en: 'Certificate of Technical Intern (Specialist / Level 3)',
+      vi: 'Chứng chỉ thực tập kỹ năng (Chuyên ngành/Cấp 3)',
+      id: 'Sertifikat Pemagangan (Spesialis/Level 3)',
+      ko: '기능실습 (전문급/3급) 합격증',
+      zh: '技能实习专项级·3级合格证'
+    },
+    where: {
+      ja: '🎓 技能実習で合格した時にもらった紙。なくした場合は監理団体または所属企業へ\n⚠️ 不合格だった場合は評価調書を提出してください。',
+      en: '🎓 Certificate from technical intern training. If lost, ask supervising org or employer\n⚠️ If you failed the test, please submit an evaluation report instead.',
+      vi: '🎓 Giấy nhận từ thực tập kỹ năng. Nếu mất, hỏi tổ chức quản lý hoặc công ty\n⚠️ Nếu không đỗ, vui lòng nộp bản đánh giá (hyouka chousho).',
+      id: '🎓 Sertifikat dari pemagangan teknis. Jika hilang, tanya organisasi pengawas atau perusahaan\n⚠️ Jika tidak lulus, mohon serahkan laporan evaluasi (hyouka chousho).',
+      ko: '🎓 기능실습 합격 시 받은 증서. 분실 시 감리단체 또는 소속 기업에 문의\n⚠️ 불합격한 경우에는 평가조서를 제출해 주세요.',
+      zh: '🎓 技能实习合格时获得的证书。遗失时请联系监理团体或所属企业\n⚠️ 如未合格，请提交评价调书。'
+    }
+  },
+  tax_payment: {
+    image: 'samples/tax_payment_sample.png',
+    help: {
+      ja: '市役所・区役所で発行する納税証明書（令和7年度）',
+      en: 'Tax Payment Certificate issued by City Hall (FY 2025 / Reiwa 7)',
+      vi: 'Giấy chứng nhận nộp thuế do tòa thị chính cấp (Năm 2025)',
+      id: 'Bukti Pembayaran Pajak dari Balai Kota (Tahun 2025)',
+      ko: '시청·구청에서 발급한 납세증명서 (2025년도)',
+      zh: '市役所·区役所发放的纳税证明（令和7年度）'
+    },
+    where: {
+      ja: '🏛️ 出どころ：市役所・区役所（住民登録のある自治体）\n📋 取得方法：窓口またはコンビニ（マイナンバーカードがあれば）で発行\n💴 費用：200〜400円程度\n📅 持ち物：在留カード\n📍 2025年1月1日時点でお住まいだった市役所にて発行をお願いします\n💡 補足：「住民税を払った」ことを証明する書類です。給与から自動で引かれている人も発行できます',
+      en: '🏛️ Source: City/Ward Office (where you are registered)\n📋 How to get: Counter or convenience store (with My Number Card)\n💴 Cost: ~200-400 yen\n📅 Bring: Residence Card\n📍 Please obtain it from the city office where you lived as of January 1, 2025\n💡 Note: Proves you have paid resident tax. Available even if tax is auto-deducted from salary',
+      vi: '🏛️ Nguồn: Tòa thị chính/Văn phòng quận (nơi đăng ký cư trú)\n📋 Cách lấy: Tại quầy hoặc cửa hàng tiện lợi (nếu có thẻ My Number)\n💴 Chi phí: Khoảng 200-400 yên\n📅 Mang theo: Thẻ cư trú\n📍 Vui lòng lấy tại tòa thị chính nơi bạn cư trú vào ngày 1/1/2025\n💡 Ghi chú: Chứng minh đã nộp thuế cư trú. Có thể lấy ngay cả khi thuế bị trừ tự động từ lương',
+      id: '🏛️ Sumber: Balai Kota/Kantor Distrik (tempat Anda terdaftar)\n📋 Cara: Counter atau minimarket (jika punya My Number Card)\n💴 Biaya: Sekitar 200-400 yen\n📅 Bawa: Kartu Izin Tinggal\n📍 Mohon ambil di Balai Kota tempat Anda tinggal per 1 Januari 2025\n💡 Catatan: Membuktikan pembayaran pajak penduduk. Tersedia meski pajak otomatis dipotong dari gaji',
+      ko: '🏛️ 발급처: 시청·구청 (주민등록된 자치단체)\n📋 취득 방법: 창구 또는 편의점 (마이넘버 카드 소지 시)\n💴 비용: 200~400엔 정도\n📅 지참물: 재류카드\n📍 2025년 1월 1일 시점에 거주하던 시청에서 발급받아 주세요\n💡 보충: 주민세를 납부했음을 증명하는 서류. 급여에서 자동공제되는 사람도 발급 가능',
+      zh: '🏛️ 出处：市役所·区役所（户籍所在地）\n📋 取得方法：窗口或便利店（持有My Number卡时）\n💴 费用：约200~400日元\n📅 携带物：在留卡\n📍 请在2025年1月1日时居住地的市役所办理\n💡 补充：证明已缴纳住民税的文件。即使是从工资中自动扣除的人也可以申请'
+    }
+  },
+  tax_cert: {
+    image: 'samples/tax_cert_sample.png',
+    help: {
+      ja: '市役所・区役所で発行する課税証明書（令和7年度）',
+      en: 'Taxation Certificate issued by City Hall (FY 2025 / Reiwa 7)',
+      vi: 'Giấy chứng nhận thuế do tòa thị chính cấp (Năm 2025)',
+      id: 'Surat Keterangan Pajak dari Balai Kota (Tahun 2025)',
+      ko: '시청·구청에서 발급한 과세증명서 (2025년도)',
+      zh: '市役所·区役所发放的课税证明（令和7年度）'
+    },
+    where: {
+      ja: '🏛️ 出どころ：市役所・区役所（住民登録のある自治体）\n📋 取得方法：窓口またはコンビニ（マイナンバーカードがあれば）で発行\n💴 費用：200〜400円程度\n📅 持ち物：在留カード\n📍 2025年1月1日時点でお住まいだった市役所にて発行をお願いします\n💡 補足：「いくら所得があって、いくら住民税がかかったか」を証明する書類です。納税証明書とセットで「所得・課税証明書」として1枚で発行される場合もあります',
+      en: '🏛️ Source: City/Ward Office (where you are registered)\n📋 How to get: Counter or convenience store (with My Number Card)\n💴 Cost: ~200-400 yen\n📅 Bring: Residence Card\n📍 Please obtain it from the city office where you lived as of January 1, 2025\n💡 Note: Proves your income and resident tax amount. Sometimes issued together with Tax Payment Certificate as one document',
+      vi: '🏛️ Nguồn: Tòa thị chính/Văn phòng quận\n📋 Cách lấy: Tại quầy hoặc cửa hàng tiện lợi (nếu có thẻ My Number)\n💴 Chi phí: Khoảng 200-400 yên\n📅 Mang theo: Thẻ cư trú\n📍 Vui lòng lấy tại tòa thị chính nơi bạn cư trú vào ngày 1/1/2025\n💡 Ghi chú: Chứng minh thu nhập và số thuế cư trú. Đôi khi cấp chung với Giấy chứng nhận nộp thuế thành một tờ',
+      id: '🏛️ Sumber: Balai Kota/Kantor Distrik\n📋 Cara: Counter atau minimarket (jika punya My Number Card)\n💴 Biaya: Sekitar 200-400 yen\n📅 Bawa: Kartu Izin Tinggal\n📍 Mohon ambil di Balai Kota tempat Anda tinggal per 1 Januari 2025\n💡 Catatan: Membuktikan penghasilan dan pajak penduduk. Kadang diterbitkan bersama Bukti Pembayaran Pajak sebagai 1 dokumen',
+      ko: '🏛️ 발급처: 시청·구청\n📋 취득 방법: 창구 또는 편의점 (마이넘버 카드 소지 시)\n💴 비용: 200~400엔 정도\n📅 지참물: 재류카드\n📍 2025년 1월 1일 시점에 거주하던 시청에서 발급받아 주세요\n💡 보충: 소득액과 주민세액을 증명하는 서류. 납세증명서와 함께 1장으로 발급되는 경우도 있음',
+      zh: '🏛️ 出处：市役所·区役所\n📋 取得方法：窗口或便利店（持有My Number卡时）\n💴 费用：约200~400日元\n📅 携带物：在留卡\n📍 请在2025年1月1日时居住地的市役所办理\n💡 补充：证明收入金额和住民税额的文件。有时与纳税证明合并为「所得·课税证明书」一份发放'
+    }
+  },
+  withholding: {
+    image: 'samples/withholding_sample.png',
+    help: {
+      ja: '会社が年末（12月〜1月）に発行する小さな紙です（令和6年分）',
+      en: 'A small slip your company issues at year-end (Dec-Jan), Year 2024',
+      vi: 'Phiếu nhỏ công ty cấp vào cuối năm (tháng 12-1), Năm 2025',
+      id: 'Lembar kecil dari perusahaan akhir tahun (Des-Jan), Tahun 2025',
+      ko: '회사가 연말(12월~1월)에 발급하는 작은 종이 (2024년분)',
+      zh: '公司在年末（12月-1月）发放的小纸条（令和6年分）'
+    },
+    where: {
+      ja: '🏢 出どころ：勤務先の会社（経理・人事担当）\n📋 取得方法：会社から年末調整後に配布されます\n💴 費用：無料\n💡 補足：1年間の給与と差し引かれた所得税が書かれています。なくした場合は会社に再発行を依頼してください。普通12月〜1月に配布されますが、転職などで途中で退職した場合はその時点で発行されます',
+      en: '🏢 Source: Your company (accounting/HR dept)\n📋 How to get: Distributed by your company after year-end tax adjustment\n💴 Cost: Free\n💡 Note: Shows your annual salary and income tax withheld. If lost, ask company for reissue. Usually given in Dec-Jan, but issued at the time of resignation if you quit mid-year',
+      vi: '🏢 Nguồn: Công ty làm việc (kế toán/nhân sự)\n📋 Cách lấy: Công ty phát sau khi điều chỉnh thuế cuối năm\n💴 Chi phí: Miễn phí\n💡 Ghi chú: Ghi lương cả năm và thuế thu nhập đã khấu trừ. Nếu mất, yêu cầu công ty cấp lại. Thường phát vào tháng 12-1, nhưng cấp ngay khi nghỉ việc nếu nghỉ giữa năm',
+      id: '🏢 Sumber: Perusahaan tempat kerja (akuntansi/HR)\n📋 Cara: Dibagikan perusahaan setelah penyesuaian pajak akhir tahun\n💴 Biaya: Gratis\n💡 Catatan: Berisi gaji tahunan dan pajak pendapatan yang dipotong. Jika hilang, minta penerbitan ulang ke perusahaan. Biasanya dibagikan Des-Jan, atau saat resign jika berhenti di tengah tahun',
+      ko: '🏢 발급처: 근무처 회사 (경리/인사 담당)\n📋 취득 방법: 회사가 연말정산 후 배부\n💴 비용: 무료\n💡 보충: 1년간 급여와 차감된 소득세가 기재됨. 분실 시 회사에 재발급 요청. 보통 12~1월에 배부되지만, 연도 중 퇴직 시에는 그 시점에 발급됨',
+      zh: '🏢 出处：工作的公司（财务/人事部门）\n📋 取得方法：年末调整后由公司发放\n💴 费用：免费\n💡 补充：记载1年的工资和扣缴的所得税。遗失时请向公司申请补发。通常在12月~1月发放，但年中离职时则在离职时发放'
+    }
+  },
+  medical: {
+    image: 'samples/medical_sample.png',
+    help: {
+      ja: '健康診断の結果が書かれた紙',
+      en: 'Document with health checkup results',
+      vi: 'Giấy ghi kết quả khám sức khỏe',
+      id: 'Dokumen hasil pemeriksaan kesehatan',
+      ko: '건강검진 결과가 적힌 종이',
+      zh: '健康检查结果证明'
+    },
+    where: {
+      ja: '🏥 病院・クリニックで健康診断を受けて発行してもらいます。担当者に専用の用紙をもらってから受診してください\n📅 認定申請の場合：3ヶ月以内に受診した結果\n📅 変更・更新申請の場合：1年以内に受診した結果',
+      en: '🏥 Get from hospital/clinic after a health checkup. Get the form from your contact first\n📅 For Certification application: results from within the last 3 months\n📅 For Change/Renewal application: results from within the last 1 year',
+      vi: '🏥 Khám sức khỏe tại bệnh viện/phòng khám. Hãy lấy mẫu giấy chuyên dụng từ người phụ trách trước\n📅 Đơn xin chứng nhận (nintei): kết quả khám trong vòng 3 tháng\n📅 Đơn xin thay đổi/gia hạn: kết quả khám trong vòng 1 năm',
+      id: '🏥 Pemeriksaan kesehatan di rumah sakit/klinik. Ambil formulir khusus dari penanggung jawab dulu\n📅 Untuk permohonan sertifikasi (nintei): hasil dalam 3 bulan terakhir\n📅 Untuk permohonan perubahan/perpanjangan: hasil dalam 1 tahun terakhir',
+      ko: '🏥 병원·클리닉에서 건강검진 후 발급. 담당자에게 전용 양식을 받은 후 검진받으세요\n📅 인정 신청의 경우: 3개월 이내에 받은 검진 결과\n📅 변경·갱신 신청의 경우: 1년 이내에 받은 검진 결과',
+      zh: '🏥 在医院/诊所接受健康检查后发放。请先从负责人处获取专用表格\n📅 认定申请时：3个月以内的体检结果\n📅 变更·更新申请时：1年以内的体检结果'
+    }
+  },
+  health_ins: {
+    image: 'samples/health_ins_sample.png',
+    help: {
+      ja: '健康保険証（プラスチックカード）',
+      en: 'Health Insurance Card (plastic card)',
+      vi: 'Thẻ bảo hiểm y tế (thẻ nhựa)',
+      id: 'Kartu Asuransi Kesehatan (kartu plastik)',
+      ko: '건강보험증 (플라스틱 카드)',
+      zh: '健康保险证（塑料卡）'
+    },
+    where: {
+      ja: '💳 ご自身でお持ちの保険証カード。会社の社会保険または国民健康保険',
+      en: '💳 The insurance card you have. Company social insurance or National Health Insurance',
+      vi: '💳 Thẻ bảo hiểm bạn có. Bảo hiểm xã hội công ty hoặc bảo hiểm y tế quốc dân',
+      id: '💳 Kartu asuransi yang Anda miliki. Asuransi sosial perusahaan atau Asuransi Kesehatan Nasional',
+      ko: '💳 본인이 소지한 보험증 카드. 회사 사회보험 또는 국민건강보험',
+      zh: '💳 您本人持有的保险证卡。公司社会保险或国民健康保险'
+    }
+  },
+  health_ins_cert: {
+    image: 'samples/health_ins_cert_sample.png',
+    help: {
+      ja: '国民健康保険料を払った証明書',
+      en: 'Certificate that National Health Insurance has been paid',
+      vi: 'Giấy chứng nhận đã đóng bảo hiểm y tế quốc dân',
+      id: 'Sertifikat pembayaran Asuransi Kesehatan Nasional',
+      ko: '국민건강보험료를 낸 증명서',
+      zh: '国民健康保险费已缴纳证明'
+    },
+    where: {
+      ja: '🏛️ お住まいの市役所・区役所の国民健康保険課で発行（在留カード持参）',
+      en: '🏛️ Issued at the NHI section of your city/ward office (bring Residence Card)',
+      vi: '🏛️ Cấp tại phòng bảo hiểm y tế quốc dân của tòa thị chính (mang Thẻ cư trú)',
+      id: '🏛️ Diterbitkan di bagian Asuransi Kesehatan Nasional di Balai Kota (bawa Kartu Izin Tinggal)',
+      ko: '🏛️ 거주지 시청·구청 국민건강보험과에서 발급 (재류카드 지참)',
+      zh: '🏛️ 在居住地的市役所/区役所国民健康保险科办理（携带在留卡）'
+    }
+  },
+  graduation: {
+    image: 'samples/graduation_sample.png',
+    help: {
+      ja: '学校の卒業を証明する書類',
+      en: 'Document certifying graduation from school',
+      vi: 'Giấy chứng nhận tốt nghiệp',
+      id: 'Dokumen kelulusan dari sekolah',
+      ko: '학교 졸업을 증명하는 서류',
+      zh: '学校毕业证明文件'
+    },
+    where: {
+      ja: '🎓 卒業した学校に依頼して発行してもらいます（日本語学校の場合は学校事務局へ）',
+      en: '🎓 Request from your graduated school (if Japanese language school, contact the school office)',
+      vi: '🎓 Yêu cầu từ trường đã tốt nghiệp (trường tiếng Nhật: liên hệ văn phòng trường)',
+      id: '🎓 Minta dari sekolah tempat Anda lulus (untuk sekolah bahasa Jepang, hubungi kantor sekolah)',
+      ko: '🎓 졸업한 학교에 발급 요청 (일본어학교의 경우 학교 사무국)',
+      zh: '🎓 向毕业学校申请发放（日语学校请联系学校事务局）'
+    }
+  },
+  transcript: {
+    image: 'samples/transcript_sample.png',
+    help: {
+      ja: '学校の成績証明書',
+      en: 'Academic transcript from school',
+      vi: 'Bảng điểm trường học',
+      id: 'Transkrip nilai sekolah',
+      ko: '학교 성적증명서',
+      zh: '学校成绩单'
+    },
+    where: {
+      ja: '🎓 通っていた学校に依頼して発行してもらいます',
+      en: '🎓 Request from the school you attended',
+      vi: '🎓 Yêu cầu từ trường bạn đã học',
+      id: '🎓 Minta dari sekolah yang Anda hadiri',
+      ko: '🎓 다녔던 학교에 발급 요청',
+      zh: '🎓 向就读过的学校申请发放'
+    }
+  },
+  nenkin: {
+    image: 'samples/nenkin_sample.png',
+    help: {
+      ja: '年金手帳（青色の手帳）',
+      en: 'Pension Booklet (blue booklet)',
+      vi: 'Sổ hưu trí (sổ màu xanh)',
+      id: 'Buku Pensiun (buku biru)',
+      ko: '연금수첩 (파란색 수첩)',
+      zh: '年金手帳（蓝色手册）'
+    },
+    where: {
+      ja: '📒 ご自身で保管している青色の手帳です。なくした場合は年金事務所で再発行（無料）',
+      en: '📒 The blue booklet you keep. If lost, reissue at Pension Office (free)',
+      vi: '📒 Sổ màu xanh bạn giữ. Nếu mất, cấp lại miễn phí tại Văn phòng hưu trí',
+      id: '📒 Buku biru yang Anda simpan. Jika hilang, dapat dicetak ulang gratis di Kantor Pensiun',
+      ko: '📒 본인이 보관하는 파란색 수첩. 분실 시 연금사무소에서 무료 재발급',
+      zh: '📒 您本人保管的蓝色手册。遗失时可在年金事务所免费补发'
+    }
+  },
+  embassy_rec: {
+    image: 'samples/embassy_rec_sample.png',
+    help: {
+      ja: '大使館発行の推薦状',
+      en: 'Recommendation letter from embassy',
+      vi: 'Thư giới thiệu từ đại sứ quán',
+      id: 'Surat rekomendasi dari kedutaan',
+      ko: '대사관 발급 추천장',
+      zh: '大使馆发放的推荐信'
+    },
+    where: {
+      ja: '🏛️ 自国の駐日大使館で発行してもらいます。担当者に確認してから取得してください',
+      en: '🏛️ Issued by your country\'s embassy in Japan. Check with your contact before requesting',
+      vi: '🏛️ Cấp tại đại sứ quán nước bạn tại Nhật. Xác nhận với người phụ trách trước',
+      id: '🏛️ Diterbitkan oleh kedutaan negara Anda di Jepang. Konfirmasi dengan penanggung jawab dulu',
+      ko: '🏛️ 본국 주일 대사관에서 발급. 담당자에게 확인 후 신청',
+      zh: '🏛️ 由本国驻日大使馆发放。请先与负责人确认后再申请'
+    }
+  }
+};
+
+// 💡見本ボタンクリック時にモーダル表示
+function showDocSample(docKey) {
+  const sample = DOC_SAMPLES[docKey];
+  if (!sample) {
+    alert('準備中 / Coming soon');
+    return;
+  }
+  const L = LANGS[currentLang];
+  // ver.20260527.test.07: DOC_LABELS_JAがnull(旧ロジック時)でも動くようにフォールバック
+  let labelJa = docKey;
+  if (typeof DOC_LABELS_JA !== 'undefined' && DOC_LABELS_JA && DOC_LABELS_JA[docKey]) {
+    labelJa = DOC_LABELS_JA[docKey];
+  } else if (L && L.docs && L.docs[docKey]) {
+    labelJa = L.docs[docKey];
+  }
+  const tr = (typeof DOC_TRANSLATIONS !== 'undefined') ? DOC_TRANSLATIONS[labelJa] : null;
+  let displayLabel = labelJa;
+  if (tr && tr[currentLang]) {
+    displayLabel = tr[currentLang].replace(/<[^>]+>/g, ''); // タグ除去
+  } else if (L && L.docs && L.docs[docKey]) {
+    displayLabel = L.docs[docKey];
+  }
+  const helpText = sample.help[currentLang] || sample.help.en || sample.help.ja || '';
+  // ver.20260527.test.09: 取得場所・出どころ・補足を「📝 説明」セクションにまとめる
+  const whereText = sample.where ? (sample.where[currentLang] || sample.where.en || sample.where.ja || '') : '';
+  // セクション見出しの多言語化
+  const whereLabels = {
+    ja: '📝 説明（取得方法・出どころ）',
+    en: '📝 Description (How to get / Source)',
+    vi: '📝 Mô tả (Cách lấy / Nguồn)',
+    id: '📝 Penjelasan (Cara mendapatkan / Sumber)',
+    my: '📝 ရှင်းပြချက် (ရယူပုံ / ရင်းမြစ်)',
+    ko: '📝 설명 (취득 방법 / 발급처)',
+    ne: '📝 विवरण (कसरी पाउने / स्रोत)',
+    zh: '📝 说明（取得方法・出处）',
+    th: '📝 คำอธิบาย (วิธีรับ / แหล่งที่มา)',
+    km: '📝 ការពិពណ៌នា (របៀបទទួល / ប្រភព)',
+    mn: '📝 Тайлбар (Авах арга / Гарал үүсэл)',
+    si: '📝 විස්තරය (ලබා ගන්නා ආකාරය / මූලාශ්‍රය)'
+  };
+  const whereLabel = whereLabels[currentLang] || whereLabels.en;
+  
+  // モーダル生成
+  const overlay = document.createElement('div');
+  overlay.id = 'docSampleOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  
+  const box = document.createElement('div');
+  box.style.cssText = 'background:white;border-radius:12px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;padding:20px;';
+  
+  box.innerHTML = 
+    '<div style="font-size:15px;font-weight:800;margin-bottom:12px;color:#1f2937;">💡 ' + displayLabel + '</div>' +
+    '<div style="background:#f9fafb;border-radius:8px;padding:8px;margin-bottom:12px;text-align:center;">' +
+    '<img src="' + sample.image + '" alt="sample" style="max-width:100%;max-height:50vh;border-radius:4px;" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<div style=&quot;padding:40px;color:#9ca3af;font-size:13px;&quot;>📷 サンプル画像準備中<br>Sample image coming soon</div>\';">' +
+    '</div>' +
+    (whereText ? '<div style="background:#dbeafe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#1e40af;line-height:1.6;white-space:pre-line;"><div style="font-weight:700;margin-bottom:6px;">' + whereLabel + '</div>' + whereText + '</div>' : '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#92400e;line-height:1.5;">' + helpText + '</div>') +
+    '<button id="docSampleCloseBtn" style="width:100%;padding:12px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">OK</button>';
+  
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  
+  const closeFn = () => overlay.remove();
+  document.getElementById('docSampleCloseBtn').addEventListener('click', closeFn);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFn(); });
+}
+
 function buildFields() {
   const L = LANGS[currentLang];
   fieldsList.innerHTML = '';
@@ -422,6 +817,36 @@ function buildFields() {
     header.addEventListener('click', () => row.classList.toggle('open'));
     const body = document.createElement('div');
     body.className = 'field-body';
+// ver.20260526.test.02: 開いた時だけ表示される「📷 見本を見る」リンク（DOC_SAMPLESに登録された書類のみ）
+    if (DOC_SAMPLES && DOC_SAMPLES[key]) {
+      const sampleLink = document.createElement('div');
+      sampleLink.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px;';
+      const sampleA = document.createElement('a');
+      sampleA.href = 'javascript:void(0)';
+      sampleA.style.cssText = 'display:inline-flex;align-items:center;gap:4px;color:#3b82f6;text-decoration:none;font-size:12px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:6px;background:#eff6ff;border:1px solid #bfdbfe;';
+      // 言語ごとのリンクテキスト
+      const linkLabels = {
+        ja: '📷 見本を見る',
+        en: '📷 View Sample',
+        vi: '📷 Xem mẫu',
+        id: '📷 Lihat Contoh',
+        my: '📷 နမူနာကြည့်ရန်',
+        ko: '📷 견본 보기',
+        ne: '📷 नमूना हेर्नुहोस्',
+        zh: '📷 查看样本',
+        th: '📷 ดูตัวอย่าง',
+        km: '📷 មើលគំរូ',
+        mn: '📷 Жишээ үзэх',
+        si: '📷 උදාහරණය බලන්න'
+      };
+      sampleA.textContent = linkLabels[currentLang] || linkLabels.en;
+      sampleA.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showDocSample(key);
+      });
+      sampleLink.appendChild(sampleA);
+      body.appendChild(sampleLink);
+    }
     if (hasFiles) {
       fileData[key].forEach((fd, fi) => {
         const pw = document.createElement('div');
