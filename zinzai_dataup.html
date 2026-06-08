@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260607.03';
+const VERSION = 'ver.20260608.01';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -261,6 +261,7 @@ const ALL_DOCS = [
   {key:'transcript',tags:['成績証明書']},
   {key:'nenkin',tags:['年金手帳']},
   {key:'embassy_rec',tags:['大使館推薦票']},
+  {key:'juminhyo',tags:['住民票']},
   {key:'other',tags:[]},
 ];
 const REQUIRED_RULES = {
@@ -279,9 +280,9 @@ function isDocSkipped(doc) {
 }
 function getDocPattern() {
   const at = APP_TYPE;
-  if (at === '更新') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'optional',cert_skill:'optional',cert_specialist:'hidden',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:'hidden',health_ins_cert:'hidden',graduation:'hidden',transcript:'hidden',nenkin:'hidden',embassy_rec:'optional',other:'optional'};
-  if (at === '変更') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'optional',other:'optional'};
-  if (at === '認定') return {zairyu_front:'hidden',zairyu_back:'hidden',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'hidden',tax_payment:'hidden',withholding:'hidden',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'optional',other:'optional'};
+  if (at === '更新') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'optional',cert_skill:'optional',cert_specialist:'hidden',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:'hidden',health_ins_cert:'hidden',graduation:'hidden',transcript:'hidden',nenkin:'hidden',embassy_rec:'optional',juminhyo:'optional',other:'optional'};
+  if (at === '変更') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'optional',juminhyo:'optional',other:'optional'};
+  if (at === '認定') return {zairyu_front:'hidden',zairyu_back:'hidden',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'hidden',tax_payment:'hidden',withholding:'hidden',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'optional',juminhyo:'optional',other:'optional'};
   return Object.fromEntries(ALL_DOCS.map(d => [d.key,'optional']));
 }
 function getRequiredTags() {
@@ -670,6 +671,25 @@ const DOC_SAMPLES = {
       zh: '📒 您本人保管的蓝色手册。遗失时可在年金事务所免费补发'
     }
   },
+  juminhyo: {
+    image: 'samples/juminhyo_sample.png',
+    help: {
+      ja: '世帯全員が記載された住民票（マイナンバーの記載は不要）',
+      en: 'Certificate of Residence listing all household members (without My Number)',
+      vi: 'Giấy chứng nhận cư trú ghi đầy đủ thành viên hộ gia đình (không có My Number)',
+      id: 'Surat Keterangan Domisili yang mencantumkan seluruh anggota keluarga (tanpa My Number)',
+      ko: '세대 전원이 기재된 주민표 (마이넘버 미기재)',
+      zh: '记载全体家庭成员的住民票（无需记载My Number）'
+    },
+    where: {
+      ja: '🏛️ 市区町村の役所、またはマイナンバーカードでコンビニで取得できます。発行から3か月以内のもの。',
+      en: '🏛️ Obtain at your city/ward office, or at a convenience store with a My Number card. Issued within the last 3 months.',
+      vi: '🏛️ Lấy tại văn phòng quận/thành phố, hoặc tại cửa hàng tiện lợi bằng thẻ My Number. Cấp trong vòng 3 tháng.',
+      id: '🏛️ Diperoleh di kantor kota/distrik, atau di minimarket dengan kartu My Number. Diterbitkan dalam 3 bulan terakhir.',
+      ko: '🏛️ 시구정촌 관공서, 또는 마이넘버 카드로 편의점에서 발급. 발행 후 3개월 이내.',
+      zh: '🏛️ 可在市区町村政府办公室，或持My Number卡在便利店获取。需为3个月内开具。'
+    }
+  },
   embassy_rec: {
     image: 'samples/embassy_rec_sample.png',
     help: {
@@ -706,7 +726,7 @@ const DOC_NAME2KEY = {
  '源泉徴収票':'withholding',
  '健康保険証':'health_ins',
  '国民健康保険料納付証明書':'health_ins_cert','国民健康保険料納付証明':'health_ins_cert',
- '卒業証明書':'graduation','成績証明書':'transcript','年金手帳':'nenkin','大使館推薦票':'embassy_rec'
+ '卒業証明書':'graduation','成績証明書':'transcript','年金手帳':'nenkin','大使館推薦票':'embassy_rec','住民票':'juminhyo'
 };
 function _sampleKey(key){
   if (DOC_SAMPLES[key]) return key; // 旧ロジック: 既にサンプルキー
