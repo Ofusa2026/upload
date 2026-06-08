@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260409.17</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260609.rpc</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -228,9 +228,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 
 async function loadSignRequest(token){
   try{
-    const {data,error}=await sb.from('sign_requests')
-      .select('id,case_id,status,expires_at,doc_lang,drive_folder_id,pdf_base64,sig_page,sig_x,sig_y,sig_w,sig_h')
-      .eq('token',token).single();
+    const {data,error}=await sb.rpc('sign_get',{ p_token: token });
     if(error||!data){showError('リンクが見つかりません');return;}
     if(data.expires_at&&new Date(data.expires_at)<new Date()){showError('リンクの有効期限が切れています');return;}
     if(data.status==='signed'){showAlreadySigned();return;}
@@ -239,13 +237,8 @@ async function loadSignRequest(token){
     driveFolderId=data.drive_folder_id||'';
     // 署名のみのためcases参照なし
     // casesテーブルから別途取得
-    try {
-      const {data:cd}=await sb.from('cases').select('applicant,company').eq('id',data.case_id).single();
-      if(cd){
-        document.getElementById('workerName').textContent=cd.applicant||'—';
-        document.getElementById('companyName').textContent=cd.company||'—';
-      }
-    } catch(ce){ console.warn('cases取得エラー:',ce); }
+    document.getElementById('workerName').textContent=data.applicant||'—';
+    document.getElementById('companyName').textContent=data.company||'—';
     document.getElementById('docLang').textContent=docLang;
     // pdf_base64があればDBから直接取得
     if(data.pdf_base64){
@@ -393,17 +386,12 @@ async function submitSign(){
       signedPdfB64 = btoa(bin);
     }
     // 3. Supabase更新（署名画像＋合成済みPDFを保存）
-    const {error}=await sb.from('sign_requests').update({
-      status:'signed',signed_at:signedAt,signer_name:name,
-      signer_card_last4:card,signature_image:sigDataUrl,
-      signed_pdf_base64: signedPdfB64
-    }).eq('id',signRequestId);
-    if(error)throw error;
-    // drive_pendingをtrueに、pdf_base64をクリア（容量節約）
-    await sb.from('sign_requests').update({
-      drive_pending: true,
-      pdf_base64: null
-    }).eq('id',signRequestId);
+    const {data:_sd,error}=await sb.rpc('sign_submit',{
+      p_token: requestToken, p_signer_name: name, p_signer_card_last4: card,
+      p_signature_image: sigDataUrl, p_signed_pdf_base64: signedPdfB64
+    });
+    if(error) throw error;
+    if(_sd && _sd.error) throw new Error(_sd.error);
     // 完了
     document.getElementById('completeName').textContent=name;
     document.getElementById('completeTime').textContent=new Date(signedAt).toLocaleString('ja-JP');

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20260607.01 - 取得済み/不要グレーアウトを co_doc_check ライブ読みに変更（再生成不要で最新反映） -->
+<!-- company_dataup ver.20260609.rpc - 取得済み/不要グレーアウトを co_doc_check ライブ読みに変更（再生成不要で最新反映） -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -293,6 +293,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5z
 // Supabase（アップロード通知用）
 const SB_URL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
 const SB_KEY = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
+function _uplRpc(fn, body){ return fetch(SB_URL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, body: JSON.stringify(body||{}) }); }
 
 async function notifyUploadToSystem(fileCount, companyId, companyName) {
   // companyId・companyName両方なくてもとりあえず送る（テーブル存在確認も兼ねる）
@@ -306,16 +307,7 @@ async function notifyUploadToSystem(fileCount, companyId, companyName) {
     if (companyName) payload.company_name = companyName;
     if (FOLDER_ID) payload.folder_id = FOLDER_ID;
     console.log('📤 Supabase通知送信:', payload);
-    const res = await fetch(SB_URL + '/rest/v1/upload_notifications', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SB_KEY,
-        'Authorization': 'Bearer ' + SB_KEY,
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify(payload)
-    });
+    const res = await _uplRpc('upload_notify', { p_payload: payload });
     if (res.ok) {
       console.log('✅ 案件管理システムに通知しました (HTTP ' + res.status + ')');
     } else {
@@ -358,23 +350,17 @@ function _loadDocsFromCache(){
   return new Promise(function(resolve){
     if(USE_NEW_DOCS){ resolve(DOCS_LIST); return; }
     if(!COMPANY_ID){ resolve(null); return; }
-    var url = SUPABASE_URL_UPL + '/rest/v1/upload_docs_cache?case_id=eq.' + encodeURIComponent(COMPANY_ID) + '&kind=eq.company&select=docs';
-    fetch(url, {
-      headers: {
-        'apikey': SUPABASE_KEY_UPL,
-        'Authorization': 'Bearer ' + SUPABASE_KEY_UPL,
-        'Accept': 'application/json'
-      }
-    }).then(function(r){ return r.ok ? r.json() : []; }).then(function(rows){
-      if(rows && rows[0] && Array.isArray(rows[0].docs) && rows[0].docs.length){
-        DOCS_LIST = rows[0].docs;
+    _uplRpc('upload_docs_cache_get', { p_case_id: COMPANY_ID, p_kind: 'company' })
+    .then(function(r){ return r.ok ? r.json() : null; }).then(function(docs){
+      if(docs && Array.isArray(docs) && docs.length){
+        DOCS_LIST = docs;
         USE_NEW_DOCS = true;
         resolve(DOCS_LIST);
       } else {
         resolve(null);
       }
     }).catch(function(e){
-      console.warn('upload_docs_cache fetch err:', e);
+      console.warn('upload_docs_cache rpc err:', e);
       resolve(null);
     });
   });
@@ -704,8 +690,7 @@ function _applyLiveDoneFromCoDocCheck(){
   // ver.20260607.01: co_doc_check をライブ読みして done(取得済み/不要) を上書き（キャッシュのスナップショットに依存しない）
   return new Promise(function(resolve){
     if(!COMPANY_ID || !Array.isArray(DOCS_LIST) || !DOCS_LIST.length){ resolve(); return; }
-    var url = SUPABASE_URL_UPL + '/rest/v1/co_doc_check?co_id=eq.' + encodeURIComponent(COMPANY_ID) + '&select=doc_key,value';
-    fetch(url, { headers: { 'apikey': SUPABASE_KEY_UPL, 'Authorization': 'Bearer ' + SUPABASE_KEY_UPL, 'Accept': 'application/json' } })
+    _uplRpc('upload_co_doc_check_get', { p_co_id: COMPANY_ID })
     .then(function(r){ return r.ok ? r.json() : []; })
     .then(function(rows){
       var doneSet = {};

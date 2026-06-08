@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260608.01';
+const VERSION = 'ver.20260609.rpc';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -164,27 +164,22 @@ let USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
 // Supabaseの upload_docs_cache から書類リストを取得
 const SUPABASE_URL_UPL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
 const SUPABASE_KEY_UPL = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
+function _uplRpc(fn, body){ return fetch(SUPABASE_URL_UPL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY_UPL,'Authorization':'Bearer '+SUPABASE_KEY_UPL}, body: JSON.stringify(body||{}) }); }
 function _loadDocsFromCache(){
   return new Promise(function(resolve){
     if(USE_NEW_DOCS){ resolve(DOCS_LIST); return; }  // URLパラメータ優先
     if(!CASE_ID){ resolve(null); return; }
-    var url = SUPABASE_URL_UPL + '/rest/v1/upload_docs_cache?case_id=eq.' + encodeURIComponent(CASE_ID) + '&kind=eq.person&select=docs';
-    fetch(url, {
-      headers: {
-        'apikey': SUPABASE_KEY_UPL,
-        'Authorization': 'Bearer ' + SUPABASE_KEY_UPL,
-        'Accept': 'application/json'
-      }
-    }).then(function(r){ return r.ok ? r.json() : []; }).then(function(rows){
-      if(rows && rows[0] && Array.isArray(rows[0].docs) && rows[0].docs.length){
-        DOCS_LIST = rows[0].docs;
+    _uplRpc('upload_docs_cache_get', { p_case_id: CASE_ID, p_kind: 'person' })
+    .then(function(r){ return r.ok ? r.json() : null; }).then(function(docs){
+      if(docs && Array.isArray(docs) && docs.length){
+        DOCS_LIST = docs;
         USE_NEW_DOCS = true;
         resolve(DOCS_LIST);
       } else {
         resolve(null);
       }
     }).catch(function(e){
-      console.warn('upload_docs_cache fetch err:', e);
+      console.warn('upload_docs_cache rpc err:', e);
       resolve(null);
     });
   });
@@ -941,8 +936,7 @@ function setLang(code) {
 function _applyLiveDoneFromDocCheck(){
   return new Promise(function(resolve){
     if(!CASE_ID || !Array.isArray(DOCS_LIST) || !DOCS_LIST.length){ resolve(); return; }
-    var url = SUPABASE_URL_UPL + '/rest/v1/doc_check?case_id=eq.' + encodeURIComponent(CASE_ID) + '&select=doc_key,value';
-    fetch(url, { headers: { 'apikey': SUPABASE_KEY_UPL, 'Authorization': 'Bearer ' + SUPABASE_KEY_UPL, 'Accept': 'application/json' } })
+    _uplRpc('upload_doc_check_get', { p_case_id: CASE_ID })
     .then(function(r){ return r.ok ? r.json() : []; })
     .then(function(rows){
       var doneSet = {};
@@ -1007,10 +1001,9 @@ function confirmName(isMatch){
   let applicantName=APPLICANT_NAME || '';
   if(!applicantName){
     try{
-      const _url='https://ehwlgbwpycglmopiqyty.supabase.co/rest/v1/cases?id=eq.'+encodeURIComponent(CASE_ID)+'&select=applicant';
-      const _res=await fetch(_url,{headers:{'apikey':'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u','Authorization':'Bearer sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u'}});
+      const _res=await _uplRpc('upload_case_get',{ p_case_id: CASE_ID });
       const _data=await _res.json();
-      if(_data && _data.length && _data[0].applicant) applicantName=_data[0].applicant;
+      if(_data && _data.applicant) applicantName=_data.applicant;
     } catch(e){ console.warn('applicant取得失敗:',e); }
   }
   window._applicantName=applicantName;
@@ -1196,21 +1189,12 @@ submitBtn.addEventListener('click', async () => {
       // Supabase通知（1ファイルごと）
       if (CASE_ID) {
         try {
-          await fetch('https://ehwlgbwpycglmopiqyty.supabase.co/rest/v1/upload_notifications', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u',
-              'Authorization': 'Bearer sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u',
-              'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
+          await _uplRpc('upload_notify', { p_payload: {
               case_id: CASE_ID,
               folder_id: FOLDER_ID,
               file_count: 1,
               file_names: finalName
-            })
-          });
+            } });
         } catch (e) { console.warn('通知保存失敗:', e); }
       }
       
