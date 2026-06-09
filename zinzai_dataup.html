@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260609.rpc';
+const VERSION = 'ver.20260609.02';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -275,9 +275,9 @@ function isDocSkipped(doc) {
 }
 function getDocPattern() {
   const at = APP_TYPE;
-  if (at === '更新') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'optional',cert_skill:'optional',cert_specialist:'hidden',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:'hidden',health_ins_cert:'hidden',graduation:'hidden',transcript:'hidden',nenkin:'hidden',embassy_rec:'optional',juminhyo:'optional',other:'optional'};
-  if (at === '変更') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'optional',juminhyo:'optional',other:'optional'};
-  if (at === '認定') return {zairyu_front:'hidden',zairyu_back:'hidden',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'hidden',tax_payment:'hidden',withholding:'hidden',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'optional',juminhyo:'optional',other:'optional'};
+  if (at === '更新') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'optional',cert_skill:'optional',cert_specialist:'hidden',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:'hidden',health_ins_cert:'hidden',graduation:'hidden',transcript:'hidden',nenkin:'hidden',embassy_rec:'hidden',juminhyo:'optional',other:'optional'};
+  if (at === '変更') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'hidden',juminhyo:'optional',other:'optional'};
+  if (at === '認定') return {zairyu_front:'hidden',zairyu_back:'hidden',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'hidden',tax_payment:'hidden',withholding:'hidden',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'hidden',juminhyo:'optional',other:'optional'};
   return Object.fromEntries(ALL_DOCS.map(d => [d.key,'optional']));
 }
 function getRequiredTags() {
@@ -685,25 +685,6 @@ const DOC_SAMPLES = {
       zh: '🏛️ 可在市区町村政府办公室，或持My Number卡在便利店获取。需为3个月内开具。'
     }
   },
-  embassy_rec: {
-    image: 'samples/embassy_rec_sample.png',
-    help: {
-      ja: '大使館発行の推薦状',
-      en: 'Recommendation letter from embassy',
-      vi: 'Thư giới thiệu từ đại sứ quán',
-      id: 'Surat rekomendasi dari kedutaan',
-      ko: '대사관 발급 추천장',
-      zh: '大使馆发放的推荐信'
-    },
-    where: {
-      ja: '🏛️ 自国の駐日大使館で発行してもらいます。担当者に確認してから取得してください',
-      en: '🏛️ Issued by your country\'s embassy in Japan. Check with your contact before requesting',
-      vi: '🏛️ Cấp tại đại sứ quán nước bạn tại Nhật. Xác nhận với người phụ trách trước',
-      id: '🏛️ Diterbitkan oleh kedutaan negara Anda di Jepang. Konfirmasi dengan penanggung jawab dulu',
-      ko: '🏛️ 본국 주일 대사관에서 발급. 담당자에게 확인 후 신청',
-      zh: '🏛️ 由本国驻日大使馆发放。请先与负责人确认后再申请'
-    }
-  }
 };
 
 // 書類名(日本語ラベル) → サンプルキー 変換。新ロジックでは key が 'd0','d1'... なので
