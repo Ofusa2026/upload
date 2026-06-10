@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260611.01';
+const VERSION = 'ver.20260611.03';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -320,7 +320,25 @@ function _initDocKeys(){
     DOC_KEYS = getDocKeys();
     DOC_LABELS_JA = null;  // 旧ロジックは LANGS[].docs[key] を使う
     DOC_REQUIRED = null;
-    DOC_DONE = null;
+    // ver.20260611.03: 旧モードでも doc_check の取得済み/不要をグレーアウト反映
+    var _ds = window._liveDoneSet || null;
+    if(_ds && typeof LANGS!=='undefined' && LANGS.ja && LANGS.ja.docs){
+      var _norm = function(s){ return String(s||'').replace(/[\s　_().（）\/・]/g,'').toLowerCase(); };
+      var _dsNorm = {}; Object.keys(_ds).forEach(function(n){ _dsNorm[_norm(n)] = true; });
+      DOC_DONE = {};
+      DOC_KEYS.forEach(function(key){
+        var ja = LANGS.ja.docs[key] || '';
+        if(!ja) return;
+        if(_ds[ja] || _dsNorm[_norm(ja)]) DOC_DONE[key] = true;
+        else {
+          // 部分一致（ラベル揺れ対策）
+          var nk=_norm(ja);
+          for(var dn in _dsNorm){ if(dn && nk && (dn.indexOf(nk)>=0 || nk.indexOf(dn)>=0)){ DOC_DONE[key]=true; break; } }
+        }
+      });
+    } else {
+      DOC_DONE = null;
+    }
   }
 }
 _initDocKeys();
@@ -820,7 +838,7 @@ function buildFields() {
     } else {
       label.innerHTML = labelIsHtml ? labelText : _escName(labelText);
     }
-    if (USE_NEW_DOCS && DOC_DONE && DOC_DONE[key]) {
+    if (DOC_DONE && DOC_DONE[key]) {
       row.style.background = '#cbd5e1'; row.style.borderColor = '#94a3b8'; row.style.opacity = '0.7';
       const _doneEl = document.createElement('span');
       _doneEl.style.cssText = 'color:#16a34a;font-size:11px;font-weight:700;margin-left:4px;';
@@ -916,7 +934,7 @@ function setLang(code) {
 // ver.20260607.01: doc_check をライブ読みして done(取得済み staff / 不要 skip) を付与（再生成不要）
 function _applyLiveDoneFromDocCheck(){
   return new Promise(function(resolve){
-    if(!CASE_ID || !Array.isArray(DOCS_LIST) || !DOCS_LIST.length){ resolve(); return; }
+    if(!CASE_ID){ resolve(); return; }
     _uplRpc('upload_doc_check_get', { p_case_id: CASE_ID })
     .then(function(r){ return r.ok ? r.json() : []; })
     .then(function(rows){
@@ -927,7 +945,11 @@ function _applyLiveDoneFromDocCheck(){
         var v = row.value; var truthy = (v!=null && v!=='' && v!=='false');
         if((prefix==='staff' || prefix==='skip') && truthy){ doneSet[name] = true; }
       });
-      DOCS_LIST.forEach(function(d){ if(d && d.l){ d.done = !!doneSet[d.l]; } });
+      // ver.20260611.03: 旧モード(DOCS_LIST無し)でもグレーアウトできるよう doneSet を保持
+      window._liveDoneSet = doneSet;
+      if(Array.isArray(DOCS_LIST) && DOCS_LIST.length){
+        DOCS_LIST.forEach(function(d){ if(d && d.l){ d.done = !!doneSet[d.l]; } });
+      }
       resolve();
     })
     .catch(function(e){ console.warn('doc_check live fetch err:', e); resolve(); });
