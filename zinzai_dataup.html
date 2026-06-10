@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260609.03';
+const VERSION = 'ver.20260611.01';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -1090,6 +1090,19 @@ async function uploadOneFile(payload) {
   return json;
 }
 
+// ver.20260611.01: GASの応答から保存ファイルのドライブURLを取り出す（実装差を吸収）
+function _extractDriveUrl(json) {
+  if (!json || typeof json !== 'object') return '';
+  var cand = json.url || json.webViewLink || json.fileUrl || json.driveUrl || json.link || '';
+  if (!cand && Array.isArray(json.files) && json.files.length) {
+    var f0 = json.files[0] || {};
+    cand = f0.url || f0.webViewLink || f0.fileUrl || f0.driveUrl || f0.link || '';
+    if (!cand && f0.id) cand = 'https://drive.google.com/file/d/' + f0.id + '/view';
+  }
+  if (!cand && json.id) cand = 'https://drive.google.com/file/d/' + json.id + '/view';
+  return cand || '';
+}
+
 submitBtn.addEventListener('click', async () => {
   const L = LANGS[currentLang];
   const keys = Object.keys(fileData).filter(k => fileData[k] && fileData[k].length > 0);
@@ -1165,7 +1178,8 @@ submitBtn.addEventListener('click', async () => {
       statusMsg.textContent = stepLabel + ' ' + f.docLabel + ' を送信中…';
       progressBar.style.width = Math.round(((i + 0.5) / total) * 90 + 2) + '%';
       
-      await uploadOneFile(payload);
+      var _upJson = await uploadOneFile(payload);
+      var _uploadedUrl = _extractDriveUrl(_upJson);
       
       // Supabase通知（1ファイルごと）
       if (CASE_ID) {
@@ -1174,7 +1188,9 @@ submitBtn.addEventListener('click', async () => {
               case_id: CASE_ID,
               folder_id: FOLDER_ID,
               file_count: 1,
-              file_names: finalName
+              file_names: finalName,
+              doc_label: f.docLabel,
+              drive_url: _uploadedUrl || null
             } });
         } catch (e) { console.warn('通知保存失敗:', e); }
       }
