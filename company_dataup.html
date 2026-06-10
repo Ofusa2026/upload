@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20260609.rpc - 取得済み/不要グレーアウトを co_doc_check ライブ読みに変更（再生成不要で最新反映） -->
+<!-- company_dataup ver.20260611.02 - 書類ごとにドライブURL保存(doc_label/drive_url)。取得済み/不要グレーアウトはco_doc_checkライブ読み -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -746,6 +746,7 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
       const suffix = arr.length > 1 ? '_' + (i + 1) : '';
       filesPayload.push({
         name: allDocs[key] + suffix + '.' + ext,
+        docLabel: allDocs[key],
         mimeType: d.mimeType,
         data: d.base64,
       });
@@ -767,6 +768,25 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
       statusMsg.style.display = 'block';
       // 案件管理システムにアップロード通知
       notifyUploadToSystem(filesPayload.length, COMPANY_ID, COMPANY_NAME);
+      // ver.20260611.02: 書類ごとにドライブURLを保存（応答 json.files[] は filesPayload と同順）
+      try {
+        var _resFiles = Array.isArray(json.files) ? json.files : [];
+        for (var _fi = 0; _fi < filesPayload.length; _fi++) {
+          var _rf = _resFiles[_fi] || {};
+          var _durl = _rf.url || _rf.webViewLink || _rf.fileUrl || (_rf.id ? ('https://drive.google.com/file/d/' + _rf.id + '/view') : '');
+          if (!_durl) continue;
+          _uplRpc('upload_notify', { p_payload: {
+            company_id: COMPANY_ID,
+            company_name: COMPANY_NAME,
+            folder_id: FOLDER_ID,
+            file_count: 1,
+            file_names: filesPayload[_fi].name,
+            doc_label: filesPayload[_fi].docLabel,
+            drive_url: _durl,
+            source: 'company_dataup'
+          } });
+        }
+      } catch (e) { console.warn('URL通知保存失敗:', e); }
       allKeys.forEach(k => delete fileData[k]);
       buildAllFields();
       updateSubmitBtn();
