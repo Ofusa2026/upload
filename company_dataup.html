@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20260611.02 - 書類ごとにドライブURL保存(doc_label/drive_url)。取得済み/不要グレーアウトはco_doc_checkライブ読み -->
+<!-- company_dataup ver.20260611.04 - 書類ごとにドライブURL保存(doc_label/drive_url)。取得済み/不要グレーアウトはco_doc_checkライブ読み -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -588,6 +588,8 @@ function buildAllFields() {
       buckets[t].push({key: key, label: d.l || '', req: !!d.r, done: !!d.done, note: d.note || ''});
     });
     window._docLabelMap = labelMap;
+    // ver.20260611.04: 送信判定用に実際の描画キー(d0..dN)を保持（固定配列だと動的書類を拾えず送信ボタンが押せない不具合の修正）
+    window._allDocKeys = DOCS_LIST.map(function(d, i){ return 'd' + i; });
 
     // バッジ更新用に各タブの書類数表示
     const renderBucket = function(listEl, items){
@@ -659,6 +661,9 @@ function buildAllFields() {
   listKojin.innerHTML = '';
   KOJIN_KEYS.forEach(key => listKojin.appendChild(buildFieldRow(key, KOJIN_DOCS)));
 
+  // ver.20260611.04: 送信判定用に描画キーを保持（旧モードは固定キー）
+  window._allDocKeys = [...LARGE_KEYS, ...NORMAL_KEYS, ...KOJIN_KEYS];
+
   // タブバッジ更新
   const cntL = LARGE_KEYS.filter(k => fileData[k] && fileData[k].length > 0).length;
   const cntN = NORMAL_KEYS.filter(k => fileData[k] && fileData[k].length > 0).length;
@@ -672,7 +677,7 @@ function buildAllFields() {
 }
 
 function updateSubmitBtn() {
-  const allKeys = [...LARGE_KEYS, ...NORMAL_KEYS, ...KOJIN_KEYS];
+  const allKeys = (window._allDocKeys && window._allDocKeys.length) ? window._allDocKeys : [...LARGE_KEYS, ...NORMAL_KEYS, ...KOJIN_KEYS];
   const hasAny = allKeys.some(k => fileData[k] && fileData[k].length > 0);
   document.getElementById('submitBtn').disabled = !hasAny;
 }
