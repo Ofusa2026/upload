@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260611.03';
+const VERSION = 'ver.20260612.01';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -842,7 +842,22 @@ function buildFields() {
       row.style.background = '#cbd5e1'; row.style.borderColor = '#94a3b8'; row.style.opacity = '0.7';
       const _doneEl = document.createElement('span');
       _doneEl.style.cssText = 'color:#16a34a;font-size:11px;font-weight:700;margin-left:4px;';
-      _doneEl.textContent = '✓ 提出済み（再提出が必要な場合のみ）';
+      // ver.20260612.01: 「提出済み（再提出が必要な場合のみ）」を各言語に翻訳
+      const _doneLabels = {
+        ja: '✓ 提出済み（再提出が必要な場合のみ）',
+        en: '✓ Already submitted (only if re-submission is needed)',
+        vi: '✓ Đã nộp (chỉ nộp lại nếu cần)',
+        id: '✓ Sudah dikirim (hanya jika perlu kirim ulang)',
+        my: '✓ တင်ပြီး (ပြန်တင်ရန် လိုအပ်မှသာ)',
+        ko: '✓ 제출 완료 (재제출이 필요한 경우에만)',
+        ne: '✓ पेश गरिएको (पुनः पेश गर्न आवश्यक भएमा मात्र)',
+        zh: '✓ 已提交（仅在需要重新提交时）',
+        th: '✓ ส่งแล้ว (เฉพาะกรณีที่ต้องส่งใหม่)',
+        km: '✓ បានដាក់ស្នើ (តែពេលត្រូវដាក់ស្នើឡើងវិញ)',
+        mn: '✓ Илгээсэн (зөвхөн дахин илгээх шаардлагатай үед)',
+        si: '✓ ඉදිරිපත් කර ඇත (නැවත ඉදිරිපත් කිරීමට අවශ්‍ය නම් පමණි)'
+      };
+      _doneEl.textContent = _doneLabels[currentLang] || _doneLabels.en;
       label.appendChild(_doneEl);
     }
     const status = document.createElement('span');
