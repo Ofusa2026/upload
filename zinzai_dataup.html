@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260612.01';
+const VERSION = 'ver.20260613.01';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -311,6 +311,8 @@ function _initDocKeys(){
     DOC_DONE = {};
     DOCS_LIST.forEach(function(d, i){
       var key = 'd' + i;
+      // docs要素が文字列（['書類名',...]）の場合も書類名として扱う（後方互換: d0/d1表示防止）
+      if (typeof d === 'string') { d = { l: d, r: 1 }; }
       DOC_LABELS_JA[key] = d.l || '';
       DOC_REQUIRED[key] = !!d.r;
       DOC_DONE[key] = !!d.done;
