@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260616.01';
+const VERSION = 'ver.20260616.02';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -797,6 +797,50 @@ function showDocSample(docKey) {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFn(); });
 }
 
+// ver.20260616.02: 説明文（取得方法）にふりがな自動付与（ja表示時のみ・最長一致・絵文字保持）
+var FZ_EXP={
+ '出入国在留管理庁':'しゅつにゅうこくざいりゅうかんりちょう','特定技能評価試験':'とくていぎのうひょうかしけん','日本語能力試験':'にほんごのうりょくしけん',
+ '国民健康保険料':'こくみんけんこうほけんりょう','国民健康保険課':'こくみんけんこうほけんか','国民健康保険':'こくみんけんこうほけん',
+ '納税証明書':'のうぜいしょうめいしょ','課税証明書':'かぜいしょうめいしょ','年末調整後':'ねんまつちょうせいご','健康保険証':'けんこうほけんしょう',
+ '日本語学校':'にほんごがっこう','学校事務局':'がっこうじむきょく','成績証明書':'せいせきしょうめいしょ','年金事務所':'ねんきんじむしょ',
+ '取得方法':'しゅとくほうほう','技能実習':'ぎのうじっしゅう','住民登録':'じゅうみんとうろく','健康診断':'けんこうしんだん','提出写真':'ていしゅつしゃしん',
+ '試験団体':'しけんだんたい','発行団体':'はっこうだんたい','監理団体':'かんりだんたい','所属企業':'しょぞくきぎょう','評価調書':'ひょうかちょうしょ',
+ '人事担当':'じんじたんとう','認定申請':'にんていしんせい','更新申請':'こうしんしんせい','社会保険':'しゃかいほけん','年金手帳':'ねんきんてちょう',
+ '世帯全員':'せたいぜんいん','市区町村':'しくちょうそん','ヶ月以内':'かげついない','市役所':'しやくしょ','区役所':'くやくしょ',
+ '顔写真':'かおじゃしん','合格証':'ごうかくしょう','再発行':'さいはっこう','自治体':'じちたい','円程度':'えんていど','住民税':'じゅうみんぜい',
+ '無背景':'むはいけい','専門級':'せんもんきゅう','不合格':'ふごうかく','勤務先':'きんむさき','所得税':'しょとくぜい','担当者':'たんとうしゃ',
+ '年以内':'ねんいない','月以内':'げついない','保険証':'ほけんしょう','証明書':'しょうめいしょ','住民票':'じゅうみんひょう','役所':'やくしょ',
+ '発行':'はっこう','場合':'ばあい','在留':'ざいりゅう','会社':'かいしゃ','自身':'じしん','依頼':'いらい','学校':'がっこう','写真':'しゃしん',
+ '合格':'ごうかく','令和':'れいわ','費用':'ひよう','補足':'ほそく','証明':'しょうめい','書類':'しょるい','結果':'けっか','受診':'じゅしん',
+ '正面':'しょうめん','撮影':'さつえい','規格':'きかく','背景':'はいけい','試験':'しけん','年度':'ねんど','窓口':'まどぐち','給与':'きゅうよ',
+ '所得':'しょとく','配布':'はいふ','無料':'むりょう','卒業':'そつぎょう','青色':'あおいろ','手帳':'てちょう','記載':'きさい','問題':'もんだい',
+ '無帽':'むぼう','横向':'よこむ','帽子':'ぼうし','加工':'かこう','美白':'びはく','出典':'しゅってん','表面':'ひょうめん','両面':'りょうめん',
+ '裏面':'うらめん','裏側':'うらがわ','住所':'じゅうしょ','名前':'なまえ','分野':'ぶんや','提出':'ていしゅつ','自動':'じどう','年末':'ねんまつ',
+ '年分':'ねんぶん','経理':'けいり','年間':'ねんかん','普通':'ふつう','転職':'てんしょく','途中':'とちゅう','退職':'たいしょく','時点':'じてん',
+ '病院':'びょういん','専用':'せんよう','用紙':'ようし','変更':'へんこう','持参':'じさん','保管':'ほかん','不要':'ふよう','取得':'しゅとく',
+ '年':'ねん','紙':'かみ','出':'で','持':'も','書':'か','時':'とき','住':'す','例':'れい','影':'かげ','撮':'と','物':'もの','願':'ねが',
+ '払':'はら','引':'ひ','縦':'たて','横':'よこ','良':'よ','向':'む','顔':'かお','写':'うつ','面':'めん','載':'の','等':'など','異':'こと',
+ '級':'きゅう','人':'ひと','枚':'まい','差':'さ','受':'う'
+};
+var FZ_EXP_KEYS=Object.keys(FZ_EXP).sort(function(a,b){return Array.from(b).length-Array.from(a).length;});
+function _escFz(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fzExp(text){
+  if(text==null) return '';
+  text=String(text);
+  var chars=Array.from(text), out='', i=0, n=chars.length;
+  while(i<n){
+    var matched=false;
+    for(var k=0;k<FZ_EXP_KEYS.length;k++){
+      var key=FZ_EXP_KEYS[k], kc=Array.from(key), kl=kc.length;
+      if(i+kl<=n && chars.slice(i,i+kl).join('')===key){
+        out+='<ruby>'+_escFz(key)+'<rt>'+_escFz(FZ_EXP[key])+'</rt></ruby>'; i+=kl; matched=true; break;
+      }
+    }
+    if(!matched){ out+=_escFz(chars[i]); i++; }
+  }
+  return out;
+}
+
 function buildSampleInline(docKey){
   const sample = DOC_SAMPLES[docKey];
   if (!sample) return null;
@@ -821,9 +865,11 @@ function buildSampleInline(docKey){
   wrap.style.cssText = 'margin-bottom:10px;';
   let html = '<div style="background:#f9fafb;border-radius:8px;padding:6px;margin-bottom:8px;text-align:center;"><img src="' + sample.image + '" alt="sample" loading="lazy" style="max-width:100%;max-height:40vh;border-radius:4px;" onerror="this.parentElement.style.display=\'none\';"></div>';
   if (whereText) {
-    html += '<div style="background:#dbeafe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 12px;font-size:13px;color:#1e40af;line-height:1.6;white-space:pre-line;"><div style="font-weight:700;margin-bottom:6px;">' + whereLabel + '</div>' + whereText + '</div>';
+    const wt = (currentLang === 'ja') ? fzExp(whereText) : whereText;
+    html += '<div style="background:#dbeafe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 12px;font-size:13px;color:#1e40af;line-height:1.9;white-space:pre-line;"><div style="font-weight:700;margin-bottom:6px;">' + whereLabel + '</div>' + wt + '</div>';
   } else if (helpText) {
-    html += '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 12px;font-size:13px;color:#92400e;line-height:1.5;">' + helpText + '</div>';
+    const ht = (currentLang === 'ja') ? fzExp(helpText) : helpText;
+    html += '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 12px;font-size:13px;color:#92400e;line-height:1.8;">' + ht + '</div>';
   }
   wrap.innerHTML = html;
   return wrap;
