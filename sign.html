@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260609.rpc</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260615.multisig</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -353,10 +353,19 @@ async function embedSignatureToPdf(){
     const sigBytes=Uint8Array.from(atob(sigB64),c=>c.charCodeAt(0));
     const doc=await PDFDocument.load(pdfBytes);
     const pages=doc.getPages();
-    const sc=SIG_COORDS[docLang]||SIG_COORDS['インドネシア語'];
-    const sigPage=pages[sc.page]||pages[pages.length-1];
     const img=await doc.embedPng(sigBytes);
-    sigPage.drawImage(img,{x:sc.x,y:sc.y,width:sc.w,height:sc.h});
+    // sig_positions（複数枠）があれば全枠に焼き込み、無ければ従来のSIG_COORDS（1箇所）にフォールバック
+    let positions=(caseData&&Array.isArray(caseData.sig_positions)&&caseData.sig_positions.length)?caseData.sig_positions:null;
+    if(positions){
+      positions.forEach(function(p){
+        const pg=pages[(p.page||1)-1]||pages[pages.length-1];
+        pg.drawImage(img,{x:p.x,y:p.y,width:p.w,height:p.h});
+      });
+    } else {
+      const sc=SIG_COORDS[docLang]||SIG_COORDS['インドネシア語'];
+      const sigPage=pages[sc.page]||pages[pages.length-1];
+      sigPage.drawImage(img,{x:sc.x,y:sc.y,width:sc.w,height:sc.h});
+    }
     return await doc.save();
   }catch(e){alert('PDF合成エラー: '+e.message);console.error('PDF合成エラー:',e);return null;}
 }
