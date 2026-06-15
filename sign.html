@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260615.multisig</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.multisig</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -218,6 +218,19 @@ let canvas,ctx,isDrawing=false,hasDrawn=false;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+// ===== base64 → PDFバイト列（data:プレフィックス有無どちらでも対応） =====
+function b64ToPdfBytes(b64){
+  var s=String(b64||'');
+  var i=s.indexOf('base64,');
+  if(i!==-1)s=s.slice(i+7);                       // data:application/pdf;base64, があれば除去
+  s=s.replace(/-/g,'+').replace(/_/g,'/').replace(/\s+/g,''); // URLセーフ→標準・空白除去
+  while(s.length%4)s+='=';                        // パディング補正
+  var raw=atob(s);
+  var bytes=new Uint8Array(raw.length);
+  for(var j=0;j<raw.length;j++)bytes[j]=raw.charCodeAt(j);
+  return bytes;
+}
+
 // ===== 初期化 =====
 document.addEventListener('DOMContentLoaded',async()=>{
   const p=new URLSearchParams(location.search);
@@ -243,9 +256,7 @@ async function loadSignRequest(token){
     // pdf_base64があればDBから直接取得
     if(data.pdf_base64){
       try{
-        const raw=atob(data.pdf_base64);
-        pdfBytes=new Uint8Array(raw.length);
-        for(let i=0;i<raw.length;i++)pdfBytes[i]=raw.charCodeAt(i);
+        pdfBytes=b64ToPdfBytes(data.pdf_base64);
         await renderPdf(pdfBytes);
       }catch(e){
         showError('PDFの読み込みに失敗しました。担当者にご連絡ください。',e.message);
@@ -286,9 +297,7 @@ async function loadPdfFromDrive(caseId,folderId){
     const json=await callGasJsonp({action:'getEmploymentPdf',data:{folderId:folderId,caseId:caseId}});
     if(json.error)throw new Error(json.error);
     if(!json.base64)throw new Error('PDFが見つかりません');
-    const raw=atob(json.base64);
-    pdfBytes=new Uint8Array(raw.length);
-    for(let i=0;i<raw.length;i++)pdfBytes[i]=raw.charCodeAt(i);
+    pdfBytes=b64ToPdfBytes(json.base64);
     await renderPdf(pdfBytes);
   }catch(e){
     console.warn('PDF取得エラー:',e.message);
