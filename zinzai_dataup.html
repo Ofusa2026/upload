@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260616.02';
+const VERSION = 'ver.20260616.03';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -820,7 +820,7 @@ var FZ_EXP={
  '病院':'びょういん','専用':'せんよう','用紙':'ようし','変更':'へんこう','持参':'じさん','保管':'ほかん','不要':'ふよう','取得':'しゅとく',
  '年':'ねん','紙':'かみ','出':'で','持':'も','書':'か','時':'とき','住':'す','例':'れい','影':'かげ','撮':'と','物':'もの','願':'ねが',
  '払':'はら','引':'ひ','縦':'たて','横':'よこ','良':'よ','向':'む','顔':'かお','写':'うつ','面':'めん','載':'の','等':'など','異':'こと',
- '級':'きゅう','人':'ひと','枚':'まい','差':'さ','受':'う'
+ '級':'きゅう','人':'ひと','枚':'まい','差':'さ','受':'う','方':'かた'
 };
 var FZ_EXP_KEYS=Object.keys(FZ_EXP).sort(function(a,b){return Array.from(b).length-Array.from(a).length;});
 function _escFz(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -917,6 +917,29 @@ function buildFields() {
       label.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + (labelIsHtml ? labelText : _escName(labelText));
     } else {
       label.innerHTML = labelIsHtml ? labelText : _escName(labelText);
+    }
+    // ver.20260616.03: 専門級は「技能実習をしていた方のみ」の注釈を表示
+    var _jaLbl = (typeof DOC_LABELS_JA !== 'undefined' && DOC_LABELS_JA && DOC_LABELS_JA[key]) ? DOC_LABELS_JA[key] : key;
+    if (String(_jaLbl).indexOf('専門級') >= 0) {
+      const noteLabels = {
+        ja: '※ 技能実習をしていた方のみ',
+        en: '* Only for those who did Technical Intern Training (Ginou Jisshu)',
+        vi: '* Chỉ dành cho người từng thực tập kỹ năng (Ginou Jisshu)',
+        id: '* Hanya untuk yang pernah ikut Pemagangan Teknis (Ginou Jisshu)',
+        my: '* နည်းပညာအလုပ်သင် (Ginou Jisshu) လုပ်ခဲ့ဖူးသူများသာ',
+        ko: '* 기능실습을 한 분만 (Ginou Jisshu)',
+        ne: '* प्राविधिक प्रशिक्षण (Ginou Jisshu) गरेकाहरूका लागि मात्र',
+        zh: '※ 仅限曾参加技能实习（技能実習）者',
+        th: '* เฉพาะผู้ที่เคยฝึกงานทักษะ (Ginou Jisshu) เท่านั้น',
+        km: '* សម្រាប់តែអ្នកធ្លាប់កម្មសិក្សាជំនាញ (Ginou Jisshu) ប៉ុណ្ណោះ',
+        mn: '* Зөвхөн дадлага хийсэн хүмүүст (Ginou Jisshu)',
+        si: '* තාක්ෂණික පුහුණුව (Ginou Jisshu) කළ අයට පමණි'
+      };
+      const _nt = noteLabels[currentLang] || noteLabels.en;
+      const noteEl = document.createElement('div');
+      noteEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:700;margin-top:3px;line-height:1.6;';
+      noteEl.innerHTML = (currentLang === 'ja') ? fzExp(_nt) : _escName(_nt);
+      label.appendChild(noteEl);
     }
     if (DOC_DONE && DOC_DONE[key]) {
       row.style.background = '#cbd5e1'; row.style.borderColor = '#94a3b8'; row.style.opacity = '0.7';
