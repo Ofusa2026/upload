@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.multisig</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.chunkdec</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -224,11 +224,28 @@ function b64ToPdfBytes(b64){
   var i=s.indexOf('base64,');
   if(i!==-1)s=s.slice(i+7);                       // data:application/pdf;base64, があれば除去
   s=s.replace(/-/g,'+').replace(/_/g,'/').replace(/\s+/g,''); // URLセーフ→標準・空白除去
-  while(s.length%4)s+='=';                        // パディング補正
-  var raw=atob(s);
-  var bytes=new Uint8Array(raw.length);
-  for(var j=0;j<raw.length;j++)bytes[j]=raw.charCodeAt(j);
-  return bytes;
+  // 生成側がPDFを分割base64化し各チャンクのパディング(=)付きで連結したデータに対応:
+  // '=' の連続を境界にチャンク分割→各チャンクを個別デコード→バイト連結（途中の=でatobが落ちるのを防ぐ）
+  var parts=[], start=0, n=s.length;
+  for(var k=0;k<n;k++){
+    if(s.charCodeAt(k)===61){                     // '='
+      var e=k; while(e+1<n && s.charCodeAt(e+1)===61) e++;
+      parts.push(s.slice(start,e+1)); k=e; start=e+1;
+    }
+  }
+  if(start<n) parts.push(s.slice(start));         // 末尾(パディング無し)チャンク
+  if(parts.length===0) parts.push(s);
+  var bufs=[], total=0;
+  for(var c=0;c<parts.length;c++){
+    var t=parts[c]; while(t.length%4) t+='=';     // 念のためパディング補正
+    var raw=atob(t);
+    var u=new Uint8Array(raw.length);
+    for(var j=0;j<raw.length;j++) u[j]=raw.charCodeAt(j);
+    bufs.push(u); total+=u.length;
+  }
+  var out=new Uint8Array(total), off=0;
+  for(var p=0;p<bufs.length;p++){ out.set(bufs[p],off); off+=bufs[p].length; }
+  return out;
 }
 
 // ===== 初期化 =====
