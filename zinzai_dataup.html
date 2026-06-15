@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260613.01';
+const VERSION = 'ver.20260616.01';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
@@ -797,6 +797,38 @@ function showDocSample(docKey) {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFn(); });
 }
 
+function buildSampleInline(docKey){
+  const sample = DOC_SAMPLES[docKey];
+  if (!sample) return null;
+  const whereText = sample.where ? (sample.where[currentLang] || sample.where.en || sample.where.ja || '') : '';
+  const helpText = sample.help ? (sample.help[currentLang] || sample.help.en || sample.help.ja || '') : '';
+  const whereLabels = {
+    ja: '📝 説明（取得方法・出どころ）',
+    en: '📝 Description (How to get / Source)',
+    vi: '📝 Mô tả (Cách lấy / Nguồn)',
+    id: '📝 Penjelasan (Cara mendapatkan / Sumber)',
+    my: '📝 ရှင်းပြချက် (ရယူပုံ / ရင်းမြစ်)',
+    ko: '📝 설명 (취득 방법 / 발급처)',
+    ne: '📝 विवरण (कसरी पाउने / स्रोत)',
+    zh: '📝 说明（取得方法・出处）',
+    th: '📝 คำอธิบาย (วิธีรับ / แหล่งที่มา)',
+    km: '📝 ការពិពណ៌នា (របៀបទទួល / ប្រភព)',
+    mn: '📝 Тайлбар (Авах арга / Гарал үүсэл)',
+    si: '📝 විස්තරය (ලබා ගන්නා ආකාරය / මූලාශ්‍රය)'
+  };
+  const whereLabel = whereLabels[currentLang] || whereLabels.en;
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-bottom:10px;';
+  let html = '<div style="background:#f9fafb;border-radius:8px;padding:6px;margin-bottom:8px;text-align:center;"><img src="' + sample.image + '" alt="sample" loading="lazy" style="max-width:100%;max-height:40vh;border-radius:4px;" onerror="this.parentElement.style.display=\'none\';"></div>';
+  if (whereText) {
+    html += '<div style="background:#dbeafe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 12px;font-size:13px;color:#1e40af;line-height:1.6;white-space:pre-line;"><div style="font-weight:700;margin-bottom:6px;">' + whereLabel + '</div>' + whereText + '</div>';
+  } else if (helpText) {
+    html += '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 12px;font-size:13px;color:#92400e;line-height:1.5;">' + helpText + '</div>';
+  }
+  wrap.innerHTML = html;
+  return wrap;
+}
+
 function buildFields() {
   const L = LANGS[currentLang];
   fieldsList.innerHTML = '';
@@ -872,36 +904,11 @@ function buildFields() {
     header.addEventListener('click', () => row.classList.toggle('open'));
     const body = document.createElement('div');
     body.className = 'field-body';
-// ver.20260526.test.02: 開いた時だけ表示される「📷 見本を見る」リンク（DOC_SAMPLESに登録された書類のみ）
+// ver.20260616: 「見本を見る」クリックを廃止し、取得方法（説明＋見本）を常時インライン表示
     var __sk = _sampleKey(key);
     if (__sk) {
-      const sampleLink = document.createElement('div');
-      sampleLink.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px;';
-      const sampleA = document.createElement('a');
-      sampleA.href = 'javascript:void(0)';
-      sampleA.style.cssText = 'display:inline-flex;align-items:center;gap:4px;color:#3b82f6;text-decoration:none;font-size:12px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:6px;background:#eff6ff;border:1px solid #bfdbfe;';
-      // 言語ごとのリンクテキスト
-      const linkLabels = {
-        ja: '📷 見本を見る',
-        en: '📷 View Sample',
-        vi: '📷 Xem mẫu',
-        id: '📷 Lihat Contoh',
-        my: '📷 နမူနာကြည့်ရန်',
-        ko: '📷 견본 보기',
-        ne: '📷 नमूना हेर्नुहोस्',
-        zh: '📷 查看样本',
-        th: '📷 ดูตัวอย่าง',
-        km: '📷 មើលគំរូ',
-        mn: '📷 Жишээ үзэх',
-        si: '📷 උදාහරණය බලන්න'
-      };
-      sampleA.textContent = linkLabels[currentLang] || linkLabels.en;
-      sampleA.addEventListener('click', (e) => {
-        e.stopPropagation();
-        showDocSample(__sk);
-      });
-      sampleLink.appendChild(sampleA);
-      body.appendChild(sampleLink);
+      const inlineHelp = buildSampleInline(__sk);
+      if (inlineHelp) body.appendChild(inlineHelp);
     }
     if (hasFiles) {
       fileData[key].forEach((fd, fi) => {
