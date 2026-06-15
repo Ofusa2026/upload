@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.chunkdec</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.chunkdec2</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -325,7 +325,7 @@ async function loadPdfFromDrive(caseId,folderId){
 
 // ===== PDF.js レンダリング =====
 async function renderPdf(bytes){
-  pdfDoc=await pdfjsLib.getDocument({data:bytes}).promise;
+  pdfDoc=await pdfjsLib.getDocument({data:bytes.slice()}).promise; // ★複製を渡す: PDF.jsのtransferでpdfBytesがdetachされ署名合成(pdf-lib)が失敗するのを防ぐ
   totalPages=pdfDoc.numPages;currentPage=1;
   await renderPage(1);
 }
