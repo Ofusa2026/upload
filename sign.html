@@ -78,7 +78,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.signnow2</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.romaji</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -134,13 +134,14 @@ input:focus{border-color:var(--accent);background:white;}
     </div>
     <div class="section">
       <div class="section-label">署名（指でサインしてください）</div>
+      <div class="notice" style="margin-bottom:10px;">サインは必ず<strong>ローマ字のフルネーム</strong>で記入してください（パスポートと同じつづり）。<br>Please sign your <strong>full name in Roman letters</strong>.</div>
       <div class="sign-area">
         <div class="sign-area-header">
           <span class="sign-area-label">✍️ 署名欄</span>
           <button class="btn-clear" onclick="clearCanvas()">やり直す</button>
         </div>
         <canvas id="signCanvas"></canvas>
-        <div class="sign-guide" id="signGuide">ここに指でサイン</div>
+        <div class="sign-guide" id="signGuide">ローマ字フルネームでサイン</div>
       </div>
     </div>
     <div class="notice"><strong>注意：</strong>署名は書類の署名欄に合成されてDriveに保存されます。</div>
@@ -163,7 +164,7 @@ input:focus{border-color:var(--accent);background:white;}
         </div>
       </div>
     </div>
-    <div class="notice">署名者の氏名として記録されます。</div>
+    <div class="notice">氏名は<strong>ローマ字のフルネーム</strong>（パスポートと同じつづり）で入力してください。署名者の氏名として記録されます。</div>
     <button class="btn-primary" id="btnSubmit" onclick="submitSign()">✅ 署名を送信する</button>
     <button class="btn-back" onclick="goStep(2)">← 戻る</button>
   </div>
