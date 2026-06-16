@@ -92,7 +92,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.title</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.multidoc</span></div>
   <div class="header-title">サイン書類</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -138,6 +138,11 @@ input:focus{border-color:var(--accent);background:white;}
     <div class="section">
       <div class="section-label">書類（全ページ確認してください）</div>
       <div class="pdf-viewer-wrap">
+        <div class="pdf-nav" id="docNav" style="display:none;">
+          <button id="btnDocPrev" onclick="changeDoc(-1)">◀ 前の書類</button>
+          <span id="docInfo">書類 1/1</span>
+          <button id="btnDocNext" onclick="changeDoc(1)">次の書類 ▶</button>
+        </div>
         <div class="pdf-nav">
           <button id="btnPrev" onclick="changePage(-1)">◀ 前</button>
           <span id="pageInfo">読み込み中...</span>
@@ -242,6 +247,7 @@ const SIG_COORDS={
 // ===== 状態 =====
 let requestToken=null,signRequestId=null,caseData=null;
 let docLang='インドネシア語',pdfBytes=null,signedPdfBytes=null,driveFolderId='';
+let docsArr=[],curDocIdx=0;
 let pdfDoc=null,currentPage=1,totalPages=0;
 let canvas,ctx,isDrawing=false,hasDrawn=false;let _sbHas=false,_sbX0=0,_sbY0=0,_sbX1=0,_sbY1=0;let _undoStack=[],_strokeDrew=false;
 
@@ -298,18 +304,22 @@ async function loadSignRequest(token){
     // casesテーブルから別途取得
     document.getElementById('workerName').textContent=data.applicant||'—';
     document.getElementById('companyName').textContent=data.company||'—';
-    document.getElementById('docName').textContent=data.doc_type||'サイン書類';
-    // pdf_base64があればDBから直接取得
-    if(data.pdf_base64){
-      try{
-        pdfBytes=b64ToPdfBytes(data.pdf_base64);
-        await renderPdf(pdfBytes);
-      }catch(e){
-        showError('PDFの読み込みに失敗しました。担当者にご連絡ください。',e.message);
-        return;
-      }
-    } else {
-      showError('PDFが準備されていません。担当者にご連絡ください。','pdf_base64 not found');
+    // docs（N枚）を構築：新方式は data.docs、旧方式は pdf_base64/sig_positions から1件
+    docsArr = (Array.isArray(data.docs) && data.docs.length)
+      ? data.docs.filter(function(d){ return d && d.pdf_base64; })
+      : (data.pdf_base64 ? [{ idx:0, pdf_base64:data.pdf_base64, sig_positions:data.sig_positions }] : []);
+    if(!docsArr.length){
+      showError('PDFが準備されていません。担当者にご連絡ください。','no docs');
+      return;
+    }
+    document.getElementById('docName').textContent = (docsArr.length>1)
+      ? (docsArr.length+'件の書類') : (data.doc_type||'サイン書類');
+    var _docNav=document.getElementById('docNav');
+    if(_docNav) _docNav.style.display = (docsArr.length>1)?'flex':'none';
+    try{
+      await loadDocForReview(0);
+    }catch(e){
+      showError('PDFの読み込みに失敗しました。担当者にご連絡ください。',e.message);
       return;
     }
     goStep(1);
@@ -374,6 +384,19 @@ function changePage(d){
   if(n<1||n>totalPages)return;
   currentPage=n;renderPage(n);
 }
+// ===== 書類切替（N枚レビュー）=====
+async function loadDocForReview(i){
+  if(i<0||i>=docsArr.length)return;
+  curDocIdx=i;
+  var d=docsArr[i];
+  pdfBytes=b64ToPdfBytes(d.pdf_base64);
+  await renderPdf(pdfBytes);
+  var di=document.getElementById('docInfo');
+  if(di) di.textContent='書類 '+(i+1)+'/'+docsArr.length+(d.name?('：'+d.name):'');
+  var dp=document.getElementById('btnDocPrev'); if(dp) dp.disabled=(i<=0);
+  var dn=document.getElementById('btnDocNext'); if(dn) dn.disabled=(i>=docsArr.length-1);
+}
+function changeDoc(d){ loadDocForReview(curDocIdx+d); }
 
 // ===== 署名キャンバス =====
 function initCanvas(){
@@ -421,31 +444,56 @@ function _restoreSnap(s){var img=new Image();img.onload=function(){ctx.save();ct
 function undoSign(){if(!_undoStack.length)return;_undoStack.pop();if(_undoStack.length){_restoreSnap(_undoStack[_undoStack.length-1]);}else{ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.restore();_sbHas=false;hasDrawn=false;document.getElementById('btnToStep3').disabled=true;document.getElementById('signGuide').classList.remove('hidden');}_updateUndoBtn();}
 function _updateUndoBtn(){var b=document.getElementById('btnUndo');if(b)b.disabled=_undoStack.length===0;}
 
-// ===== pdf-lib で署名合成 =====
-async function embedSignatureToPdf(){
-  if(!pdfBytes||!hasDrawn)return null;
-  try{
-    const {PDFDocument}=PDFLib;
-    const sigDataUrl=_sigDataUrl();
-    const sigB64=sigDataUrl.split(',')[1];
-    const sigBytes=Uint8Array.from(atob(sigB64),c=>c.charCodeAt(0));
-    const doc=await PDFDocument.load(pdfBytes);
-    const pages=doc.getPages();
-    const img=await doc.embedPng(sigBytes);
-    // sig_positions（複数枠）があれば全枠に焼き込み、無ければ従来のSIG_COORDS（1箇所）にフォールバック
-    let positions=(caseData&&Array.isArray(caseData.sig_positions)&&caseData.sig_positions.length)?caseData.sig_positions:null;
-    if(positions){
-      positions.forEach(function(p){
-        const pg=pages[(p.page||1)-1]||pages[pages.length-1];
-        pg.drawImage(img,{x:p.x,y:p.y,width:p.w,height:p.h});
-      });
-    } else {
-      const sc=SIG_COORDS[docLang]||SIG_COORDS['インドネシア語'];
-      const sigPage=pages[sc.page]||pages[pages.length-1];
-      sigPage.drawImage(img,{x:sc.x,y:sc.y,width:sc.w,height:sc.h});
+// ===== pdf-lib で署名合成（1署名 → N枚に焼き込み）=====
+// Uint8Array → base64（チャンク処理で大きいPDFも安全に変換）
+function bytesToB64(bytes){
+  let bin='';
+  const chunk=8192;
+  for(let i=0;i<bytes.length;i+=chunk){
+    bin+=String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+  }
+  return btoa(bin);
+}
+// 1つのPDFバイト列に署名を焼き込む（positions=その書類の枠配列）
+async function embedSignatureToOne(srcBytes, positions){
+  const {PDFDocument}=PDFLib;
+  const sigDataUrl=_sigDataUrl();
+  const sigB64=sigDataUrl.split(',')[1];
+  const sigBytes=Uint8Array.from(atob(sigB64),c=>c.charCodeAt(0));
+  const doc=await PDFDocument.load(srcBytes);
+  const pages=doc.getPages();
+  const img=await doc.embedPng(sigBytes);
+  // sig_positions（複数枠）があれば全枠に焼き込み、無ければ従来のSIG_COORDS（1箇所）にフォールバック
+  let pos=(Array.isArray(positions)&&positions.length)?positions:null;
+  if(pos){
+    pos.forEach(function(p){
+      const pg=pages[(p.page||1)-1]||pages[pages.length-1];
+      pg.drawImage(img,{x:p.x,y:p.y,width:p.w,height:p.h});
+    });
+  } else {
+    const sc=SIG_COORDS[docLang]||SIG_COORDS['インドネシア語'];
+    const sigPage=pages[sc.page]||pages[pages.length-1];
+    sigPage.drawImage(img,{x:sc.x,y:sc.y,width:sc.w,height:sc.h});
+  }
+  return await doc.save();
+}
+// docsArr の全PDFに同じ署名を焼き込み、[{idx, bytes}] を返す
+async function embedSignatureToAllDocs(){
+  if(!hasDrawn) return null;
+  const out=[];
+  for(let i=0;i<docsArr.length;i++){
+    const d=docsArr[i];
+    if(!d || !d.pdf_base64) continue;
+    try{
+      const src=b64ToPdfBytes(d.pdf_base64);
+      const signed=await embedSignatureToOne(src, d.sig_positions);
+      out.push({ idx:(d.idx!=null?d.idx:i), bytes:signed });
+    }catch(e){
+      console.error('PDF合成エラー(書類'+(i+1)+'):',e);
+      throw new Error('書類'+(i+1)+'の署名合成に失敗: '+e.message);
     }
-    return await doc.save();
-  }catch(e){alert('PDF合成エラー: '+e.message);console.error('PDF合成エラー:',e);return null;}
+  }
+  return out;
 }
 
 // ===== 送信 =====
@@ -486,22 +534,15 @@ async function submitSign(){
   const sigDataUrl=_sigDataUrl();
   window._lastSigDataUrl=sigDataUrl;
   try{
-    // 1. PDF合成
-    signedPdfBytes=await embedSignatureToPdf();
-    // 2. 合成済みPDFをbase64に変換
-    let signedPdfB64 = null;
-    if (signedPdfBytes) {
-      let bin = '';
-      const chunk = 8192;
-      for (let i = 0; i < signedPdfBytes.length; i += chunk) {
-        bin += String.fromCharCode(...signedPdfBytes.subarray(i, i + chunk));
-      }
-      signedPdfB64 = btoa(bin);
-    }
-    // 3. Supabase更新（署名画像＋合成済みPDFを保存）
-    const {data:_sd,error}=await sb.rpc('sign_submit',{
+    // 1. 各PDFへ同じ署名を焼き込み（1署名 → N枚）
+    const _signedList = await embedSignatureToAllDocs();
+    if(!_signedList || !_signedList.length) throw new Error('署名の合成に失敗しました');
+    // 2. base64化して docs 配列を構築
+    const _pDocs = _signedList.map(function(x){ return { idx:x.idx, signed_pdf_base64: bytesToB64(x.bytes) }; });
+    // 3. Supabase更新（署名画像＋N枚の署名済みPDFを保存）
+    const {data:_sd,error}=await sb.rpc('sign_submit_multi',{
       p_token: requestToken, p_signer_name: name, p_signer_card_last4: card,
-      p_signature_image: sigDataUrl, p_signed_pdf_base64: signedPdfB64
+      p_signature_image: sigDataUrl, p_docs: _pDocs
     });
     if(error) throw error;
     if(_sd && _sd.error) throw new Error(_sd.error);
