@@ -45,6 +45,8 @@ body{background:var(--paper);color:var(--ink);font-family:'Hiragino Sans','Noto 
 canvas#signCanvas{display:block;width:100%;height:180px;cursor:crosshair;touch-action:none;}
 .sign-guide{position:absolute;bottom:16px;left:0;right:0;text-align:center;font-size:12px;color:var(--border);pointer-events:none;transition:opacity .3s;}
 .sign-guide.hidden{opacity:0;}
+.rotate-hint{display:none;background:#eef4ff;border:1px solid #b9d0ff;border-radius:8px;padding:9px 12px;font-size:12px;color:#1d4ed8;line-height:1.5;margin-bottom:8px;font-weight:600;}
+@media (orientation:portrait){.rotate-hint{display:block;}}
 .verify-section{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);}
 .input-group{margin-bottom:12px;}
 .input-label{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.05em;margin-bottom:5px;display:block;}
@@ -78,7 +80,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.romaji</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.signfix</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -135,6 +137,7 @@ input:focus{border-color:var(--accent);background:white;}
     <div class="section">
       <div class="section-label">署名（指でサインしてください）</div>
       <div class="notice" style="margin-bottom:10px;">サインは必ず<strong>ローマ字のフルネーム</strong>で記入してください（パスポートと同じつづり）。<br>Please sign your <strong>full name in Roman letters</strong>.</div>
+      <div class="rotate-hint">📱↔️ 長いお名前は、スマホを<strong>横向き</strong>にすると書きやすくなります。<br>For long names, please rotate your phone to <strong>landscape</strong>.</div>
       <div class="sign-area">
         <div class="sign-area-header">
           <span class="sign-area-label">✍️ 署名欄</span>
@@ -355,14 +358,26 @@ function initCanvas(){
   canvas.width=rect.width*dpr;canvas.height=180*dpr;
   ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
   ctx.strokeStyle='#1a1a2e';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
-  canvas.addEventListener('touchstart',onTS,{passive:false});
-  canvas.addEventListener('touchmove', onTM,{passive:false});
-  canvas.addEventListener('touchend',  onTE);
-  canvas.addEventListener('mousedown', onMD);
-  canvas.addEventListener('mousemove', onMM);
-  canvas.addEventListener('mouseup',   onMU);
+  if(!canvas._bound){
+    canvas._bound=true;
+    canvas.addEventListener('touchstart',onTS,{passive:false});
+    canvas.addEventListener('touchmove', onTM,{passive:false});
+    canvas.addEventListener('touchend',  onTE);
+    canvas.addEventListener('mousedown', onMD);
+    canvas.addEventListener('mousemove', onMM);
+    canvas.addEventListener('mouseup',   onMU);
+    window.addEventListener('resize',_onSignResize);
+    window.addEventListener('orientationchange',function(){setTimeout(_onSignResize,250);});
+  }
 }
-function gp(e){const r=canvas.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};}
+function _onSignResize(){
+  if(!canvas)return;
+  var s2=document.getElementById('step2');
+  if(!s2||!s2.classList.contains('active'))return;
+  if(hasDrawn)return; // 署名済みなら維持（gpが座標補正するためズレない）
+  initCanvas(); // 空なら現在の表示サイズで作り直し（くっきり＆座標一致）
+}
+function gp(e){const r=canvas.getBoundingClientRect(),t=e.touches?e.touches[0]:e;const dpr=window.devicePixelRatio||1;return{x:(t.clientX-r.left)*((canvas.width/dpr)/r.width),y:(t.clientY-r.top)*((canvas.height/dpr)/r.height)};}
 function sd(e){isDrawing=true;const p=gp(e);ctx.beginPath();ctx.moveTo(p.x,p.y);document.getElementById('signGuide').classList.add('hidden');}
 function dr(e){if(!isDrawing)return;const p=gp(e);ctx.lineTo(p.x,p.y);ctx.stroke();hasDrawn=true;document.getElementById('btnToStep3').disabled=false;}
 function ed(){isDrawing=false;ctx.beginPath();}
