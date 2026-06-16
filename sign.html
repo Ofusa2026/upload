@@ -91,9 +91,19 @@ input:focus{border-color:var(--accent);background:white;}
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.multidoc</span></div>
-  <div class="header-title">サイン書類</div>
+<div class="header" style="position:relative;">
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.i18n</span></div>
+  <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
+  <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
+    <option value="ja">🌐 日本語</option>
+    <option value="en">🌐 English</option>
+    <option value="id">🌐 Indonesia</option>
+    <option value="vi">🌐 Tiếng Việt</option>
+    <option value="zh">🌐 中文</option>
+    <option value="km">🌐 ខ្មែរ</option>
+    <option value="my">🌐 မြန်မာ</option>
+    <option value="th">🌐 ไทย</option>
+  </select>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
 <div class="container">
@@ -113,111 +123,111 @@ input:focus{border-color:var(--accent);background:white;}
     <div class="step-indicator">
       <div class="step-dot active"></div><div class="step-dot"></div>
       <div class="step-dot"></div><div class="step-dot"></div>
-      <span class="step-label">内容確認</span>
+      <span class="step-label" data-i18n="step1_label"><ruby>内容<rt>ないよう</rt></ruby><ruby>確認<rt>かくにん</rt></ruby></span>
     </div>
     <div class="section">
-      <div class="section-label">署名対象者</div>
+      <div class="section-label" data-i18n="s1_target"><ruby>署名<rt>しょめい</rt></ruby><ruby>対象者<rt>たいしょうしゃ</rt></ruby></div>
       <div class="case-card">
         <div class="case-meta" style="grid-template-columns:1fr;">
-          <div class="case-meta-item"><div class="case-meta-key">氏名</div><div class="case-meta-value" id="workerName">—</div></div>
-          <div class="case-meta-item"><div class="case-meta-key">所属機関</div><div class="case-meta-value" id="companyName">—</div></div>
-          <div class="case-meta-item"><div class="case-meta-key">書類</div><div class="case-meta-value"><span id="docName">—</span></div></div>
+          <div class="case-meta-item"><div class="case-meta-key" data-i18n="k_name"><ruby>氏名<rt>しめい</rt></ruby></div><div class="case-meta-value" id="workerName">—</div></div>
+          <div class="case-meta-item"><div class="case-meta-key" data-i18n="k_company"><ruby>所属<rt>しょぞく</rt></ruby><ruby>機関<rt>きかん</rt></ruby></div><div class="case-meta-value" id="companyName">—</div></div>
+          <div class="case-meta-item"><div class="case-meta-key" data-i18n="k_doc"><ruby>書類<rt>しょるい</rt></ruby></div><div class="case-meta-value"><span id="docName">—</span></div></div>
         </div>
       </div>
     </div>
-    <div class="notice"><strong>ご本人様へ：</strong>書類の内容を確認し、署名してください。</div>
-    <button class="btn-primary" onclick="goStep(2)">📄 書類を確認して署名する →</button>
+    <div class="notice" data-i18n="s1_notice"><strong>ご<ruby>本人様<rt>ほんにんさま</rt></ruby>へ：</strong><ruby>書類<rt>しょるい</rt></ruby>の<ruby>内容<rt>ないよう</rt></ruby>を<ruby>確認<rt>かくにん</rt></ruby>し、<ruby>署名<rt>しょめい</rt></ruby>してください。</div>
+    <button class="btn-primary" data-i18n="s1_btn" onclick="goStep(2)">📄 <ruby>書類<rt>しょるい</rt></ruby>を<ruby>確認<rt>かくにん</rt></ruby>して<ruby>署名<rt>しょめい</rt></ruby>する →</button>
   </div>
 
   <div id="step2" class="step">
     <div class="step-indicator">
       <div class="step-dot done"></div><div class="step-dot active"></div>
       <div class="step-dot"></div><div class="step-dot"></div>
-      <span class="step-label">書類確認・署名</span>
+      <span class="step-label" data-i18n="step2_label"><ruby>書類<rt>しょるい</rt></ruby><ruby>確認<rt>かくにん</rt></ruby>・<ruby>署名<rt>しょめい</rt></ruby></span>
     </div>
     <div class="section">
-      <div class="section-label">書類（全ページ確認してください）</div>
+      <div class="section-label" data-i18n="s2_doclabel"><ruby>書類<rt>しょるい</rt></ruby>（<ruby>全<rt>ぜん</rt></ruby>ページ<ruby>確認<rt>かくにん</rt></ruby>してください）</div>
       <div class="pdf-viewer-wrap">
         <div class="pdf-nav" id="docNav" style="display:none;">
-          <button id="btnDocPrev" onclick="changeDoc(-1)">◀ 前の書類</button>
+          <button id="btnDocPrev" data-i18n="doc_prev" onclick="changeDoc(-1)">◀ <ruby>前<rt>まえ</rt></ruby>の<ruby>書類<rt>しょるい</rt></ruby></button>
           <span id="docInfo">書類 1/1</span>
-          <button id="btnDocNext" onclick="changeDoc(1)">次の書類 ▶</button>
+          <button id="btnDocNext" data-i18n="doc_next" onclick="changeDoc(1)"><ruby>次<rt>つぎ</rt></ruby>の<ruby>書類<rt>しょるい</rt></ruby> ▶</button>
         </div>
         <div class="pdf-nav">
-          <button id="btnPrev" onclick="changePage(-1)">◀ 前</button>
+          <button id="btnPrev" data-i18n="page_prev" onclick="changePage(-1)">◀ <ruby>前<rt>まえ</rt></ruby></button>
           <span id="pageInfo">読み込み中...</span>
-          <button id="btnNext" onclick="changePage(1)">次 ▶</button>
+          <button id="btnNext" data-i18n="page_next" onclick="changePage(1)"><ruby>次<rt>つぎ</rt></ruby> ▶</button>
         </div>
         <div id="pdfContainer"><div class="pdf-loading">📄 PDFを読み込み中...</div></div>
       </div>
     </div>
     <div class="section">
-      <div class="section-label">署名（指でサインしてください）</div>
-      <div class="notice" style="margin-bottom:10px;">サインは必ず<strong>ローマ字のフルネーム</strong>で記入してください（パスポートと同じつづり）。<br>Please sign your <strong>full name in Roman letters</strong>.</div>
-      <div class="scroll-hint">↔️ 署名欄は<strong>横にスクロール</strong>できます。長いお名前（30文字程度まで）も続けて書けます。<br>You can <strong>scroll sideways</strong> to sign your full name.</div>
+      <div class="section-label" data-i18n="s2_signlabel"><ruby>署名<rt>しょめい</rt></ruby>（<ruby>指<rt>ゆび</rt></ruby>でサインしてください）</div>
+      <div class="notice" style="margin-bottom:10px;" data-i18n="s2_notice_roman">サインは<ruby>必<rt>かなら</rt></ruby>ず<strong>ローマ<ruby>字<rt>じ</rt></ruby>のフルネーム</strong>で<ruby>記入<rt>きにゅう</rt></ruby>してください（パスポートと<ruby>同<rt>おな</rt></ruby>じつづり）。<br>Please sign your <strong>full name in Roman letters</strong>.</div>
+      <div class="scroll-hint" data-i18n="s2_scrollhint">↔️ <ruby>署名欄<rt>しょめいらん</rt></ruby>は<strong><ruby>横<rt>よこ</rt></ruby>にスクロール</strong>できます。<ruby>長<rt>なが</rt></ruby>いお<ruby>名前<rt>なまえ</rt></ruby>（30<ruby>文字<rt>もじ</rt></ruby><ruby>程度<rt>ていど</rt></ruby>まで）も<ruby>続<rt>つづ</rt></ruby>けて<ruby>書<rt>か</rt></ruby>けます。<br>You can <strong>scroll sideways</strong> to sign your full name.</div>
       <div class="sign-area">
         <div class="sign-area-header">
-          <span class="sign-area-label">✍️ 署名欄</span>
+          <span class="sign-area-label" data-i18n="sign_area_label">✍️ <ruby>署名欄<rt>しょめいらん</rt></ruby></span>
           <div style="display:flex;gap:10px;align-items:center;">
             <div class="scroll-btns">
               <button type="button" onclick="scrollSign(-1)" title="左へ">◀</button>
               <button type="button" onclick="scrollSign(1)" title="右へ">▶</button>
             </div>
-            <button class="btn-clear btn-undo" id="btnUndo" onclick="undoSign()" disabled>↩️ 取消</button>
-            <button class="btn-clear" onclick="clearCanvas()">やり直す</button>
+            <button class="btn-clear btn-undo" id="btnUndo" data-i18n="btn_undo" onclick="undoSign()" disabled>↩️ <ruby>取消<rt>とりけし</rt></ruby></button>
+            <button class="btn-clear" data-i18n="btn_clear" onclick="clearCanvas()">やり<ruby>直<rt>なお</rt></ruby>す</button>
           </div>
         </div>
         <div class="sign-scroll" id="signScroll">
           <canvas id="signCanvas"></canvas>
         </div>
-        <div class="sign-guide" id="signGuide">ローマ字フルネームでサイン</div>
+        <div class="sign-guide" id="signGuide" data-i18n="sign_guide">ローマ<ruby>字<rt>じ</rt></ruby>フルネームでサイン</div>
       </div>
     </div>
-    <div class="notice"><strong>注意：</strong>署名は書類の署名欄に合成されてDriveに保存されます。</div>
-    <button class="btn-primary" id="btnToStep3" onclick="goStep(3)" disabled>本人確認へ進む →</button>
-    <button class="btn-back" onclick="goStep(1)">← 戻る</button>
+    <div class="notice" data-i18n="s2_notice_save"><strong><ruby>注意<rt>ちゅうい</rt></ruby>：</strong><ruby>署名<rt>しょめい</rt></ruby>は<ruby>書類<rt>しょるい</rt></ruby>の<ruby>署名欄<rt>しょめいらん</rt></ruby>に<ruby>合成<rt>ごうせい</rt></ruby>されてDriveに<ruby>保存<rt>ほぞん</rt></ruby>されます。</div>
+    <button class="btn-primary" id="btnToStep3" data-i18n="s2_btn" onclick="goStep(3)" disabled><ruby>本人<rt>ほんにん</rt></ruby><ruby>確認<rt>かくにん</rt></ruby>へ<ruby>進<rt>すす</rt></ruby>む →</button>
+    <button class="btn-back" data-i18n="btn_back" onclick="goStep(1)">← <ruby>戻<rt>もど</rt></ruby>る</button>
   </div>
 
   <div id="step3" class="step">
     <div class="step-indicator">
       <div class="step-dot done"></div><div class="step-dot done"></div>
       <div class="step-dot active"></div><div class="step-dot"></div>
-      <span class="step-label">本人確認</span>
+      <span class="step-label" data-i18n="step3_label"><ruby>本人<rt>ほんにん</rt></ruby><ruby>確認<rt>かくにん</rt></ruby></span>
     </div>
     <div class="section">
-      <div class="section-label">氏名を入力してください</div>
+      <div class="section-label" data-i18n="s3_namelabel"><ruby>氏名<rt>しめい</rt></ruby>を<ruby>入力<rt>にゅうりょく</rt></ruby>してください</div>
       <div class="verify-section">
         <div class="input-group">
-          <label class="input-label">氏名（ローマ字）</label>
-          <input type="text" id="inputName" placeholder="例：NGUYEN VAN AN" autocomplete="name">
+          <label class="input-label" data-i18n="lbl_name_roman"><ruby>氏名<rt>しめい</rt></ruby>（ローマ<ruby>字<rt>じ</rt></ruby>）</label>
+          <input type="text" id="inputName" data-i18n-ph="ph_name" placeholder="例：NGUYEN VAN AN" autocomplete="name">
         </div>
       </div>
     </div>
-    <div class="notice">氏名は<strong>ローマ字のフルネーム</strong>（パスポートと同じつづり）で入力してください。署名者の氏名として記録されます。</div>
-    <button class="btn-primary" id="btnSubmit" onclick="submitSign()">✅ 署名を送信する</button>
-    <div id="submitNote" style="display:none;margin-top:12px;background:#eef4ff;border:1px solid #b9d0ff;border-radius:10px;padding:12px 14px;font-size:13px;color:#1d4ed8;font-weight:700;line-height:1.6;text-align:center;">⏳ 署名を処理しています。30秒ほどかかります。<br>そのまま画面を閉じずにお待ちください。</div>
-    <button class="btn-back" onclick="goStep(2)">← 戻る</button>
+    <div class="notice" data-i18n="s3_notice"><ruby>氏名<rt>しめい</rt></ruby>は<strong>ローマ<ruby>字<rt>じ</rt></ruby>のフルネーム</strong>（パスポートと<ruby>同<rt>おな</rt></ruby>じつづり）で<ruby>入力<rt>にゅうりょく</rt></ruby>してください。<ruby>署名者<rt>しょめいしゃ</rt></ruby>の<ruby>氏名<rt>しめい</rt></ruby>として<ruby>記録<rt>きろく</rt></ruby>されます。</div>
+    <button class="btn-primary" id="btnSubmit" data-i18n="s3_btn" onclick="submitSign()">✅ <ruby>署名<rt>しょめい</rt></ruby>を<ruby>送信<rt>そうしん</rt></ruby>する</button>
+    <div id="submitNote" style="display:none;margin-top:12px;background:#eef4ff;border:1px solid #b9d0ff;border-radius:10px;padding:12px 14px;font-size:13px;color:#1d4ed8;font-weight:700;line-height:1.6;text-align:center;" data-i18n="submit_note">⏳ <ruby>署名<rt>しょめい</rt></ruby>を<ruby>処理<rt>しょり</rt></ruby>しています。30<ruby>秒<rt>びょう</rt></ruby>ほどかかります。<br>そのまま<ruby>画面<rt>がめん</rt></ruby>を<ruby>閉<rt>と</rt></ruby>じずにお<ruby>待<rt>ま</rt></ruby>ちください。</div>
+    <button class="btn-back" data-i18n="btn_back" onclick="goStep(2)">← <ruby>戻<rt>もど</rt></ruby>る</button>
   </div>
 
   <div id="step4" class="step">
     <div class="complete-screen">
       <div class="complete-icon">✅</div>
-      <div class="complete-title">署名完了</div>
-      <div class="complete-sub">署名が完了しました。<br>署名済みの書類は、下の<strong>申請ページの「サイン書類」</strong>からいつでも確認できます。</div>
+      <div class="complete-title" data-i18n="c_title"><ruby>署名<rt>しょめい</rt></ruby><ruby>完了<rt>かんりょう</rt></ruby></div>
+      <div class="complete-sub" data-i18n="c_sub"><ruby>署名<rt>しょめい</rt></ruby>が<ruby>完了<rt>かんりょう</rt></ruby>しました。<br><ruby>署名済<rt>しょめいず</rt></ruby>みの<ruby>書類<rt>しょるい</rt></ruby>は、<ruby>下<rt>した</rt></ruby>の<strong><ruby>申請<rt>しんせい</rt></ruby>ページの「サイン<ruby>書類<rt>しょるい</rt></ruby>」</strong>からいつでも<ruby>確認<rt>かくにん</rt></ruby>できます。</div>
       <div class="complete-card">
-        <div class="complete-card-title">受理情報</div>
-        <div class="complete-card-row"><span class="complete-card-key">書類</span><span class="complete-card-val" id="completeDoc">サイン書類</span></div>
-        <div class="complete-card-row"><span class="complete-card-key">署名者</span><span class="complete-card-val" id="completeName">—</span></div>
-        <div class="complete-card-row"><span class="complete-card-key">日時</span><span class="complete-card-val" id="completeTime">—</span></div>
-        <div class="complete-card-row"><span class="complete-card-key">受理番号</span><span class="complete-card-val" id="completeId">—</span></div>
+        <div class="complete-card-title" data-i18n="c_cardtitle"><ruby>受理<rt>じゅり</rt></ruby><ruby>情報<rt>じょうほう</rt></ruby></div>
+        <div class="complete-card-row"><span class="complete-card-key" data-i18n="k_doc"><ruby>書類<rt>しょるい</rt></ruby></span><span class="complete-card-val" id="completeDoc">サイン書類</span></div>
+        <div class="complete-card-row"><span class="complete-card-key" data-i18n="c_k_signer"><ruby>署名者<rt>しょめいしゃ</rt></ruby></span><span class="complete-card-val" id="completeName">—</span></div>
+        <div class="complete-card-row"><span class="complete-card-key" data-i18n="c_k_time"><ruby>日時<rt>にちじ</rt></ruby></span><span class="complete-card-val" id="completeTime">—</span></div>
+        <div class="complete-card-row"><span class="complete-card-key" data-i18n="c_k_id"><ruby>受理<rt>じゅり</rt></ruby><ruby>番号<rt>ばんごう</rt></ruby></span><span class="complete-card-val" id="completeId">—</span></div>
       </div>
-      <div id="applicantLinkPending" style="margin-top:16px;font-size:12px;color:#64748b;text-align:center;">申請ページのリンクを準備しています…</div>
+      <div id="applicantLinkPending" style="margin-top:16px;font-size:12px;color:#64748b;text-align:center;" data-i18n="applink_pending"><ruby>申請<rt>しんせい</rt></ruby>ページのリンクを<ruby>準備<rt>じゅんび</rt></ruby>しています…</div>
       <div id="applicantLinkBox" style="display:none;margin-top:16px;background:#eef4ff;border:1px solid #b9d0ff;border-radius:10px;padding:14px;font-size:13px;color:#1d4ed8;line-height:1.7;">
-        📄 <strong>署名済み書類の確認ページ</strong><br>
-        下のリンクを開き、<strong>「サイン書類」タブ</strong>からご確認ください。
+        <span data-i18n="applink_title">📄 <strong><ruby>署名済<rt>しょめいず</rt></ruby>み<ruby>書類<rt>しょるい</rt></ruby>の<ruby>確認<rt>かくにん</rt></ruby>ページ</strong></span><br>
+        <span data-i18n="applink_desc"><ruby>下<rt>した</rt></ruby>のリンクを<ruby>開<rt>ひら</rt></ruby>き、<strong>「サイン<ruby>書類<rt>しょるい</rt></ruby>」タブ</strong>からご<ruby>確認<rt>かくにん</rt></ruby>ください。</span>
         <a id="applicantLink" href="#" target="_blank" rel="noopener" style="display:block;margin-top:8px;word-break:break-all;color:#1d4ed8;font-weight:700;">（リンクを準備中…）</a>
-        <button onclick="copyApplicantLink()" style="width:100%;margin-top:10px;padding:12px;background:#1a1a2e;color:white;border:none;border-radius:50px;font-size:14px;font-weight:700;cursor:pointer;">🔗 リンクをコピー</button>
-        <div style="font-size:11px;color:#7a6010;margin-top:8px;">※ 書類の反映まで数分かかる場合があります。</div>
+        <button onclick="copyApplicantLink()" data-i18n="applink_copy" style="width:100%;margin-top:10px;padding:12px;background:#1a1a2e;color:white;border:none;border-radius:50px;font-size:14px;font-weight:700;cursor:pointer;">🔗 リンクをコピー</button>
+        <div style="font-size:11px;color:#7a6010;margin-top:8px;" data-i18n="applink_note">※ <ruby>書類<rt>しょるい</rt></ruby>の<ruby>反映<rt>はんえい</rt></ruby>まで<ruby>数分<rt>すうふん</rt></ruby>かかる<ruby>場合<rt>ばあい</rt></ruby>があります。</div>
       </div>
     </div>
   </div>
@@ -228,6 +238,84 @@ input:focus{border-color:var(--accent);background:white;}
 const SUPABASE_URL='https://ehwlgbwpycglmopiqyty.supabase.co';
 const SUPABASE_KEY='sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+// ===== 多言語（i18n）＝ ja はHTML側のルビ付きを既定にし、他言語は辞書から差し替え =====
+var I18N = {
+  hdr_doc:{en:'Document to sign',id:'Dokumen untuk ditandatangani',vi:'Tài liệu cần ký',zh:'需签名的文件',km:'ឯកសារសម្រាប់ចុះហត្ថលេខា',my:'လက်မှတ်ထိုးရန် စာရွက်စာတမ်း',th:'เอกสารที่ต้องลงนาม'},
+  step1_label:{en:'Review',id:'Konfirmasi',vi:'Xác nhận',zh:'内容确认',km:'ពិនិត្យ',my:'စစ်ဆေးရန်',th:'ตรวจสอบ'},
+  s1_target:{en:'Signer',id:'Penanda tangan',vi:'Người ký',zh:'签名对象',km:'អ្នកចុះហត្ថលេខា',my:'လက်မှတ်ထိုးသူ',th:'ผู้ลงนาม'},
+  k_name:{en:'Name',id:'Nama',vi:'Họ tên',zh:'姓名',km:'ឈ្មោះ',my:'အမည်',th:'ชื่อ'},
+  k_company:{en:'Organization',id:'Instansi',vi:'Cơ quan',zh:'所属机构',km:'ស្ថាប័ន',my:'အဖွဲ့အစည်း',th:'หน่วยงาน'},
+  k_doc:{en:'Document',id:'Dokumen',vi:'Tài liệu',zh:'文件',km:'ឯកសារ',my:'စာရွက်စာတမ်း',th:'เอกสาร'},
+  s1_notice:{en:'<strong>To the signer:</strong> Please review the document and sign.',id:'<strong>Kepada Anda:</strong> Mohon periksa isi dokumen dan tanda tangani.',vi:'<strong>Gửi quý vị:</strong> Vui lòng kiểm tra nội dung tài liệu và ký tên.',zh:'<strong>致本人：</strong>请确认文件内容后签名。',km:'<strong>ជូនចំពោះអ្នក៖</strong> សូមពិនិត្យខ្លឹមសារឯកសារ រួចចុះហត្ថលេខា។',my:'<strong>သက်ဆိုင်သူထံ—</strong> စာရွက်အကြောင်းအရာစစ်ဆေးပြီး လက်မှတ်ထိုးပါ။',th:'<strong>ถึงเจ้าตัว:</strong> กรุณาตรวจสอบเนื้อหาเอกสารแล้วลงนาม'},
+  s1_btn:{en:'📄 Review and sign →',id:'📄 Periksa lalu tanda tangan →',vi:'📄 Kiểm tra và ký →',zh:'📄 确认文件并签名 →',km:'📄 ពិនិត្យ និងចុះហត្ថលេខា →',my:'📄 စစ်ဆေး၍ လက်မှတ်ထိုးရန် →',th:'📄 ตรวจสอบแล้วลงนาม →'},
+  step2_label:{en:'Review & Sign',id:'Periksa & TTD',vi:'Kiểm tra & Ký',zh:'确认·签名',km:'ពិនិត្យ និងចុះហត្ថលេខា',my:'စစ်၍ လက်မှတ်ထိုး',th:'ตรวจสอบ·ลงนาม'},
+  s2_doclabel:{en:'Document (please check all pages)',id:'Dokumen (periksa semua halaman)',vi:'Tài liệu (xem tất cả các trang)',zh:'文件（请确认所有页面）',km:'ឯកសារ (សូមពិនិត្យគ្រប់ទំព័រ)',my:'စာရွက် (စာမျက်နှာအားလုံးစစ်ပါ)',th:'เอกสาร (กรุณาตรวจทุกหน้า)'},
+  doc_prev:{en:'◀ Prev doc',id:'◀ Dok. sebelumnya',vi:'◀ Tài liệu trước',zh:'◀ 上一份',km:'◀ ឯកសារមុន',my:'◀ ယခင်စာရွက်',th:'◀ เอกสารก่อน'},
+  doc_next:{en:'Next doc ▶',id:'Dok. berikutnya ▶',vi:'Tài liệu sau ▶',zh:'下一份 ▶',km:'ឯកសារបន្ទាប់ ▶',my:'နောက်စာရွက် ▶',th:'เอกสารถัดไป ▶'},
+  page_prev:{en:'◀ Prev',id:'◀ Sebelumnya',vi:'◀ Trước',zh:'◀ 上一页',km:'◀ មុន',my:'◀ ယခင်',th:'◀ ก่อนหน้า'},
+  page_next:{en:'Next ▶',id:'Berikutnya ▶',vi:'Sau ▶',zh:'下一页 ▶',km:'បន្ទាប់ ▶',my:'နောက် ▶',th:'ถัดไป ▶'},
+  s2_signlabel:{en:'Signature (sign with your finger)',id:'Tanda tangan (gunakan jari)',vi:'Chữ ký (ký bằng ngón tay)',zh:'签名（请用手指签名）',km:'ហត្ថលេខា (សូមចុះដោយម្រាមដៃ)',my:'လက်မှတ် (လက်ချောင်းဖြင့်ရေးပါ)',th:'ลายเซ็น (เซ็นด้วยนิ้ว)'},
+  s2_notice_roman:{en:'Please sign your <strong>full name in Roman letters</strong> (same spelling as your passport).',id:'Tanda tangani dengan <strong>nama lengkap huruf Latin</strong> (sama seperti paspor).',vi:'Vui lòng ký <strong>đầy đủ họ tên bằng chữ Latinh</strong> (giống hộ chiếu).',zh:'请用<strong>罗马字母全名</strong>签名（与护照拼写一致）。',km:'សូមចុះហត្ថលេខាជា<strong>ឈ្មោះពេញអក្សរឡាតាំង</strong> (ដូចលិខិតឆ្លងដែន)។',my:'<strong>လက်တင်စာလုံးဖြင့် အမည်အပြည့်အစုံ</strong> (ပတ်စ်ပို့အတိုင်း) လက်မှတ်ထိုးပါ။',th:'กรุณาเซ็น<strong>ชื่อเต็มเป็นอักษรโรมัน</strong> (สะกดเหมือนหนังสือเดินทาง)'},
+  s2_scrollhint:{en:'↔️ You can <strong>scroll the signature box sideways</strong>. Long names (up to ~30 letters) fit too.',id:'↔️ Kolom tanda tangan bisa <strong>digeser ke samping</strong>. Nama panjang (hingga ~30 huruf) pun muat.',vi:'↔️ Bạn có thể <strong>cuộn ngang</strong> ô chữ ký. Tên dài (tới ~30 ký tự) vẫn viết được.',zh:'↔️ 签名栏可<strong>左右滑动</strong>，较长姓名（约30字以内）也能书写。',km:'↔️ អ្នកអាច<strong>រំកិលប្រអប់ហត្ថលេខាទៅចំហៀង</strong>។ ឈ្មោះវែង (ដល់ ~៣០តួ) ក៏សរសេរបាន។',my:'↔️ လက်မှတ်ကွက်ကို <strong>ဘေးတိုက်ရွှေ့</strong>နိုင်သည်။ အမည်ရှည် (~၃၀လုံးအထိ) ရေးနိုင်သည်။',th:'↔️ <strong>เลื่อนช่องลายเซ็นไปด้านข้าง</strong>ได้ ชื่อยาว (ถึง ~30 ตัว) ก็เขียนได้'},
+  sign_area_label:{en:'✍️ Signature',id:'✍️ Tanda tangan',vi:'✍️ Chữ ký',zh:'✍️ 签名栏',km:'✍️ ប្រអប់ហត្ថលេខា',my:'✍️ လက်မှတ်ကွက်',th:'✍️ ช่องลายเซ็น'},
+  btn_undo:{en:'↩️ Undo',id:'↩️ Batal',vi:'↩️ Hoàn tác',zh:'↩️ 撤销',km:'↩️ មិនធ្វើវិញ',my:'↩️ ပြန်ဖျက်',th:'↩️ เลิกทำ'},
+  btn_clear:{en:'Clear',id:'Ulangi',vi:'Làm lại',zh:'重写',km:'ធ្វើឡើងវិញ',my:'အစမှ',th:'เริ่มใหม่'},
+  sign_guide:{en:'Sign with your full name in Roman letters',id:'Tanda tangan: nama lengkap (huruf Latin)',vi:'Ký đầy đủ họ tên (chữ Latinh)',zh:'用罗马字母全名签名',km:'ចុះហត្ថលេខាជាឈ្មោះពេញអក្សរឡាតាំង',my:'လက်တင်စာဖြင့် အမည်အပြည့်အစုံ ရေးပါ',th:'เซ็นชื่อเต็มอักษรโรมัน'},
+  s2_notice_save:{en:'<strong>Note:</strong> Your signature will be merged into the document and saved to Drive.',id:'<strong>Catatan:</strong> Tanda tangan akan digabung ke dokumen dan disimpan di Drive.',vi:'<strong>Lưu ý:</strong> Chữ ký sẽ được ghép vào tài liệu và lưu vào Drive.',zh:'<strong>注意：</strong>签名将合成到文件中并保存到云端硬盘。',km:'<strong>ចំណាំ៖</strong> ហត្ថលេខានឹងបញ្ចូលទៅឯកសារ ហើយរក្សាទុកក្នុង Drive។',my:'<strong>မှတ်ချက်—</strong> လက်မှတ်ကို စာရွက်ထဲပေါင်းပြီး Drive တွင် သိမ်းပါမည်။',th:'<strong>หมายเหตุ:</strong> ลายเซ็นจะถูกรวมเข้าเอกสารและบันทึกใน Drive'},
+  s2_btn:{en:'Proceed to identity check →',id:'Lanjut ke verifikasi identitas →',vi:'Tiếp tục xác minh danh tính →',zh:'前往身份确认 →',km:'បន្តទៅផ្ទៀងផ្ទាត់អត្តសញ្ញាណ →',my:'ကိုယ်ရေးအတည်ပြုသို့ →',th:'ไปยืนยันตัวตน →'},
+  btn_back:{en:'← Back',id:'← Kembali',vi:'← Quay lại',zh:'← 返回',km:'← ត្រឡប់',my:'← နောက်သို့',th:'← ย้อนกลับ'},
+  step3_label:{en:'Identity',id:'Identitas',vi:'Danh tính',zh:'身份确认',km:'អត្តសញ្ញាណ',my:'ကိုယ်ရေးအတည်ပြု',th:'ยืนยันตัวตน'},
+  s3_namelabel:{en:'Please enter your name',id:'Masukkan nama Anda',vi:'Vui lòng nhập họ tên',zh:'请输入姓名',km:'សូមបញ្ចូលឈ្មោះ',my:'အမည်ထည့်ပါ',th:'กรุณากรอกชื่อ'},
+  lbl_name_roman:{en:'Name (Roman letters)',id:'Nama (huruf Latin)',vi:'Họ tên (chữ Latinh)',zh:'姓名（罗马字母）',km:'ឈ្មោះ (អក្សរឡាតាំង)',my:'အမည် (လက်တင်စာ)',th:'ชื่อ (อักษรโรมัน)'},
+  ph_name:{en:'e.g. NGUYEN VAN AN',id:'contoh: NGUYEN VAN AN',vi:'VD: NGUYEN VAN AN',zh:'例：NGUYEN VAN AN',km:'ឧ. NGUYEN VAN AN',my:'ဥပမာ NGUYEN VAN AN',th:'เช่น NGUYEN VAN AN'},
+  s3_notice:{en:'Enter your <strong>full name in Roman letters</strong> (same spelling as your passport). It will be recorded as the signer\u2019s name.',id:'Masukkan <strong>nama lengkap huruf Latin</strong> (sama seperti paspor). Akan dicatat sebagai nama penanda tangan.',vi:'Nhập <strong>đầy đủ họ tên bằng chữ Latinh</strong> (giống hộ chiếu). Sẽ được ghi là tên người ký.',zh:'请输入<strong>罗马字母全名</strong>（与护照拼写一致），将记录为签名人姓名。',km:'បញ្ចូល<strong>ឈ្មោះពេញអក្សរឡាតាំង</strong> (ដូចលិខិតឆ្លងដែន)។ វានឹងកត់ត្រាជាឈ្មោះអ្នកចុះហត្ថលេខា។',my:'<strong>လက်တင်စာဖြင့် အမည်အပြည့်အစုံ</strong> (ပတ်စ်ပို့အတိုင်း) ထည့်ပါ။ လက်မှတ်ထိုးသူအမည်အဖြစ် မှတ်တမ်းတင်ပါမည်။',th:'กรอก<strong>ชื่อเต็มอักษรโรมัน</strong> (สะกดเหมือนหนังสือเดินทาง) จะถูกบันทึกเป็นชื่อผู้ลงนาม'},
+  s3_btn:{en:'✅ Submit signature',id:'✅ Kirim tanda tangan',vi:'✅ Gửi chữ ký',zh:'✅ 提交签名',km:'✅ ដាក់ស្នើហត្ថលេខា',my:'✅ လက်မှတ်ပို့ရန်',th:'✅ ส่งลายเซ็น'},
+  submit_note:{en:'⏳ Processing your signature. This takes about 30 seconds.<br>Please keep this screen open.',id:'⏳ Memproses tanda tangan. Sekitar 30 detik.<br>Jangan tutup layar ini.',vi:'⏳ Đang xử lý chữ ký. Mất khoảng 30 giây.<br>Vui lòng không đóng màn hình.',zh:'⏳ 正在处理签名，约需30秒。<br>请勿关闭此页面。',km:'⏳ កំពុងដំណើរការហត្ថលេខា។ ប្រហែល៣០វិនាទី។<br>សូមកុំបិទអេក្រង់នេះ។',my:'⏳ လက်မှတ်ကို လုပ်ဆောင်နေသည်။ ~၃၀စက္ကန့်ခန့်။<br>ဤစခရင်ကို မပိတ်ပါနှင့်။',th:'⏳ กำลังประมวลผลลายเซ็น ใช้เวลาประมาณ 30 วินาที<br>กรุณาอย่าปิดหน้าจอนี้'},
+  c_title:{en:'Signing complete',id:'Tanda tangan selesai',vi:'Đã ký xong',zh:'签名完成',km:'ការចុះហត្ថលេខាបានបញ្ចប់',my:'လက်မှတ်ထိုးပြီးပါပြီ',th:'ลงนามเสร็จสิ้น'},
+  c_sub:{en:'Your signature is complete.<br>You can view the signed document anytime from the <strong>"Sign" section of the application page</strong> below.',id:'Tanda tangan selesai.<br>Dokumen yang sudah ditandatangani bisa dilihat kapan saja dari <strong>"Tanda tangan" pada halaman aplikasi</strong> di bawah.',vi:'Đã ký xong.<br>Bạn có thể xem tài liệu đã ký bất cứ lúc nào tại mục <strong>"Tài liệu ký" trên trang hồ sơ</strong> bên dưới.',zh:'签名已完成。<br>已签名的文件可随时在下方<strong>申请页面的"签名文件"</strong>中查看。',km:'ការចុះហត្ថលេខាបានបញ្ចប់។<br>អ្នកអាចមើលឯកសារដែលបានចុះហត្ថលេខានៅផ្នែក <strong>"ឯកសារហត្ថលេខា" នៃទំព័រពាក្យសុំ</strong> ខាងក្រោម។',my:'လက်မှတ်ထိုးပြီးပါပြီ။<br>လက်မှတ်ထိုးပြီးစာရွက်ကို အောက်ပါ <strong>လျှောက်လွှာစာမျက်နှာ၏ "လက်မှတ်စာရွက်"</strong> တွင် အချိန်မရွေးကြည့်နိုင်သည်။',th:'ลงนามเสร็จแล้ว<br>คุณดูเอกสารที่ลงนามแล้วได้ทุกเมื่อจาก<strong>ส่วน "เอกสารลงนาม" ของหน้าคำขอ</strong>ด้านล่าง'},
+  c_cardtitle:{en:'Receipt info',id:'Info penerimaan',vi:'Thông tin tiếp nhận',zh:'受理信息',km:'ព័ត៌មានទទួល',my:'လက်ခံအချက်အလက်',th:'ข้อมูลการรับ'},
+  c_k_signer:{en:'Signer',id:'Penanda tangan',vi:'Người ký',zh:'签名人',km:'អ្នកចុះហត្ថលេខា',my:'လက်မှတ်ထိုးသူ',th:'ผู้ลงนาม'},
+  c_k_time:{en:'Date',id:'Tanggal & waktu',vi:'Thời gian',zh:'日期时间',km:'កាលបរិច្ឆេទ',my:'ရက်စွဲ',th:'วันเวลา'},
+  c_k_id:{en:'Receipt No.',id:'No. penerimaan',vi:'Số tiếp nhận',zh:'受理编号',km:'លេខទទួល',my:'လက်ခံနံပါတ်',th:'เลขที่รับ'},
+  applink_pending:{en:'Preparing the application page link…',id:'Menyiapkan tautan halaman aplikasi…',vi:'Đang chuẩn bị liên kết trang hồ sơ…',zh:'正在准备申请页面链接…',km:'កំពុងរៀបចំតំណទំព័រពាក្យសុំ…',my:'လျှောက်လွှာစာမျက်နှာလင့်ခ်ကို ပြင်ဆင်နေသည်…',th:'กำลังเตรียมลิงก์หน้าคำขอ…'},
+  applink_title:{en:'📄 <strong>Page to view your signed document</strong>',id:'📄 <strong>Halaman untuk melihat dokumen Anda</strong>',vi:'📄 <strong>Trang xem tài liệu đã ký</strong>',zh:'📄 <strong>查看已签名文件的页面</strong>',km:'📄 <strong>ទំព័រមើលឯកសារដែលបានចុះហត្ថលេខា</strong>',my:'📄 <strong>လက်မှတ်ထိုးပြီးစာရွက်ကြည့်ရန် စာမျက်နှာ</strong>',th:'📄 <strong>หน้าสำหรับดูเอกสารที่ลงนาม</strong>'},
+  applink_desc:{en:'Open the link below and check the <strong>"Sign" tab</strong>.',id:'Buka tautan di bawah dan periksa <strong>tab "Tanda tangan"</strong>.',vi:'Mở liên kết bên dưới và xem <strong>tab "Tài liệu ký"</strong>.',zh:'打开下方链接，在<strong>"签名文件"标签</strong>中查看。',km:'បើកតំណខាងក្រោម ហើយពិនិត្យ <strong>ផ្ទាំង "ឯកសារហត្ថលេខា"</strong>។',my:'အောက်ကလင့်ခ်ကိုဖွင့်ပြီး <strong>"လက်မှတ်စာရွက်" တက်ဘ်</strong>တွင် ကြည့်ပါ။',th:'เปิดลิงก์ด้านล่างและดูที่ <strong>แท็บ "เอกสารลงนาม"</strong>'},
+  applink_copy:{en:'🔗 Copy link',id:'🔗 Salin tautan',vi:'🔗 Sao chép liên kết',zh:'🔗 复制链接',km:'🔗 ចម្លងតំណ',my:'🔗 လင့်ခ်ကူးယူ',th:'🔗 คัดลอกลิงก์'},
+  applink_note:{en:'* It may take a few minutes for the document to appear.',id:'* Dokumen mungkin perlu beberapa menit untuk muncul.',vi:'* Có thể mất vài phút để tài liệu hiển thị.',zh:'* 文件可能需要几分钟才会显示。',km:'* ឯកសារអាចចំណាយពេលពីរបីនាទីដើម្បីបង្ហាញ។',my:'* စာရွက်ပေါ်လာရန် မိနစ်အနည်းငယ်ကြာနိုင်သည်။',th:'* เอกสารอาจใช้เวลาสองสามนาทีจึงจะปรากฏ'}
+};
+var _i18nJa = {}, _i18nJaPh = {};
+function _i18nSnapshot(){
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k=el.getAttribute('data-i18n'); if(_i18nJa[k]==null) _i18nJa[k]=el.innerHTML;
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){
+    var k=el.getAttribute('data-i18n-ph'); if(_i18nJaPh[k]==null) _i18nJaPh[k]=el.getAttribute('placeholder')||'';
+  });
+}
+function applyLang(lang){
+  window._lang=lang;
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k=el.getAttribute('data-i18n');
+    if(lang==='ja'){ if(_i18nJa[k]!=null) el.innerHTML=_i18nJa[k]; }
+    else { var v=I18N[k]&&I18N[k][lang]; el.innerHTML=(v!=null)?v:(_i18nJa[k]||el.innerHTML); }
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){
+    var k=el.getAttribute('data-i18n-ph');
+    if(lang==='ja'){ el.setAttribute('placeholder', _i18nJaPh[k]||''); }
+    else { var v=I18N[k]&&I18N[k][lang]; el.setAttribute('placeholder',(v!=null)?v:(_i18nJaPh[k]||'')); }
+  });
+  try{ document.documentElement.lang=lang; }catch(e){}
+  var sel=document.getElementById('langSel'); if(sel&&sel.value!==lang) sel.value=lang;
+  try{ localStorage.setItem('ofusa_sign_lang', lang); }catch(e){}
+}
+document.addEventListener('DOMContentLoaded', function(){
+  _i18nSnapshot();
+  var saved='ja';
+  try{ saved=localStorage.getItem('ofusa_sign_lang')||'ja'; }catch(e){}
+  if(saved && saved!=='ja') applyLang(saved);
+  else { var sel=document.getElementById('langSel'); if(sel) sel.value='ja'; }
+});
 
 // ===== GAS URL（DriveのPDF取得・保存用） =====
 // ※ GASをデプロイしたURLに変更してください
