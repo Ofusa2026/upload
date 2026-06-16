@@ -42,6 +42,8 @@ body{background:var(--paper);color:var(--ink);font-family:'Hiragino Sans','Noto 
 .sign-area-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
 .sign-area-label{font-size:13px;font-weight:700;}
 .btn-clear{font-size:12px;color:var(--accent);font-weight:600;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;}
+.btn-clear:disabled{opacity:.35;cursor:default;}
+.btn-undo{color:#4338ca;}
 .sign-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;}
 .sign-scroll::-webkit-scrollbar{height:9px;}
 .sign-scroll::-webkit-scrollbar-track{background:#f1eee9;}
@@ -86,7 +88,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.signscroll</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.undo</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -152,6 +154,7 @@ input:focus{border-color:var(--accent);background:white;}
               <button type="button" onclick="scrollSign(-1)" title="左へ">◀</button>
               <button type="button" onclick="scrollSign(1)" title="右へ">▶</button>
             </div>
+            <button class="btn-clear btn-undo" id="btnUndo" onclick="undoSign()" disabled>↩️ 取消</button>
             <button class="btn-clear" onclick="clearCanvas()">やり直す</button>
           </div>
         </div>
@@ -232,7 +235,7 @@ const SIG_COORDS={
 let requestToken=null,signRequestId=null,caseData=null;
 let docLang='インドネシア語',pdfBytes=null,signedPdfBytes=null,driveFolderId='';
 let pdfDoc=null,currentPage=1,totalPages=0;
-let canvas,ctx,isDrawing=false,hasDrawn=false;let _sbHas=false,_sbX0=0,_sbY0=0,_sbX1=0,_sbY1=0;
+let canvas,ctx,isDrawing=false,hasDrawn=false;let _sbHas=false,_sbX0=0,_sbY0=0,_sbX1=0,_sbY1=0;let _undoStack=[],_strokeDrew=false;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -395,16 +398,20 @@ function _onSignResize(){
   initCanvas(); // 空なら現在の表示サイズで作り直し（くっきり＆座標一致）
 }
 function gp(e){const r=canvas.getBoundingClientRect(),t=e.touches?e.touches[0]:e;const dpr=window.devicePixelRatio||1;return{x:(t.clientX-r.left)*((canvas.width/dpr)/r.width),y:(t.clientY-r.top)*((canvas.height/dpr)/r.height)};}
-function sd(e){isDrawing=true;const p=gp(e);_trackBounds(p);ctx.beginPath();ctx.moveTo(p.x,p.y);document.getElementById('signGuide').classList.add('hidden');}
-function dr(e){if(!isDrawing)return;const p=gp(e);_trackBounds(p);ctx.lineTo(p.x,p.y);ctx.stroke();hasDrawn=true;document.getElementById('btnToStep3').disabled=false;_autoScroll(e);}
-function ed(){isDrawing=false;ctx.beginPath();}
+function sd(e){isDrawing=true;_strokeDrew=false;const p=gp(e);_trackBounds(p);ctx.beginPath();ctx.moveTo(p.x,p.y);document.getElementById('signGuide').classList.add('hidden');}
+function dr(e){if(!isDrawing)return;const p=gp(e);_trackBounds(p);ctx.lineTo(p.x,p.y);ctx.stroke();_strokeDrew=true;hasDrawn=true;document.getElementById('btnToStep3').disabled=false;_autoScroll(e);}
+function ed(){isDrawing=false;ctx.beginPath();if(_strokeDrew){_pushUndoState();_strokeDrew=false;}}
 function onTS(e){e.preventDefault();sd(e);}function onTM(e){e.preventDefault();dr(e);}function onTE(){ed();}
 function onMD(e){sd(e);}function onMM(e){dr(e);}function onMU(){ed();}
-function clearCanvas(){if(!ctx)return;ctx.clearRect(0,0,canvas.width,canvas.height);hasDrawn=false;_sbHas=false;var _w=document.getElementById('signScroll');if(_w)_w.scrollLeft=0;document.getElementById('btnToStep3').disabled=true;document.getElementById('signGuide').classList.remove('hidden');}
+function clearCanvas(){if(!ctx)return;ctx.clearRect(0,0,canvas.width,canvas.height);hasDrawn=false;_sbHas=false;_undoStack=[];_updateUndoBtn();var _w=document.getElementById('signScroll');if(_w)_w.scrollLeft=0;document.getElementById('btnToStep3').disabled=true;document.getElementById('signGuide').classList.remove('hidden');}
 function _trackBounds(p){if(!_sbHas){_sbX0=_sbX1=p.x;_sbY0=_sbY1=p.y;_sbHas=true;}else{if(p.x<_sbX0)_sbX0=p.x;if(p.x>_sbX1)_sbX1=p.x;if(p.y<_sbY0)_sbY0=p.y;if(p.y>_sbY1)_sbY1=p.y;}}
 function _autoScroll(e){var w=document.getElementById('signScroll');if(!w)return;var t=e.touches?e.touches[0]:e;var r=w.getBoundingClientRect();var m=55;if(t.clientX>r.right-m){w.scrollLeft+=Math.min(20,t.clientX-(r.right-m));}else if(t.clientX<r.left+m&&w.scrollLeft>0){w.scrollLeft-=Math.min(20,(r.left+m)-t.clientX);}}
 function scrollSign(dir){var w=document.getElementById('signScroll');if(w)w.scrollBy({left:dir*220,behavior:'smooth'});}
 function _sigDataUrl(){if(!_sbHas)return canvas.toDataURL('image/png');var dpr=window.devicePixelRatio||1,pad=14;var x0=Math.max(0,Math.round((_sbX0-pad)*dpr)),y0=Math.max(0,Math.round((_sbY0-pad)*dpr));var x1=Math.min(canvas.width,Math.round((_sbX1+pad)*dpr)),y1=Math.min(canvas.height,Math.round((_sbY1+pad)*dpr));var w=Math.max(1,x1-x0),h=Math.max(1,y1-y0);var tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;tmp.getContext('2d').drawImage(canvas,x0,y0,w,h,0,0,w,h);return tmp.toDataURL('image/png');}
+function _pushUndoState(){try{_undoStack.push({url:canvas.toDataURL('image/png'),has:_sbHas,x0:_sbX0,y0:_sbY0,x1:_sbX1,y1:_sbY1});if(_undoStack.length>40)_undoStack.shift();_updateUndoBtn();}catch(e){}}
+function _restoreSnap(s){var img=new Image();img.onload=function(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);ctx.restore();};img.src=s.url;_sbHas=s.has;_sbX0=s.x0;_sbY0=s.y0;_sbX1=s.x1;_sbY1=s.y1;hasDrawn=true;document.getElementById('btnToStep3').disabled=false;}
+function undoSign(){if(!_undoStack.length)return;_undoStack.pop();if(_undoStack.length){_restoreSnap(_undoStack[_undoStack.length-1]);}else{ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.restore();_sbHas=false;hasDrawn=false;document.getElementById('btnToStep3').disabled=true;document.getElementById('signGuide').classList.remove('hidden');}_updateUndoBtn();}
+function _updateUndoBtn(){var b=document.getElementById('btnUndo');if(b)b.disabled=_undoStack.length===0;}
 
 // ===== pdf-lib で署名合成 =====
 async function embedSignatureToPdf(){
