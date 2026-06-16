@@ -69,6 +69,10 @@ input:focus{border-color:var(--accent);background:white;}
 @keyframes popIn{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
 .complete-title{font-size:22px;font-weight:800;color:var(--success);margin-bottom:8px;}
 .complete-sub{font-size:14px;color:var(--muted);line-height:1.7;}
+.drive-status{margin-top:14px;border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;line-height:1.5;}
+.drive-status.saving{background:#eef4ff;color:#1d4ed8;border:1px solid #b9d0ff;}
+.drive-status.ok{background:var(--success-light);color:var(--success);border:1px solid #a7e0c2;}
+.drive-status.pending{background:#fffbf0;color:#7a6010;border:1px solid #f0d080;}
 .complete-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-top:24px;text-align:left;}
 .complete-card-title{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--muted);margin-bottom:8px;}
 .complete-card-row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--paper);}
@@ -88,7 +92,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.undo</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.drivenow</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -194,6 +198,7 @@ input:focus{border-color:var(--accent);background:white;}
       <div class="complete-icon">✅</div>
       <div class="complete-title">署名完了</div>
       <div class="complete-sub">署名が完了しました。<br>下のボタンから書類を保存しておいてください。</div>
+      <div id="driveStatus" class="drive-status" style="display:none;"></div>
       <div class="complete-card">
         <div class="complete-card-title">受理情報</div>
         <div class="complete-card-row"><span class="complete-card-key">書類</span><span class="complete-card-val" id="completeDoc">書類</span></div>
@@ -441,6 +446,31 @@ async function embedSignatureToPdf(){
 }
 
 // ===== 送信 =====
+async function saveToDriveNow(){
+  var el=document.getElementById('driveStatus');
+  if(el){el.style.display='block';el.className='drive-status saving';el.textContent='📂 Google Driveに保存中…（数秒お待ちください）';}
+  var ok=false;
+  try{
+    var r=await Promise.race([
+      callGasJsonp({action:'signNowSave', data:{token: requestToken}}),
+      new Promise(function(res){setTimeout(function(){res(null);},12000);})
+    ]);
+    if(r && (r.status==='ok'||r.already)) ok=true;
+  }catch(e){}
+  if(!ok){
+    for(var i=0;i<3 && !ok;i++){
+      await new Promise(function(res){setTimeout(res,2500);});
+      try{
+        var q=await sb.from('sign_requests').select('signed_pdf_url').eq('token',requestToken).single();
+        if(q && q.data && q.data.signed_pdf_url) ok=true;
+      }catch(_e){}
+    }
+  }
+  if(el){
+    if(ok){el.className='drive-status ok';el.textContent='✅ Google Driveに保存しました';}
+    else{el.className='drive-status pending';el.textContent='⏳ 保存処理中です。数分以内にDriveへ保存されます。';}
+  }
+}
 async function submitSign(){
   const name=document.getElementById('inputName').value.trim();
   const card='';
@@ -471,15 +501,15 @@ async function submitSign(){
     });
     if(error) throw error;
     if(_sd && _sd.error) throw new Error(_sd.error);
-    // ★ 署名直後の即時Drive保存（ベストエフォート。失敗しても5分タイマーが拾う）
-    try { callGasJsonp({action:'signNowSave', data:{token: requestToken}}).catch(function(){}); } catch(_ns){}
-    // 完了
+    // 完了画面へ
     document.getElementById('completeName').textContent=name;
     try{document.getElementById('completeDoc').textContent=(caseData&&caseData.doc_type)||'書類';}catch(_e){}
     document.getElementById('completeTime').textContent=new Date(signedAt).toLocaleString('ja-JP');
     document.getElementById('completeId').textContent=signRequestId.slice(0,8).toUpperCase();
     document.getElementById('progressFill').style.width='100%';
     goStep(4);
+    // ★ Drive保存を完了まで待つ（ページを開いたまま即時保存。失敗時は5分タイマーが拾う）
+    saveToDriveNow();
   }catch(e){
     console.error(e);
     alert('送信エラー: '+e.message);
