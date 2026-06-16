@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20260616.01 - docs/キャッシュ無し時もハードコード書類をDOCS_LISTに変換し新ロジック(グレーアウト対応+live-done)に統一。提出済み照合はDOC_DONE_ALIASで正規名(co_doc_check)に寄せる -->
+<!-- company_dataup ver.20260616.03 - 脱ハードコード：書類リストを正本(settings.required_docs_co/_large/_kojin)からRPC upload_required_docs_get で取得。index.htmlがco_doc_checkに書く正規名と一致するため表示ラベルとグレーアウトが常に整合。ハードコード辞書はRPC失敗時の最終フォールバックのみ。ver.02:法人住民税に【直近2年度分】追記。ver.01:docs/キャッシュ無し時もDOCS_LIST化し新ロジック+live-done統一 -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -458,7 +458,7 @@ const NORMAL_DOCS = {
   rodo_hoken:    '労働保険料等納付証明書（未納なし証明）',
   shakai_hoken:  '社会保険料納入状況照会回答票または領収書24ヶ月分',
   zeimu_3:       '納税証明書（その３）＊税務署発行　税目）源泉所得税及び復興特別所得税、法人税、消費税及び地方消費税',
-  zeimu_shimin:  '納税証明書（地方税）法人住民税 ＊市町村発行',
+  zeimu_shimin:  '納税証明書（地方税）法人住民税【直近2年度分】＊市町村発行',
   shugyo_kisoku: '就業規則',
   chingin_kitei: '賃金規定',
   san_roku:      '36協定届出書',
@@ -493,7 +493,6 @@ const DOC_DONE_ALIAS = {
   '業務に関わる役員（最低1名分）の住民票の写し': '役員（代表で1名分）の住民票の写し',
   '社会保険料納入状況照会回答票または領収書24ヶ月分': '社会保険料納入状況照会回答票',
   '納税証明書（その３）＊税務署発行　税目）源泉所得税及び復興特別所得税、法人税、消費税及び地方消費税': '納税証明書（その３）源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税 ＊税務署発行',
-  '納税証明書（地方税）法人住民税 ＊市町村発行': '納税証明書（地方税）法人住民税【直近2年度分】＊市町村発行',
   '予定物件の間取り図、物件資料など': '③ 居住予定物件の物件資料',
   // ── 会社（個人事業主） ──
   '個人事業主の住民票の写し': '住民票',
@@ -515,6 +514,26 @@ function _buildFallbackDocsList(){
   (typeof NORMAL_KEYS !== 'undefined' ? NORMAL_KEYS : []).forEach(function(k){ if(NORMAL_DOCS[k]) out.push({ l: NORMAL_DOCS[k], t: 'normal', r: 0 }); });
   (typeof KOJIN_KEYS !== 'undefined' ? KOJIN_KEYS : []).forEach(function(k){ if(KOJIN_DOCS[k]) out.push({ l: KOJIN_DOCS[k], t: 'kojin', r: 0 }); });
   return out;
+}
+
+// ver.20260616.03: 正本(settings.required_docs_co / _large / _kojin)をRPCで取得してDOCS_LISTを構築（脱ハードコード）。
+// index.html が co_doc_check に書く正規名と同一の配列なので、表示ラベルとグレーアウト判定が常に一致し、別名や手修正が不要になる。
+function _loadRequiredDocsFromDB(){
+  return new Promise(function(resolve){
+    _uplRpc('upload_required_docs_get', {})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      if(!d || typeof d!=='object'){ resolve(null); return; }
+      var out=[];
+      function add(arr,t){ (Array.isArray(arr)?arr:[]).forEach(function(l){ l=(l==null?'':String(l)).trim(); if(l) out.push({ l:l, t:t, r:0 }); }); }
+      add(d.large,'large'); add(d.normal,'normal'); add(d.kojin,'kojin');
+      // 任意提出枠「その他」（ハードコード版と同様に中小・個人事業主に用意）
+      if(Array.isArray(d.normal) && d.normal.length) out.push({ l:'その他', t:'normal', r:0 });
+      if(Array.isArray(d.kojin)  && d.kojin.length)  out.push({ l:'その他', t:'kojin',  r:0 });
+      resolve(out.length ? out : null);
+    })
+    .catch(function(e){ console.warn('required_docs rpc err:', e); resolve(null); });
+  });
 }
 
 const fileData = {};
@@ -752,8 +771,12 @@ function _applyLiveDoneFromCoDocCheck(){
 // ver.20260525.34: DBキャッシュから書類リストを取得してから初期描画
 (async function _initDocsAndBuild(){
   try { await _loadDocsFromCache(); } catch(e){ console.warn('_initDocsAndBuild err:', e); }
-  // ver.20260616.01: docs/キャッシュが無い場合もハードコード書類をDOCS_LISTに変換し、
-  // 旧ロジック描画(done未対応)を経由せず新ブランチ(グレーアウト対応)＋live-doneに統一する。
+  // ver.20260616.03: docs/キャッシュが無ければ正本(settings.required_docs_*)をRPCで取得（脱ハードコード）。
+  if(!(Array.isArray(DOCS_LIST) && DOCS_LIST.length)){
+    try { var _db = await _loadRequiredDocsFromDB(); if(_db && _db.length){ DOCS_LIST = _db; USE_NEW_DOCS = true; } }
+    catch(e){ console.warn('required_docs err:', e); }
+  }
+  // それでも取得できなければハードコード辞書を最終フォールバックに（通常は到達しない）。
   if(!(Array.isArray(DOCS_LIST) && DOCS_LIST.length)){
     DOCS_LIST = _buildFallbackDocsList();
     USE_NEW_DOCS = true;
