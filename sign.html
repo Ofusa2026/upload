@@ -48,7 +48,7 @@ body{background:var(--paper);color:var(--ink);font-family:'Hiragino Sans','Noto 
 .sign-scroll::-webkit-scrollbar{height:9px;}
 .sign-scroll::-webkit-scrollbar-track{background:#f1eee9;}
 .sign-scroll::-webkit-scrollbar-thumb{background:var(--accent);border-radius:5px;}
-canvas#signCanvas{display:block;height:162px;cursor:crosshair;touch-action:none;}
+canvas#signCanvas{display:block;height:180px;cursor:crosshair;touch-action:none;}
 .sign-guide{position:absolute;bottom:16px;left:0;right:0;text-align:center;font-size:12px;color:var(--border);pointer-events:none;transition:opacity .3s;}
 .sign-guide.hidden{opacity:0;}
 .scroll-hint{background:#eef4ff;border:1px solid #b9d0ff;border-radius:8px;padding:9px 12px;font-size:12px;color:#1d4ed8;line-height:1.5;margin-bottom:8px;font-weight:600;}
@@ -92,7 +92,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.signsize</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260616.drivenow2</span></div>
   <div class="header-title">雇用条件書 電子署名</div>
 </div>
 <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -376,9 +376,11 @@ function changePage(d){
 function initCanvas(){
   canvas=document.getElementById('signCanvas');
   const dpr=window.devicePixelRatio||1;
-  const CW=1560; // 署名欄の幅は固定（画面サイズで変えない）。従来比+20%
+  const wrap=document.getElementById('signScroll');
+  const visW=wrap?wrap.clientWidth:canvas.getBoundingClientRect().width;
+  const CW=Math.max(Math.round(visW)||300,1300); // 長い名前(〜30文字)用に広い描画幅
   canvas.style.width=CW+'px';
-  canvas.width=CW*dpr;canvas.height=162*dpr;
+  canvas.width=CW*dpr;canvas.height=180*dpr;
   ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
   ctx.strokeStyle='#1a1a2e';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
   if(!canvas._bound){
