@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20260611.04 - 書類ごとにドライブURL保存(doc_label/drive_url)。取得済み/不要グレーアウトはco_doc_checkライブ読み -->
+<!-- company_dataup ver.20260616.01 - docs/キャッシュ無し時もハードコード書類をDOCS_LISTに変換し新ロジック(グレーアウト対応+live-done)に統一。提出済み照合はDOC_DONE_ALIASで正規名(co_doc_check)に寄せる -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -485,6 +485,38 @@ const KOJIN_DOCS = {
   other_kojin:    'その他',
 };
 
+// ver.20260616.01: 画面の表示ラベル → co_doc_check に保存される正規名（index.html準拠）への照合エイリアス。
+// 表示テキストは情報量を保つため変えず、提出済み(staff::/skip::)判定だけ正規名に寄せてグレーアウトを効かせる。
+const DOC_DONE_ALIAS = {
+  // ── 会社（中小） ──
+  '決算文書の写し3期分（損益計算書及び貸借対照表）': '決算文書の写し（損益計算書及び貸借対照表）',
+  '業務に関わる役員（最低1名分）の住民票の写し': '役員（代表で1名分）の住民票の写し',
+  '社会保険料納入状況照会回答票または領収書24ヶ月分': '社会保険料納入状況照会回答票',
+  '納税証明書（その３）＊税務署発行　税目）源泉所得税及び復興特別所得税、法人税、消費税及び地方消費税': '納税証明書（その３）源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税 ＊税務署発行',
+  '納税証明書（地方税）法人住民税 ＊市町村発行': '納税証明書（地方税）法人住民税【直近2年度分】＊市町村発行',
+  '予定物件の間取り図、物件資料など': '③ 居住予定物件の物件資料',
+  // ── 会社（個人事業主） ──
+  '個人事業主の住民票の写し': '住民票',
+  '労働保険料等納付証明書（未納なし証明）': '労働保険料等納付証明書',
+  'マイナポータルからダウンロードした医療保険の資格情報の写し、または資格確認書の写し': 'マイナポータルからダウンロードした医療保険の資格情報の写し',
+  '国民健康保険料（税）納付証明書（直近2年分）': '国民健康保険料(税)納付証明書(直近1年度)',
+  '被保険者記録照会（納付Ⅱ）または国民年金保険料領収証書の写し（直近24ヶ月分）': '被保険者記録照会(納付Ⅱ)',
+  '被保険者記録照会回答票': '被保険者記録照会回答表',
+  '納税証明書（その３）＊税務署発行　税目）源泉所得税・申告所得税・消費税・地方消費税・相続税・贈与税': '個人事業主納税証明書その3(5項目)',
+  '個人住民税の納税証明書（直近2年度分）＊市区町村発行': '住民税の納税証明書'
+};
+
+// ver.20260616.01: docs パラメータも upload_docs_cache も無い場合に、ハードコード書類辞書を
+// 新ロジック用の DOCS_LIST 形式 [{l, t, r}] に変換する。これで旧ロジック描画(done未対応)を経由せず、
+// 常に新ブランチ(グレーアウト対応)＋ _applyLiveDoneFromCoDocCheck に通せる。
+function _buildFallbackDocsList(){
+  var out = [];
+  (typeof LARGE_KEYS !== 'undefined' ? LARGE_KEYS : []).forEach(function(k){ if(LARGE_DOCS[k]) out.push({ l: LARGE_DOCS[k], t: 'large', r: 0 }); });
+  (typeof NORMAL_KEYS !== 'undefined' ? NORMAL_KEYS : []).forEach(function(k){ if(NORMAL_DOCS[k]) out.push({ l: NORMAL_DOCS[k], t: 'normal', r: 0 }); });
+  (typeof KOJIN_KEYS !== 'undefined' ? KOJIN_KEYS : []).forEach(function(k){ if(KOJIN_DOCS[k]) out.push({ l: KOJIN_DOCS[k], t: 'kojin', r: 0 }); });
+  return out;
+}
+
 const fileData = {};
 
 // ─── タブ切り替え ───
@@ -705,7 +737,12 @@ function _applyLiveDoneFromCoDocCheck(){
         var v = row.value; var truthy = (v!=null && v!=='' && v!=='false');
         if((prefix==='staff' || prefix==='skip') && truthy){ doneSet[name] = true; }
       });
-      DOCS_LIST.forEach(function(d){ if(d && d.l){ d.done = !!doneSet[d.l]; } });
+      DOCS_LIST.forEach(function(d){
+        if(d && d.l){
+          var alias = DOC_DONE_ALIAS[d.l];
+          d.done = !!(doneSet[d.l] || (alias && doneSet[alias]));
+        }
+      });
       resolve();
     })
     .catch(function(e){ console.warn('co_doc_check live fetch err:', e); resolve(); });
@@ -715,6 +752,12 @@ function _applyLiveDoneFromCoDocCheck(){
 // ver.20260525.34: DBキャッシュから書類リストを取得してから初期描画
 (async function _initDocsAndBuild(){
   try { await _loadDocsFromCache(); } catch(e){ console.warn('_initDocsAndBuild err:', e); }
+  // ver.20260616.01: docs/キャッシュが無い場合もハードコード書類をDOCS_LISTに変換し、
+  // 旧ロジック描画(done未対応)を経由せず新ブランチ(グレーアウト対応)＋live-doneに統一する。
+  if(!(Array.isArray(DOCS_LIST) && DOCS_LIST.length)){
+    DOCS_LIST = _buildFallbackDocsList();
+    USE_NEW_DOCS = true;
+  }
   try { await _applyLiveDoneFromCoDocCheck(); } catch(e){ console.warn('live done err:', e); }
   buildAllFields();
 })();
