@@ -92,7 +92,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header" style="position:relative;">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260619.11</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260619.12</span></div>
   <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
   <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
     <option value="ja">🌐 日本語</option>
@@ -321,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function(){
 // ※ GASをデプロイしたURLに変更してください
 const GAS_URL='https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 
-// ver.20260619.11: SIG_COORDS削除（DBのsig_x/y/w/h/pageを使用）
+// ver.20260619.12: SIG_COORDS削除（DBのsig_x/y/w/h/pageを使用）
 
 // ===== 状態 =====
 let requestToken=null,signRequestId=null,caseData=null;
@@ -371,7 +371,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 });
 
 async function loadSignRequest(token){
-  console.log('%c OFUSA upload/sign.html ver.20260619.11 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
+  console.log('%c OFUSA upload/sign.html ver.20260619.12 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
   try{
     const {data,error}=await sb.rpc('sign_get',{ p_token: token });
     if(error||!data){showError('リンクが見つかりません');return;}
@@ -385,7 +385,7 @@ async function loadSignRequest(token){
     document.getElementById('workerName').textContent=data.applicant||'—';
     document.getElementById('companyName').textContent=data.company||'—';
     // docs（N枚）を構築：新方式は data.docs、旧方式は pdf_base64/sig_positions から1件
-    // ver.20260619.11: sig_x/y/w/h/pageをsig_positionsに変換してフォールバック
+    // ver.20260619.12: sig_x/y/w/h/pageをsig_positionsに変換してフォールバック
     var _fallbackPos = (data.sig_x != null)
       ? [{ page: (data.sig_page||1), x: data.sig_x, y: data.sig_y, w: data.sig_w, h: data.sig_h }]
       : null;
@@ -541,33 +541,58 @@ function bytesToB64(bytes){
   return btoa(bin);
 }
 // 1つのPDFバイト列に署名を焼き込む（positions=その書類の枠配列）
+// ver.20260619.12: 署名キャンバスをdeg度回転させたdataURLを返す
+function _sigDataUrlRotated(deg){
+  var srcUrl = _sigDataUrl();
+  if(!deg || deg === 0) return Promise.resolve(srcUrl);
+  return new Promise(function(resolve){
+    var img = new Image();
+    img.onload = function(){
+      var tmp = document.createElement('canvas');
+      if(deg === 90 || deg === 270){ tmp.width=img.height; tmp.height=img.width; }
+      else { tmp.width=img.width; tmp.height=img.height; }
+      var tc = tmp.getContext('2d');
+      tc.translate(tmp.width/2, tmp.height/2);
+      tc.rotate(deg * Math.PI / 180);
+      tc.drawImage(img, -img.width/2, -img.height/2);
+      resolve(tmp.toDataURL('image/png'));
+    };
+    img.src = srcUrl;
+  });
+}
+
 async function embedSignatureToOne(srcBytes, positions){
   const {PDFDocument}=PDFLib;
-  const sigDataUrl=_sigDataUrl();
-  const sigB64=sigDataUrl.split(',')[1];
-  const sigBytes=Uint8Array.from(atob(sigB64),c=>c.charCodeAt(0));
   const doc=await PDFDocument.load(srcBytes);
   const pages=doc.getPages();
-  const img=await doc.embedPng(sigBytes);
-  console.log('[sign] img size:', img.width, 'x', img.height, '/ _sbHas:', _sbHas, '/ bbox:', _sbX0, _sbY0, _sbX1, _sbY1);
-  // sig_positions（複数枠）があれば全枠に焼き込み、無ければ従来のSIG_COORDS（1箇所）にフォールバック
   let pos=(Array.isArray(positions)&&positions.length)?positions:null;
-  if(pos){
-    pos.forEach(function(p){
-      const pg=pages[(p.page||1)-1]||pages[pages.length-1];
-      var pgSize=pg.getSize();
-      var imgW=img.width, imgH=img.height;
-      // ver.20260619.11: index.html側でdata-pdf-wにnaturalVp（回転後）サイズを使うよう修正
-      // → モーダル座標はpdf-lib座標系と一致するためlandscape補正不要
-      var px=p.x, py=p.y, pw=p.w, ph=p.h;
-      var scale=Math.min(pw/imgW, ph/imgH);
-      var dw=imgW*scale, dh=imgH*scale;
-      var dx=px+(pw-dw)/2, dy=py+(ph-dh)/2;
-      console.log('[sign] page:'+pgSize.width+'x'+pgSize.height+' draw:x='+Math.round(dx)+' y='+Math.round(dy)+' w='+Math.round(dw)+' h='+Math.round(dh));
-      pg.drawImage(img,{x:dx,y:dy,width:dw,height:dh});
-    });
-  } else {
-    console.warn('[sign] sig_positionsなし・座標不明のためスキップ');
+  if(!pos){ console.warn('[sign] sig_positionsなし'); return await doc.save(); }
+
+  for(var i=0; i<pos.length; i++){
+    var p=pos[i];
+    const pg=pages[(p.page||1)-1]||pages[pages.length-1];
+    var pgSize=pg.getSize();
+    // ver.20260619.12: PDFのRotateに応じて座標変換＋画像回転
+    var rotate=(pg.getRotation && pg.getRotation().angle)||0;
+    var px,py,pw,ph,sigDeg;
+    if(rotate===90){
+      px=pgSize.height-p.y-p.h; py=p.x; pw=p.h; ph=p.w; sigDeg=270;
+    } else if(rotate===270){
+      px=p.y; py=pgSize.width-p.x-p.w; pw=p.h; ph=p.w; sigDeg=90;
+    } else if(rotate===180){
+      px=pgSize.width-p.x-p.w; py=pgSize.height-p.y-p.h; pw=p.w; ph=p.h; sigDeg=180;
+    } else {
+      px=p.x; py=p.y; pw=p.w; ph=p.h; sigDeg=0;
+    }
+    var sigUrl=await _sigDataUrlRotated(sigDeg);
+    var sigB64=sigUrl.split(',')[1];
+    var sigBytes=Uint8Array.from(atob(sigB64),c=>c.charCodeAt(0));
+    var img=await doc.embedPng(sigBytes);
+    var scale=Math.min(pw/img.width, ph/img.height);
+    var dw=img.width*scale, dh=img.height*scale;
+    var dx=px+(pw-dw)/2, dy=py+(ph-dh)/2;
+    console.log('[sign] rotate:'+rotate+' sigDeg:'+sigDeg+' draw:x='+Math.round(dx)+' y='+Math.round(dy)+' w='+Math.round(dw)+' h='+Math.round(dh));
+    pg.drawImage(img,{x:dx,y:dy,width:dw,height:dh});
   }
   return await doc.save();
 }
