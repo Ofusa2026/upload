@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20260616.03 - 脱ハードコード：書類リストを正本(settings.required_docs_co/_large/_kojin)からRPC upload_required_docs_get で取得。index.htmlがco_doc_checkに書く正規名と一致するため表示ラベルとグレーアウトが常に整合。ハードコード辞書はRPC失敗時の最終フォールバックのみ。ver.02:法人住民税に【直近2年度分】追記。ver.01:docs/キャッシュ無し時もDOCS_LIST化し新ロジック+live-done統一 -->
+<!-- company_dataup ver.20260619.06 - 各書類に「説明＋見本画像」を表示（人材UPと同様・日本語のみ／書類名キーワードで判定）。samples/ に企業書類の見本21枚を追加。脱ハードコード版(ver.20260616.03)を踏襲 -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -549,6 +549,85 @@ function switchTab(tab) {
 }
 
 // ─── フィールド行を生成 ───
+// ver.20260619.06: 企業書類の「説明＋見本画像」（人材UPと同様・日本語のみ）。動的キー対策で書類名(ラベル)のキーワードから判定。
+var COMPANY_DOC_SAMPLES = {
+  tokibo:        { image:'samples/tokibo_sample.png',        note:'法務局またはオンライン（登記・供託オンライン申請システム）で取得。「履歴事項全部証明書」を取得してください（現在事項証明書は不可の場合あり）。発行から3か月以内のもの。' },
+  zeimu_3:       { image:'samples/zeimu_3_sample.png',       note:'税務署発行の「納税証明書（その３）」。税目＝源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税。未納がないことの証明。' },
+  zeimu_shimin:  { image:'samples/zeimu_shimin_sample.png',  note:'市区町村発行の法人住民税の納税証明書（直近2年度分）。' },
+  rodo_hoken:    { image:'samples/rodo_hoken_sample.png',    note:'労働保険料等の未納なし証明。労働保険事務組合に委託していない場合は、労働保険概算・確定保険料申告書(事業主控)の写し＋領収証書の写し（直近2年分）で代えられます。' },
+  shakai_hoken:  { image:'samples/shakai_hoken_sample.png',  note:'年金事務所の「社会保険料納入状況照会回答票」、または健康保険・厚生年金保険料の領収証書の写し（申請月の前々月までの24か月分）。' },
+  jumin_hyo:     { image:'samples/jumin_hyo_sample.png',     note:'業務執行に関与する役員（代表で1名分）の住民票の写し。マイナンバーの記載がなく、本籍の記載があるものを取得してください。' },
+  kessan:        { image:'samples/kessan_sample.png',        note:'直近3期分の決算文書（損益計算書及び貸借対照表）の写し。' },
+  shugyo_kisoku: { image:'samples/shugyo_kisoku_sample.png', note:'就業規則。常時10人以上を使用する事業場は労働基準監督署への届出が必要（受付印のある写し）。' },
+  chingin_kitei: { image:'samples/chingin_kitei_sample.png', note:'賃金規定。就業規則本体に賃金規定が含まれる場合は、その該当部分でも可。' },
+  san_roku:      { image:'samples/san_roku_sample.png',      note:'時間外労働・休日労働に関する協定届（36協定／様式第９号）。労働基準監督署への届出（受付印のある写し）。有効期間が切れていないもの。' },
+  henkei_rodo:   { image:'samples/henkei_rodo_sample.png',   note:'変形労働時間制を採用している場合の協定届。年間カレンダー等を添付。' },
+  nengkan_cal:   { image:'samples/nengkan_cal_sample.png',   note:'変形労働時間制の所定労働日・休日を示す年間カレンダー。' },
+  madori:        { image:'samples/madori_sample.png',        note:'特定技能外国人の住居予定物件の間取り図・物件資料。居室の広さ（1人あたり7.5㎡以上が目安）が分かるもの。' },
+  kyogikai:      { image:'samples/kyogikai_sample.png',      note:'受け入れ分野の協議会への加入を証明する書類。分野により名称・様式が異なります。' },
+  kojin_jumin:     { image:'samples/kojin_jumin_sample.png',     note:'個人事業主本人の住民票の写し（マイナンバー記載なし）。' },
+  kojin_iryo:      { image:'samples/kojin_iryo_sample.png',      note:'マイナポータルからダウンロードした医療保険の資格情報の写し、または資格確認書の写し。' },
+  kojin_kokuho:    { image:'samples/kojin_kokuho_sample.png',    note:'国民健康保険料（税）納付証明書（直近2年分）。市区町村窓口で取得。' },
+  kojin_nenkin_fu: { image:'samples/kojin_nenkin_fu_sample.png', note:'被保険者記録照会（納付Ⅱ）または国民年金保険料領収証書の写し（直近24か月分）。' },
+  kojin_nenkin_rec:{ image:'samples/kojin_nenkin_rec_sample.png',note:'年金事務所で取得する被保険者記録照会回答票。' },
+  kojin_zeimu3:    { image:'samples/kojin_zeimu3_sample.png',    note:'税務署発行の納税証明書（その３）。税目＝源泉所得税・申告所得税・消費税・地方消費税・相続税・贈与税。' },
+  kojin_shimin:    { image:'samples/kojin_shimin_sample.png',    note:'市区町村発行の個人住民税の納税証明書（直近2年度分）。' }
+};
+// 書類名(ラベル)のキーワードから見本キーを判定（動的キー d0.. / 固定キー 両対応）
+function _coSampleKeyByLabel(label){
+  var t = String(label||'');
+  var has = function(){ for(var i=0;i<arguments.length;i++){ if(t.indexOf(arguments[i])<0) return false; } return true; };
+  if(t.indexOf('登記事項')>=0) return 'tokibo';
+  if(t.indexOf('協議会')>=0) return 'kyogikai';
+  if(t.indexOf('個人住民税')>=0) return 'kojin_shimin';
+  if(t.indexOf('法人住民税')>=0 || has('地方税','法人')) return 'zeimu_shimin';
+  if(t.indexOf('納税証明')>=0){
+    if(t.indexOf('法人税')>=0) return 'zeimu_3';
+    if(t.indexOf('申告所得税')>=0 || t.indexOf('相続税')>=0 || t.indexOf('贈与税')>=0) return 'kojin_zeimu3';
+    return 'zeimu_3';
+  }
+  if(t.indexOf('労働保険')>=0) return 'rodo_hoken';
+  if(t.indexOf('社会保険料')>=0) return 'shakai_hoken';
+  if(t.indexOf('住民票')>=0) return (t.indexOf('役員')>=0) ? 'jumin_hyo' : 'kojin_jumin';
+  if(t.indexOf('決算')>=0) return 'kessan';
+  if(t.indexOf('就業規則')>=0) return 'shugyo_kisoku';
+  if(t.indexOf('賃金')>=0) return 'chingin_kitei';
+  if(t.indexOf('36協定')>=0 || t.indexOf('３６協定')>=0 || t.indexOf('時間外労働')>=0) return 'san_roku';
+  if(t.indexOf('変形労働')>=0) return 'henkei_rodo';
+  if(t.indexOf('年間カレンダー')>=0) return 'nengkan_cal';
+  if(t.indexOf('間取り')>=0 || t.indexOf('物件')>=0 || t.indexOf('居住予定')>=0) return 'madori';
+  if(t.indexOf('医療保険')>=0 || t.indexOf('資格確認書')>=0 || t.indexOf('マイナポータル')>=0) return 'kojin_iryo';
+  if(t.indexOf('国民健康保険')>=0) return 'kojin_kokuho';
+  if(t.indexOf('被保険者記録照会回答票')>=0) return 'kojin_nenkin_rec';
+  if(t.indexOf('被保険者記録照会')>=0 || t.indexOf('国民年金')>=0) return 'kojin_nenkin_fu';
+  return null;
+}
+function buildCompanySampleInline(label){
+  var k = _coSampleKeyByLabel(label);
+  var smp = k ? COMPANY_DOC_SAMPLES[k] : null;
+  if(!smp) return null;
+  var box=document.createElement('div');
+  box.style.cssText='margin:0 0 10px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;';
+  if(smp.note){
+    var n=document.createElement('div');
+    n.style.cssText='font-size:12px;color:#92400e;line-height:1.7;white-space:pre-wrap;margin-bottom:8px;';
+    n.textContent='💡 '+smp.note;
+    box.appendChild(n);
+  }
+  if(smp.image){
+    var cap=document.createElement('div');
+    cap.style.cssText='font-size:11px;color:#a16207;font-weight:700;margin-bottom:4px;';
+    cap.textContent='📄 見本（イメージ）';
+    box.appendChild(cap);
+    var a=document.createElement('a'); a.href=smp.image; a.target='_blank'; a.rel='noopener';
+    var img=document.createElement('img'); img.src=smp.image; img.alt='見本'; img.loading='lazy';
+    img.style.cssText='max-width:100%;width:240px;border:1px solid #e5e7eb;border-radius:8px;display:block;background:#fff;';
+    a.appendChild(img); box.appendChild(a);
+    var tap=document.createElement('div'); tap.style.cssText='font-size:10px;color:#a16207;margin-top:3px;'; tap.textContent='タップで拡大';
+    box.appendChild(tap);
+  }
+  return box;
+}
 function buildFieldRow(key, docsMap) {
   const arr = fileData[key] || [];
   const hasFile = arr.length > 0;
@@ -567,6 +646,7 @@ function buildFieldRow(key, docsMap) {
 
   const body = document.createElement('div');
   body.className = 'field-body';
+  var __si = buildCompanySampleInline(docsMap[key]); if(__si) body.appendChild(__si); // ver.20260619.06: 見本（説明＋画像）を本体先頭に表示
 
   const fileListEl = document.createElement('div');
   fileListEl.className = 'file-list';
