@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20260619.08 - 取得用申請書(PDF)を追加：労働保険(rodo_hoken_form)・納税証明書交付請求書(zeimu_3_form, 法人/個人共通)。社会保険(ver.07)に続き対応 -->
+<!-- company_dataup ver.20260619.09 - 大企業書類「四季報/法定調書合計表」の見本を追加（houtei_sample）。取得用申請書(ver.08)・見本(ver.06)を踏襲 -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -551,6 +551,7 @@ function switchTab(tab) {
 // ─── フィールド行を生成 ───
 // ver.20260619.06: 企業書類の「説明＋見本画像」（人材UPと同様・日本語のみ）。動的キー対策で書類名(ラベル)のキーワードから判定。
 var COMPANY_DOC_SAMPLES = {
+  houtei:        { image:'samples/houtei_sample.png',        note:'源泉徴収税額が1,000万円以上の大企業の場合に提出。法定調書合計表（給与所得の源泉徴収票等の法定調書合計表）の写し、または四季報の写し・上場証明書類でも可。' },
   tokibo:        { image:'samples/tokibo_sample.png',        note:'法務局またはオンライン（登記・供託オンライン申請システム）で取得。「履歴事項全部証明書」を取得してください（現在事項証明書は不可の場合あり）。発行から3か月以内のもの。' },
   zeimu_3:       { image:'samples/zeimu_3_sample.png',       note:'税務署発行の「納税証明書（その３）」。税目＝源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税。未納がないことの証明。', form:{ file:'forms/zeimu_3_form.pdf', label:'納税証明書交付請求書（税務署）' } },
   zeimu_shimin:  { image:'samples/zeimu_shimin_sample.png',  note:'市区町村発行の法人住民税の納税証明書（直近2年度分）。' },
@@ -578,6 +579,7 @@ function _coSampleKeyByLabel(label){
   var t = String(label||'');
   var has = function(){ for(var i=0;i<arguments.length;i++){ if(t.indexOf(arguments[i])<0) return false; } return true; };
   if(t.indexOf('登記事項')>=0) return 'tokibo';
+  if(t.indexOf('法定調書')>=0 || t.indexOf('四季報')>=0 || t.indexOf('上場証明')>=0) return 'houtei';
   if(t.indexOf('協議会')>=0) return 'kyogikai';
   if(t.indexOf('個人住民税')>=0) return 'kojin_shimin';
   if(t.indexOf('法人住民税')>=0 || has('地方税','法人')) return 'zeimu_shimin';
