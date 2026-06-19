@@ -124,11 +124,12 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260616.03';
+const VERSION = 'ver.20260619.01';
 console.log('📄 zinzai_dataup.html', VERSION);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
 const FOLDER_ID = urlParams.get('folder') || '';
+const FOLDER_ID2 = urlParams.get('folder2') || '';
 const CASE_ID = urlParams.get('case') || '';
 const APPLICANT_NAME = urlParams.get('name') ? decodeURIComponent(urlParams.get('name')) : '';
 const APP_TYPE = urlParams.get('appType') || '';
@@ -1308,6 +1309,35 @@ submitBtn.addEventListener('click', async () => {
               drive_url: _uploadedUrl || null
             } });
         } catch (e) { console.warn('通知保存失敗:', e); }
+      }
+      
+      // folder2 が設定されていれば2つ目のフォルダにも送信
+      if (FOLDER_ID2) {
+        try {
+          var _upJson2 = await (async function() {
+            const res2 = await fetch(GAS_URL, {
+              method: 'POST',
+              redirect: 'follow',
+              body: JSON.stringify({ files: [payload], folderId: FOLDER_ID2 })
+            });
+            let json2 = { success: true };
+            try { const t2 = await res2.text(); if (t2 && t2.trim().startsWith('{')) json2 = JSON.parse(t2); } catch(e2){}
+            return json2;
+          })();
+          var _uploadedUrl2 = _extractDriveUrl(_upJson2);
+          if (CASE_ID) {
+            try {
+              await _uplRpc('upload_notify', { p_payload: {
+                  case_id: CASE_ID,
+                  folder_id: FOLDER_ID2,
+                  file_count: 1,
+                  file_names: finalName,
+                  doc_label: f.docLabel,
+                  drive_url: _uploadedUrl2 || null
+                } });
+            } catch (e) { console.warn('通知保存失敗(folder2):', e); }
+          }
+        } catch (e2) { console.warn('folder2アップロード失敗:', f.docLabel, e2); }
       }
       
       successKeys.push({ key: f.key, idx: f.idx });
