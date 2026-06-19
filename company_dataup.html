@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20260619.09 - 大企業書類「四季報/法定調書合計表」の見本を追加（houtei_sample）。取得用申請書(ver.08)・見本(ver.06)を踏襲 -->
+<!-- company_dataup ver.20260619.10 - 複数見本(images配列)対応。社会保険をVer1(納入証明書)/Ver2(回答票)の2枚表示。間取り・協議会・納税証明(その3 法人/個人)・個人住民税の見本を実書類に差し替え -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -556,7 +556,7 @@ var COMPANY_DOC_SAMPLES = {
   zeimu_3:       { image:'samples/zeimu_3_sample.png',       note:'税務署発行の「納税証明書（その３）」。税目＝源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税。未納がないことの証明。', form:{ file:'forms/zeimu_3_form.pdf', label:'納税証明書交付請求書（税務署）' } },
   zeimu_shimin:  { image:'samples/zeimu_shimin_sample.png',  note:'市区町村発行の法人住民税の納税証明書（直近2年度分）。' },
   rodo_hoken:    { image:'samples/rodo_hoken_sample.png',    note:'労働保険料等の未納なし証明。労働保険事務組合に委託していない場合は、労働保険概算・確定保険料申告書(事業主控)の写し＋領収証書の写し（直近2年分）で代えられます。', form:{ file:'forms/rodo_hoken_form.pdf', label:'労働保険料等納付証明書（特定技能外国人関係申請用）' } },
-  shakai_hoken:  { image:'samples/shakai_hoken_sample.png',  note:'年金事務所の「社会保険料納入状況照会回答票」、または健康保険・厚生年金保険料の領収証書の写し（申請月の前々月までの24か月分）。', form:{ file:'forms/shakai_hoken_form.pdf', label:'社会保険料納付記録 交付申請書（特定技能・適用事業所用）' } },
+  shakai_hoken:  { images:[{src:'samples/shakai_hoken_sample.png',label:'Ver.1 社会保険料納入証明書'},{src:'samples/shakai_hoken_sample2.png',label:'Ver.2 社会保険料納入状況照会回答票'}],  note:'年金事務所の「社会保険料納入状況照会回答票」、または「社会保険料納入証明書」「健康保険・厚生年金保険料の領収証書の写し」（申請月の前々月までの24か月分）。いずれかでOK。', form:{ file:'forms/shakai_hoken_form.pdf', label:'社会保険料納付記録 交付申請書（特定技能・適用事業所用）' } },
   jumin_hyo:     { image:'samples/jumin_hyo_sample.png',     note:'業務執行に関与する役員（代表で1名分）の住民票の写し。マイナンバーの記載がなく、本籍の記載があるものを取得してください。' },
   kessan:        { image:'samples/kessan_sample.png',        note:'直近3期分の決算文書（損益計算書及び貸借対照表）の写し。' },
   shugyo_kisoku: { image:'samples/shugyo_kisoku_sample.png', note:'就業規則。常時10人以上を使用する事業場は労働基準監督署への届出が必要（受付印のある写し）。' },
@@ -624,7 +624,23 @@ function buildCompanySampleInline(label){
     fb.textContent='\uD83D\uDCDD '+(smp.form.label||'取得用の申請書')+'（PDF）をダウンロード';
     box.appendChild(fb);
   }
-  if(smp.image){
+  // ver.20260619.10: 複数見本（images配列）対応
+  var __imgs = smp.images ? smp.images : (smp.image ? [{src:smp.image}] : []);
+  if(__imgs.length){
+    var cap=document.createElement('div');
+    cap.style.cssText='font-size:11px;color:#a16207;font-weight:700;margin-bottom:4px;';
+    cap.textContent='\uD83D\uDCC4 見本（イメージ）'+(__imgs.length>1?'：'+__imgs.length+'種':'');
+    box.appendChild(cap);
+    __imgs.forEach(function(it){
+      if(it.label){ var lb=document.createElement('div'); lb.style.cssText='font-size:11px;color:#92400e;font-weight:700;margin:6px 0 3px;'; lb.textContent=it.label; box.appendChild(lb); }
+      var a=document.createElement('a'); a.href=it.src; a.target='_blank'; a.rel='noopener';
+      var img=document.createElement('img'); img.src=it.src; img.alt='見本'; img.loading='lazy';
+      img.style.cssText='max-width:100%;width:240px;border:1px solid #e5e7eb;border-radius:8px;display:block;background:#fff;margin-bottom:4px;';
+      a.appendChild(img); box.appendChild(a);
+    });
+    var tap=document.createElement('div'); tap.style.cssText='font-size:10px;color:#a16207;margin-top:1px;'; tap.textContent='タップで拡大'; box.appendChild(tap);
+  }
+  if(false && smp.image){
     var cap=document.createElement('div');
     cap.style.cssText='font-size:11px;color:#a16207;font-weight:700;margin-bottom:4px;';
     cap.textContent='📄 見本（イメージ）';
