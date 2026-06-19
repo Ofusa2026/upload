@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20260619.06 - 各書類に「説明＋見本画像」を表示（人材UPと同様・日本語のみ／書類名キーワードで判定）。samples/ に企業書類の見本21枚を追加。脱ハードコード版(ver.20260616.03)を踏襲 -->
+<!-- company_dataup ver.20260619.07 - 書類取得用の申請書(PDF)ダウンロードボタンを追加（まず社会保険：社会保険料納付記録 交付申請書 forms/shakai_hoken_form.pdf）。見本表示は ver.20260619.06 を踏襲 -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -555,7 +555,7 @@ var COMPANY_DOC_SAMPLES = {
   zeimu_3:       { image:'samples/zeimu_3_sample.png',       note:'税務署発行の「納税証明書（その３）」。税目＝源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税。未納がないことの証明。' },
   zeimu_shimin:  { image:'samples/zeimu_shimin_sample.png',  note:'市区町村発行の法人住民税の納税証明書（直近2年度分）。' },
   rodo_hoken:    { image:'samples/rodo_hoken_sample.png',    note:'労働保険料等の未納なし証明。労働保険事務組合に委託していない場合は、労働保険概算・確定保険料申告書(事業主控)の写し＋領収証書の写し（直近2年分）で代えられます。' },
-  shakai_hoken:  { image:'samples/shakai_hoken_sample.png',  note:'年金事務所の「社会保険料納入状況照会回答票」、または健康保険・厚生年金保険料の領収証書の写し（申請月の前々月までの24か月分）。' },
+  shakai_hoken:  { image:'samples/shakai_hoken_sample.png',  note:'年金事務所の「社会保険料納入状況照会回答票」、または健康保険・厚生年金保険料の領収証書の写し（申請月の前々月までの24か月分）。', form:{ file:'forms/shakai_hoken_form.pdf', label:'社会保険料納付記録 交付申請書（特定技能・適用事業所用）' } },
   jumin_hyo:     { image:'samples/jumin_hyo_sample.png',     note:'業務執行に関与する役員（代表で1名分）の住民票の写し。マイナンバーの記載がなく、本籍の記載があるものを取得してください。' },
   kessan:        { image:'samples/kessan_sample.png',        note:'直近3期分の決算文書（損益計算書及び貸借対照表）の写し。' },
   shugyo_kisoku: { image:'samples/shugyo_kisoku_sample.png', note:'就業規則。常時10人以上を使用する事業場は労働基準監督署への届出が必要（受付印のある写し）。' },
@@ -613,6 +613,14 @@ function buildCompanySampleInline(label){
     n.style.cssText='font-size:12px;color:#92400e;line-height:1.7;white-space:pre-wrap;margin-bottom:8px;';
     n.textContent='💡 '+smp.note;
     box.appendChild(n);
+  }
+  // ver.20260619.07: 取得用の申請書（PDF）ダウンロードボタン
+  if(smp.form && smp.form.file){
+    var fb=document.createElement('a');
+    fb.href=smp.form.file; fb.target='_blank'; fb.rel='noopener';
+    fb.style.cssText='display:inline-block;margin:0 0 10px;padding:9px 14px;background:#1a56db;color:#fff;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;line-height:1.4;';
+    fb.textContent='\uD83D\uDCDD '+(smp.form.label||'取得用の申請書')+'（PDF）をダウンロード';
+    box.appendChild(fb);
   }
   if(smp.image){
     var cap=document.createElement('div');
