@@ -7,7 +7,8 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>国交省書類アップロード（所属機関）</title>
-<!-- KOKKO_DATAUP_VERSION 20260602_08 タブ廃止・1リスト化 -->
+<!-- KOKKO_DATAUP_VERSION 20260623_01 説明文・見本画像・条件フィルタ・★早め収集 対応 -->
+<!-- 旧: 20260602_08 タブ廃止・1リスト化 -->
 <style>
   :root {
     --primary: #1a56db;
@@ -245,6 +246,13 @@
     <div class="subtitle">国交省申請（建設特定技能受入計画）の書類をアップロードしてください<br>（不要な項目はスキップできます）</div>
   </div>
   <div class="company-name-bar" id="companyNameBar" style="display:none;"></div>
+
+  <!-- ver.20260620.43: 条件フィルタUI（回答で不要書類を自動スキップ） -->
+  <div id="kokkoFilterBox" style="display:none;margin:0 0 14px;padding:14px;border:1px solid #bae6fd;border-radius:12px;background:#f0f9ff;">
+    <div style="font-size:13px;font-weight:800;color:#0369a1;margin-bottom:4px;">📋 はじめに、いくつか質問にお答えください</div>
+    <div style="font-size:11px;color:#0c4a6e;margin-bottom:10px;line-height:1.6;">ご回答に応じて、ご提出が不要な書類を自動で「不要」にします。</div>
+    <div id="kokkoFilterQuestions"></div>
+  </div>
 
   <!-- 書類リスト（タブ廃止・1コンテナに統一 ver.20260609.rpc） -->
   <div class="fields-list" id="fieldsList"></div>
@@ -544,6 +552,135 @@ function renderFileList(key, container) {
   });
 }
 
+// ver.20260620.43: 国交省書類メタ（説明・見本・条件・★早め収集）。index側の番号付き書類名をキーに紐づけ
+const KOKKO_SAMPLE_BASE = 'https://ofusa2026.github.io/upload/samples/';
+const KOKKO_DOC_META = {
+  '1. 履歴事項全部証明書': {
+    name:'履歴事項全部証明書（※個人事業主の場合は住民票）',
+    sample:'kokko_01_tokibo.jpg',
+    desc:'3か月以内に発行されたもの。\n（個人事業主の場合は住民票。住民票は「本籍地の記載あり・マイナンバーの記載なし」のもの）',
+    place:'法務局'
+  },
+  '2. 建設業許可': {
+    name:'建設業許可証の写し',
+    sample:'kokko_02_kensetsu_kyoka.jpg',
+    desc:'有効期限内のもの。',
+    place:'会社にて保管があるもの。管轄の行政庁（都道府県や地方整備局）から発行されたもの。'
+  },
+  '3. 標準報酬決定通知書': {
+    name:'健康保険・厚生年金保険被保険者標準報酬決定通知書の写し',
+    sample:'kokko_03_hyojun_hoshu.jpg',
+    desc:'日本年金機構より郵送される、全員分の「健康保険・厚生年金保険被保険者標準報酬決定通知書」の写し。\n提出時のお願い：\n①被保険者整理番号にマスキング（その他の部分はマスキングしないでください）\n②氏名の横に職員種別を記入\n＜日本人＞短時間労働者「パ」／非常勤役員「非」／常勤フルタイムは記載不要\n＜外国人＞全員在留資格を記載（技能実習生「実」／特定活動「特」／その他はその在留資格）\n※個人事業主で常時雇用4人以下の場合は「雇用保険被保険者台帳」の写し',
+    place:'会社にて保管があるもの。毎年8〜9月頃に届く最新の書類をご提出ください。'
+  },
+  '4. キャリアアップID': {
+    name:'建設キャリアアップシステムの事業者IDを確認する書類',
+    sample:'kokko_04_ccus_id.jpg', slow:true,
+    desc:'建設キャリアアップシステムの事業者IDを確認できる書類。\n・はがき「事業者情報登録完了のおしらせについて」\n・メール「事業者情報新規登録完了「事業者ID」のおしらせ」写し\nのどちらか。\n※初期パスワードには必ずマスキングをしてください。\n上記2点が無い場合はログイン画面でも代用可。',
+    place:'登録完了後、CCUSより登録住所・アドレスに事業者IDのお知らせ（はがき・メール）が届きます。未登録の場合：https://www.ccus.jp/p/application'
+  },
+  '5. 会員証明書': {
+    name:'特定技能外国人受入事業実施法人（JAC）に加入していることを証する書類（加入証明書）',
+    sample:'kokko_05_kaiin_shomei.jpg', slow:true,
+    desc:'特定技能外国人受入事業実施法人（JAC）に加入していることを証する書類（加入証明書）。\nJAC正会員または賛助会員に所属している必要があります。\n・JAC賛助会員（年会費24万円）\n・JAC会員団体の会員（例：全中連 年会費84,000円 など）',
+    place:'入会手続き完了後、入会先から加入証明書が発行されます。JAC：https://jac-skill.or.jp/membership.php ／ 全中連：https://zenchuren-group.jp/foreign-worker/'
+  },
+  '7. 求人票': {
+    name:'ハローワークの求人票',
+    sample:'kokko_07_kyujin.jpg', slow:true,
+    desc:'ハローワークの求人票。\n・直近1年以内のもの\n・フルタイムかつ建築・土木の作業員で、特定技能外国人と同じ職種の募集であること\n・求人を出していない場合は新しく求人を出して提出\n・求人番号が掲載されているもの\n・「プレビュー」「無効」表記は不可',
+    place:'管轄のハローワーク。ハローワークインターネットサービスでオンライン作成も可：https://www.hellowork.mhlw.go.jp/'
+  },
+  '9. 就業規則および賃金規程': {
+    name:'就業規則・賃金規定',
+    sample:'kokko_09_shugyo_kisoku.jpg', cond:'shugyo',
+    desc:'常勤職員数が10人以上の場合に提出が必須です。\n就業規則とは別に賃金規定や退職金規定がある場合はそれらもご提出ください。',
+    place:'会社にて保管があるもの。労働基準監督署の受付印のあるものをご提出ください。'
+  },
+  '10. 賃金台帳': {
+    name:'特定技能外国人と同等の技能を有する日本人の賃金台帳',
+    sample:'kokko_10_chingin_daicho.jpg',
+    desc:'特定技能外国人と同等の技能を有する日本人の賃金台帳。\n・経験年数が1番近い方の賃金台帳\n・直近1年分のもの\n・給与明細は不可\n同等の技能を有する日本人がいない場合は統計表を使用しますのでお申し付けください。',
+    place:'会社にて保管があるもの。賃金台帳がない場合はテンプレートをお送りします。'
+  },
+  '11. 経歴書': {
+    name:'特定技能外国人と同等の技能を有する日本人の職務経歴書',
+    sample:'kokko_11_keirekisho.jpg',
+    desc:'特定技能外国人と同等の技能を有する日本人の職務経歴書。\n・賃金台帳と同じ方の経歴書\n・添付の経歴書ひな形より作成をお願いいたします。',
+    place:''
+  },
+  '13. 36協定': {
+    name:'36協定届出書',
+    sample:'kokko_13_36kyotei.jpg', cond:'jikangai',
+    desc:'時間外労働がある場合に提出が必須です。\n・労働基準監督署に提出し、受領印のあるもの\n・有効期限内のもの',
+    place:'会社にて保管があるもの（労働基準監督署に提出したもの）。'
+  },
+  '14. 年間カレンダー': {
+    name:'変形労働時間制に関する協定届出書・労使協定書・年間カレンダー',
+    sample:'', cond:'henkei',
+    desc:'1年単位の変形労働時間制を採用している場合に、変形労働届出書・変形労働労使協定書・年間カレンダーの3点をご提出ください。\n・労働基準監督署に提出し、受領印のあるもの\n・有効期限内のもの',
+    place:'会社にて保管があるもの（労働基準監督署に提出したもの）。'
+  }
+};
+
+// ver.20260620.43: 大房側で作成する書類（エクセル一覧にない書類）。グレーアウト＋「※弊社作成」表示
+const KOKKO_OFUSA_DOCS = ['6. 委任状','8. 同等の技能を有する日本人と同等額以上の報酬であることの説明書','12. 雇用契約書','15. 重要事項説明書','16. 技能者ID'];
+function _kokkoIsOfusaDoc(name){ return KOKKO_OFUSA_DOCS.indexOf(name) >= 0; }
+
+// 条件フィルタの質問定義（回答 No で該当書類を不要に）
+const KOKKO_FILTERS = [
+  { id:'shugyo',   q:'常勤職員は10人以上ですか？',                   targets:['9. 就業規則および賃金規程'] },
+  { id:'jikangai', q:'時間外労働はありますか？',                     targets:['13. 36協定'] },
+  { id:'henkei',   q:'1年単位の変形労働時間制を採用していますか？',  targets:['14. 年間カレンダー'] }
+];
+// 回答状態（true=はい/必要, false=いいえ/不要, undefined=未回答）
+window._kokkoFilterAns = {};
+
+function _kokkoSampleUrl(name){
+  var m = KOKKO_DOC_META[name];
+  if(!m || !m.sample) return '';
+  return KOKKO_SAMPLE_BASE + m.sample;
+}
+// 書類名が条件付きで「不要」と判定されているか
+function _kokkoIsSkippedByFilter(name){
+  for(var i=0;i<KOKKO_FILTERS.length;i++){
+    var f = KOKKO_FILTERS[i];
+    if(f.targets.indexOf(name) >= 0 && window._kokkoFilterAns[f.id] === false){
+      return true;
+    }
+  }
+  return false;
+}
+
+// 条件フィルタUIを描画
+function buildKokkoFilters(){
+  // DOCS_LIST に条件付き書類が含まれる場合のみフィルタ表示
+  var names = (DOCS_LIST||[]).map(function(d){ return d.l || ''; });
+  var needFilters = KOKKO_FILTERS.filter(function(f){
+    return f.targets.some(function(t){ return names.indexOf(t) >= 0; });
+  });
+  var box = document.getElementById('kokkoFilterBox');
+  var qWrap = document.getElementById('kokkoFilterQuestions');
+  if(!box || !qWrap) return;
+  if(!needFilters.length){ box.style.display='none'; return; }
+  box.style.display='block';
+  qWrap.innerHTML = needFilters.map(function(f){
+    var ans = window._kokkoFilterAns[f.id];
+    function btn(val,label,color){
+      var on = ans === val;
+      return '<button onclick="setKokkoFilter(\''+f.id+'\','+val+')" style="flex:1;padding:7px;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;border:1.5px solid '+(on?color:'#cbd5e1')+';background:'+(on?color:'white')+';color:'+(on?'white':'#475569')+';">'+label+'</button>';
+    }
+    return '<div style="margin-bottom:10px;">'+
+      '<div style="font-size:12px;font-weight:700;color:#0c4a6e;margin-bottom:5px;">'+f.q+'</div>'+
+      '<div style="display:flex;gap:8px;">'+btn(true,'はい','#0369a1')+btn(false,'いいえ','#64748b')+'</div></div>';
+  }).join('');
+}
+function setKokkoFilter(id, val){
+  window._kokkoFilterAns[id] = val;
+  buildKokkoFilters();
+  buildAllFields();
+}
+
 function buildAllFields() {
   // ver.20260602.08: タブ廃止・1リスト化。DBキャッシュ(kind=kokko)の DOCS_LIST=[{l,r,done,note}] を順次描画
   const listEl = document.getElementById('fieldsList');
@@ -570,26 +707,74 @@ function buildAllFields() {
     const key = 'd' + i;
     const row = buildFieldRow(key, labelMap);
     const labelEl = row.querySelector('.field-label');
+    const meta = KOKKO_DOC_META[d.l] || null;
+    // 条件フィルタで不要判定された書類は done 扱い（不要表示＋スキップ）
+    const filterSkipped = _kokkoIsSkippedByFilter(d.l);
+    const isDone = d.done || filterSkipped;
+
+    // ★早め収集マーク（ラベル先頭）
+    if (meta && meta.slow && labelEl && labelEl.innerHTML.indexOf('★') === -1) {
+      labelEl.innerHTML = '<span style="color:#d97706;font-size:13px;font-weight:800;margin-right:3px;">★</span>' + labelEl.innerHTML;
+    }
 
     // 必須マーク
     if (d.r && labelEl && labelEl.innerHTML.indexOf('必須') === -1) {
       labelEl.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + labelEl.innerHTML;
     }
 
-    // 取得済み/不要: 濃いめのグレーで暗く見せる。pointerEvents:none / disabled は付けない（再提出アップロード可能）
-    if (d.done) {
+    // 取得済み/不要: 濃いめのグレーで暗く見せる
+    if (isDone) {
       row.style.background = '#cbd5e1';
       row.style.borderColor = '#94a3b8';
       row.style.opacity = '0.7';
       if (labelEl) {
         const doneEl = document.createElement('span');
         doneEl.style.cssText = 'color:#16a34a;font-size:11px;font-weight:700;margin-left:4px;';
-        doneEl.textContent = '✓ 提出済み（再提出が必要な場合のみ）';
+        // ver.20260620.43: st（staff=提出済み / skip=不要 / ofusa=弊社作成）で表示を分ける
+        var _st = d.st || '';
+        if (_st === 'ofusa' || _kokkoIsOfusaDoc(d.l)) {
+          doneEl.textContent = '※弊社作成（ご提出は不要です）';
+          doneEl.style.color = '#7c3aed';
+        } else if (filterSkipped || _st === 'skip') {
+          doneEl.textContent = '― 不要';
+          doneEl.style.color = '#64748b';
+        } else {
+          doneEl.textContent = '✓ 提出済み（再提出が必要な場合のみ）';
+        }
         labelEl.appendChild(doneEl);
       }
     }
 
-    // ラベル下に注意書き 💡 + note（絵文字はリテラルで直書き）
+    // ★早め収集の注意（ラベル下）
+    if (meta && meta.slow && labelEl) {
+      const slowEl = document.createElement('div');
+      slowEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:700;margin-top:4px;line-height:1.6;';
+      slowEl.textContent = '★ 取得にお時間がかかる書類です。お早めのご準備にご協力ください。';
+      labelEl.appendChild(slowEl);
+    }
+
+    // 説明文（エクセル由来）＋発行場所
+    if (meta && meta.desc && labelEl) {
+      const descEl = document.createElement('div');
+      descEl.style.cssText = 'font-size:11px;color:#475569;font-weight:400;margin-top:5px;line-height:1.7;white-space:pre-wrap;';
+      var _t = meta.desc;
+      if (meta.place) _t += '\n【取得先】' + meta.place;
+      descEl.textContent = _t;
+      labelEl.appendChild(descEl);
+    }
+
+    // 見本画像（折りたたみ）
+    if (meta && meta.sample && labelEl) {
+      const url = _kokkoSampleUrl(d.l);
+      const sampleWrap = document.createElement('div');
+      sampleWrap.style.cssText = 'margin-top:6px;';
+      sampleWrap.innerHTML = '<details style="font-size:11px;"><summary style="cursor:pointer;color:#2563eb;font-weight:700;">🖼️ 見本を見る</summary>'+
+        '<div style="margin-top:6px;text-align:center;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:6px;">'+
+        '<img src="'+url+'" alt="見本" loading="lazy" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:4px;"></div></details>';
+      labelEl.appendChild(sampleWrap);
+    }
+
+    // ラベル下に注意書き 💡 + note
     if (d.note && labelEl) {
       const noteEl = document.createElement('div');
       noteEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:400;margin-top:4px;line-height:1.6;';
@@ -599,6 +784,8 @@ function buildAllFields() {
 
     listEl.appendChild(row);
   });
+  // 条件フィルタUIも（再）描画
+  if(typeof buildKokkoFilters==='function') buildKokkoFilters();
 }
 
 function updateSubmitBtn() {
