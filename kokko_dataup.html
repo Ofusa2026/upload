@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>国交省書類アップロード（所属機関）</title>
-<!-- KOKKO_DATAUP_VERSION 20260623_01 説明文・見本画像・条件フィルタ・★早め収集 対応 -->
+<!-- KOKKO_DATAUP_VERSION 20260623_02 見本画像を高画質PNGに差し替え -->
 <!-- 旧: 20260602_08 タブ廃止・1リスト化 -->
 <style>
   :root {
@@ -557,61 +557,61 @@ const KOKKO_SAMPLE_BASE = 'https://ofusa2026.github.io/upload/samples/';
 const KOKKO_DOC_META = {
   '1. 履歴事項全部証明書': {
     name:'履歴事項全部証明書（※個人事業主の場合は住民票）',
-    sample:'kokko_01_tokibo.jpg',
+    sample:'kokko_01_tokibo.png',
     desc:'3か月以内に発行されたもの。\n（個人事業主の場合は住民票。住民票は「本籍地の記載あり・マイナンバーの記載なし」のもの）',
     place:'法務局'
   },
   '2. 建設業許可': {
     name:'建設業許可証の写し',
-    sample:'kokko_02_kensetsu_kyoka.jpg',
+    sample:'kokko_02_kensetsu_kyoka.png',
     desc:'有効期限内のもの。',
     place:'会社にて保管があるもの。管轄の行政庁（都道府県や地方整備局）から発行されたもの。'
   },
   '3. 標準報酬決定通知書': {
     name:'健康保険・厚生年金保険被保険者標準報酬決定通知書の写し',
-    sample:'kokko_03_hyojun_hoshu.jpg',
+    sample:'kokko_03_hyojun_hoshu.png',
     desc:'日本年金機構より郵送される、全員分の「健康保険・厚生年金保険被保険者標準報酬決定通知書」の写し。\n提出時のお願い：\n①被保険者整理番号にマスキング（その他の部分はマスキングしないでください）\n②氏名の横に職員種別を記入\n＜日本人＞短時間労働者「パ」／非常勤役員「非」／常勤フルタイムは記載不要\n＜外国人＞全員在留資格を記載（技能実習生「実」／特定活動「特」／その他はその在留資格）\n※個人事業主で常時雇用4人以下の場合は「雇用保険被保険者台帳」の写し',
     place:'会社にて保管があるもの。毎年8〜9月頃に届く最新の書類をご提出ください。'
   },
   '4. キャリアアップID': {
     name:'建設キャリアアップシステムの事業者IDを確認する書類',
-    sample:'kokko_04_ccus_id.jpg', slow:true,
+    sample:'kokko_04_ccus_id.png', slow:true,
     desc:'建設キャリアアップシステムの事業者IDを確認できる書類。\n・はがき「事業者情報登録完了のおしらせについて」\n・メール「事業者情報新規登録完了「事業者ID」のおしらせ」写し\nのどちらか。\n※初期パスワードには必ずマスキングをしてください。\n上記2点が無い場合はログイン画面でも代用可。',
     place:'登録完了後、CCUSより登録住所・アドレスに事業者IDのお知らせ（はがき・メール）が届きます。未登録の場合：https://www.ccus.jp/p/application'
   },
   '5. 会員証明書': {
     name:'特定技能外国人受入事業実施法人（JAC）に加入していることを証する書類（加入証明書）',
-    sample:'kokko_05_kaiin_shomei.jpg', slow:true,
+    sample:'kokko_05_kaiin_shomei.png', slow:true,
     desc:'特定技能外国人受入事業実施法人（JAC）に加入していることを証する書類（加入証明書）。\nJAC正会員または賛助会員に所属している必要があります。\n・JAC賛助会員（年会費24万円）\n・JAC会員団体の会員（例：全中連 年会費84,000円 など）',
     place:'入会手続き完了後、入会先から加入証明書が発行されます。JAC：https://jac-skill.or.jp/membership.php ／ 全中連：https://zenchuren-group.jp/foreign-worker/'
   },
   '7. 求人票': {
     name:'ハローワークの求人票',
-    sample:'kokko_07_kyujin.jpg', slow:true,
+    sample:'kokko_07_kyujin.png', slow:true,
     desc:'ハローワークの求人票。\n・直近1年以内のもの\n・フルタイムかつ建築・土木の作業員で、特定技能外国人と同じ職種の募集であること\n・求人を出していない場合は新しく求人を出して提出\n・求人番号が掲載されているもの\n・「プレビュー」「無効」表記は不可',
     place:'管轄のハローワーク。ハローワークインターネットサービスでオンライン作成も可：https://www.hellowork.mhlw.go.jp/'
   },
   '9. 就業規則および賃金規程': {
     name:'就業規則・賃金規定',
-    sample:'kokko_09_shugyo_kisoku.jpg', cond:'shugyo',
+    sample:'kokko_09_shugyo_kisoku.png', cond:'shugyo',
     desc:'常勤職員数が10人以上の場合に提出が必須です。\n就業規則とは別に賃金規定や退職金規定がある場合はそれらもご提出ください。',
     place:'会社にて保管があるもの。労働基準監督署の受付印のあるものをご提出ください。'
   },
   '10. 賃金台帳': {
     name:'特定技能外国人と同等の技能を有する日本人の賃金台帳',
-    sample:'kokko_10_chingin_daicho.jpg',
+    sample:'kokko_10_chingin_daicho.png',
     desc:'特定技能外国人と同等の技能を有する日本人の賃金台帳。\n・経験年数が1番近い方の賃金台帳\n・直近1年分のもの\n・給与明細は不可\n同等の技能を有する日本人がいない場合は統計表を使用しますのでお申し付けください。',
     place:'会社にて保管があるもの。賃金台帳がない場合はテンプレートをお送りします。'
   },
   '11. 経歴書': {
     name:'特定技能外国人と同等の技能を有する日本人の職務経歴書',
-    sample:'kokko_11_keirekisho.jpg',
+    sample:'kokko_11_keirekisho.png',
     desc:'特定技能外国人と同等の技能を有する日本人の職務経歴書。\n・賃金台帳と同じ方の経歴書\n・添付の経歴書ひな形より作成をお願いいたします。',
     place:''
   },
   '13. 36協定': {
     name:'36協定届出書',
-    sample:'kokko_13_36kyotei.jpg', cond:'jikangai',
+    sample:'kokko_13_36kyotei.png', cond:'jikangai',
     desc:'時間外労働がある場合に提出が必須です。\n・労働基準監督署に提出し、受領印のあるもの\n・有効期限内のもの',
     place:'会社にて保管があるもの（労働基準監督署に提出したもの）。'
   },
