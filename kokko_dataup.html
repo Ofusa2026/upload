@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>国交省書類アップロード（所属機関）</title>
-<!-- KOKKO_DATAUP_VERSION 20260623_02 見本画像を高画質PNGに差し替え -->
+<!-- KOKKO_DATAUP_VERSION 20260623_03 説明文URLリンク化+個人事業主の住民票メタ追加+No.3雇用状況注記 -->
 <!-- 旧: 20260602_08 タブ廃止・1リスト化 -->
 <style>
   :root {
@@ -561,6 +561,12 @@ const KOKKO_DOC_META = {
     desc:'3か月以内に発行されたもの。\n（個人事業主の場合は住民票。住民票は「本籍地の記載あり・マイナンバーの記載なし」のもの）',
     place:'法務局'
   },
+  '1. 住民票（代表者）': {
+    name:'代表者の住民票（※個人事業主）',
+    sample:'kokko_01_tokibo.png',
+    desc:'個人事業主の場合は、代表者の住民票をご提出ください。\n・申請日より3か月以内に発行されたもの\n・「本籍地の記載あり・マイナンバーの記載なし」のもの',
+    place:'お住まいの市区町村役場（マイナンバーカードがあればコンビニ交付も可）'
+  },
   '2. 建設業許可': {
     name:'建設業許可証の写し',
     sample:'kokko_02_kensetsu_kyoka.png',
@@ -570,7 +576,7 @@ const KOKKO_DOC_META = {
   '3. 標準報酬決定通知書': {
     name:'健康保険・厚生年金保険被保険者標準報酬決定通知書の写し',
     sample:'kokko_03_hyojun_hoshu.png',
-    desc:'日本年金機構より郵送される、全員分の「健康保険・厚生年金保険被保険者標準報酬決定通知書」の写し。\n提出時のお願い：\n①被保険者整理番号にマスキング（その他の部分はマスキングしないでください）\n②氏名の横に職員種別を記入\n＜日本人＞短時間労働者「パ」／非常勤役員「非」／常勤フルタイムは記載不要\n＜外国人＞全員在留資格を記載（技能実習生「実」／特定活動「特」／その他はその在留資格）\n※個人事業主で常時雇用4人以下の場合は「雇用保険被保険者台帳」の写し',
+    desc:'日本年金機構より郵送される、全員分の「健康保険・厚生年金保険被保険者標準報酬決定通知書」の写し。\n提出時のお願い：\n①被保険者整理番号にマスキング（その他の部分はマスキングしないでください）\n②氏名の横に職員種別を記入\n＜日本人＞短時間労働者「パ」／非常勤役員「非」／常勤フルタイムは記載不要\n＜外国人＞全員在留資格を記載（技能実習生「実」／特定活動「特」／その他はその在留資格）\n\n【個人事業主の方へ】雇用状況によって提出書類が変わります：\n・従業員5人以上（社会保険適用）→ 上記の標準報酬決定通知書の写し\n・従業員4人以下 → 「雇用保険被保険者台帳」の写し\n・一人親方（雇用なし）→ 「確定申告書」の写し（税務署の受付印あり、または電子申請の受付画面のプリントアウト付き）',
     place:'会社にて保管があるもの。毎年8〜9月頃に届く最新の書類をご提出ください。'
   },
   '4. キャリアアップID': {
@@ -756,10 +762,15 @@ function buildAllFields() {
     // 説明文（エクセル由来）＋発行場所
     if (meta && meta.desc && labelEl) {
       const descEl = document.createElement('div');
-      descEl.style.cssText = 'font-size:11px;color:#475569;font-weight:400;margin-top:5px;line-height:1.7;white-space:pre-wrap;';
+      descEl.style.cssText = 'font-size:11px;color:#475569;font-weight:400;margin-top:5px;line-height:1.7;white-space:pre-wrap;word-break:break-word;';
       var _t = meta.desc;
       if (meta.place) _t += '\n【取得先】' + meta.place;
-      descEl.textContent = _t;
+      // HTMLエスケープしてからURLを<a>に変換（XSS対策・URLはクリックで開ける）
+      var _esc = _t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      var _linked = _esc.replace(/(https?:\/\/[^\s　、）)」]+)/g, function(u){
+        return '<a href="'+u+'" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:600;">'+u+'</a>';
+      });
+      descEl.innerHTML = _linked;
       labelEl.appendChild(descEl);
     }
 
