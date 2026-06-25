@@ -124,9 +124,10 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260619.01';
+const VERSION = 'ver.20260625.02';
 console.log('📄 zinzai_dataup.html', VERSION);
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
+// ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
 const FOLDER_ID = urlParams.get('folder') || '';
 const FOLDER_ID2 = urlParams.get('folder2') || '';
@@ -1190,19 +1191,30 @@ function dataUrlToBlob(dataUrl, mimeType) {
 
 // ============================================================
 // 1ファイルずつ送信（直列処理）
+// ver.20260625.02: メインGASに合わせてaction/data形式でPOST、成功判定をstatus:'ok'に変更
 // ============================================================
 async function uploadOneFile(payload) {
   const res = await fetch(GAS_URL, {
     method: 'POST',
     redirect: 'follow',
-    body: JSON.stringify({ files: [payload], folderId: FOLDER_ID })
+    body: JSON.stringify({
+      action: 'uploadFileToDrive',
+      data: {
+        folderId: payload.folderId || FOLDER_ID,
+        base64: payload.base64,
+        fileName: payload.fileName,
+        mimeType: payload.mimeType || 'application/octet-stream'
+      }
+    })
   });
-  let json = { success: true };
+  let json = { status: 'ok' };
   try {
     const text = await res.text();
     if (text && text.trim().startsWith('{')) json = JSON.parse(text);
   } catch (e) {}
-  if (!json.success) throw new Error(json.error || 'upload failed');
+  // メインGASは {status:'ok'} 形式、旧GASは {success:true} 形式 → 両対応
+  const ok = (json.status === 'ok') || (json.success === true);
+  if (!ok) throw new Error(json.msg || json.error || 'upload failed');
   return json;
 }
 
@@ -1318,9 +1330,12 @@ submitBtn.addEventListener('click', async () => {
             const res2 = await fetch(GAS_URL, {
               method: 'POST',
               redirect: 'follow',
-              body: JSON.stringify({ files: [payload], folderId: FOLDER_ID2 })
+              body: JSON.stringify({
+                action: 'uploadFileToDrive',
+                data: { folderId: FOLDER_ID2, base64: payload.base64, fileName: payload.fileName, mimeType: payload.mimeType || 'application/octet-stream' }
+              })
             });
-            let json2 = { success: true };
+            let json2 = { status: 'ok' };
             try { const t2 = await res2.text(); if (t2 && t2.trim().startsWith('{')) json2 = JSON.parse(t2); } catch(e2){}
             return json2;
           })();
