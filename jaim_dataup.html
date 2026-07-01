@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>JAIM書類アップロード（所属機関）</title>
+<!-- JAIM_DATAUP_VERSION 20260701_01 kokko_dataup.htmlを複製・JAIM用に改修（変数名・関数名はkokko版のまま維持、挙動に影響なし） -->
+<!-- 旧: 20260602_08 タブ廃止・1リスト化 -->
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-dark: #1341a8;
+    --success: #057a55;
+    --success-bg: #f0fdf4;
+    --success-border: #bbf7d0;
+    --error: #9b1c1c;
+    --error-bg: #fef2f2;
+    --error-border: #fecaca;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --text: #1a202c;
+    --sub: #718096;
+    --border: #e2e8f0;
+    --hover: #eff6ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px 16px 60px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 28px 20px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  .header { text-align: center; margin-bottom: 24px; }
+  .office-name { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+  .page-icon { font-size: 36px; margin-bottom: 8px; }
+  h1 { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: var(--sub); line-height: 1.7; }
+  .company-name-bar {
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  /* ─── タブ ─── */
+  .tabs-wrap {
+    display: flex;
+    background: #eef2f7;
+    border-radius: 14px;
+    padding: 4px;
+    margin-bottom: 20px;
+    gap: 4px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 11px 6px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.5;
+    text-align: center;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--sub);
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .tab-btn.active {
+    background: var(--card);
+    color: var(--primary);
+    box-shadow: 0 2px 8px rgba(26,86,219,0.12);
+  }
+  .tab-btn .tab-count {
+    display: inline-block;
+    background: var(--success);
+    color: white;
+    border-radius: 99px;
+    font-size: 10px;
+    padding: 1px 6px;
+    margin-left: 3px;
+    font-weight: 700;
+    vertical-align: middle;
+    line-height: 1.6;
+  }
+  .tab-btn .tab-count.hidden { display: none; }
+
+  /* ─── パネル ─── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* 注意ボックス */
+  .notice-box {
+    font-size: 12px;
+    color: #6b4f00;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    padding: 10px 13px;
+    line-height: 1.8;
+    margin-bottom: 16px;
+  }
+  .notice-box a { color: var(--primary); text-decoration: underline; }
+
+  /* ─── フィールド ─── */
+  .fields-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .field-row {
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .field-row.has-file { border-color: var(--primary); background: #eff6ff; }
+  .field-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    cursor: pointer;
+    user-select: none;
+    gap: 8px;
+  }
+  .field-label { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+  .field-status { font-size: 12px; color: var(--sub); white-space: nowrap; }
+  .field-status.ready { color: var(--success); font-weight: 600; }
+  .chevron { font-size: 11px; color: var(--sub); transition: transform 0.2s; flex-shrink: 0; }
+  .field-row.open .chevron { transform: rotate(180deg); }
+  .field-body {
+    border-top: 1.5px solid var(--border);
+    padding: 12px 14px;
+    display: none;
+  }
+  .field-row.open .field-body { display: block; }
+  .field-row.has-file .field-body { border-top-color: var(--primary); }
+  .file-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: var(--text);
+    gap: 6px;
+  }
+  .file-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-remove {
+    background: none;
+    border: none;
+    color: #e53e3e;
+    font-size: 15px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .add-btn-wrap { display: flex; gap: 8px; }
+  .add-file-label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: white;
+    border: 1.5px dashed var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 13px;
+    color: var(--sub);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .add-file-label:hover { background: var(--hover); border-color: var(--primary); color: var(--primary); }
+  .hint { font-size: 11px; color: var(--sub); margin-top: 6px; text-align: center; }
+
+  .submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 12px;
+  }
+  .submit-btn:hover { background: var(--primary-dark); }
+  .submit-btn:disabled { background: #a0aec0; cursor: not-allowed; }
+  .progress-wrap {
+    display: none;
+    background: #e2e8f0;
+    border-radius: 99px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .progress-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 99px;
+    transition: width 0.3s;
+    width: 0%;
+  }
+  .status-msg {
+    display: none;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.6;
+    white-space: pre-line;
+    text-align: center;
+  }
+  .status-msg.success { background: var(--success-bg); border: 1.5px solid var(--success-border); color: var(--success); }
+  .status-msg.error { background: var(--error-bg); border: 1.5px solid var(--error-border); color: var(--error); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="office-name">大房行政書士法人</div>
+    <div class="page-icon">🏢</div>
+    <h1>JAIM書類アップロード</h1>
+    <div class="subtitle">JAIM協議会加入申請の書類をアップロードしてください<br>（複数枚ある場合はまとめてアップロードできます）</div>
+  </div>
+  <div class="company-name-bar" id="companyNameBar" style="display:none;"></div>
+
+  <!-- ver.20260620.43: 条件フィルタUI（回答で不要書類を自動スキップ） -->
+  <div id="kokkoFilterBox" style="display:none;margin:0 0 14px;padding:14px;border:1px solid #bae6fd;border-radius:12px;background:#f0f9ff;">
+    <div style="font-size:13px;font-weight:800;color:#0369a1;margin-bottom:4px;">📋 はじめに、いくつか質問にお答えください</div>
+    <div style="font-size:11px;color:#0c4a6e;margin-bottom:10px;line-height:1.6;">ご回答に応じて、ご提出が不要な書類を自動で「不要」にします。</div>
+    <div id="kokkoFilterQuestions"></div>
+  </div>
+
+  <!-- 書類リスト（タブ廃止・1コンテナに統一 ver.20260609.rpc） -->
+  <div class="fields-list" id="fieldsList"></div>
+
+  <button class="submit-btn" id="submitBtn" disabled>送信する</button>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="status-msg" id="statusMsg"></div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
+
+// Supabase（アップロード通知用）
+const SB_URL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
+const SB_KEY = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
+function _uplRpc(fn, body){ return fetch(SB_URL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, body: JSON.stringify(body||{}) }); }
+
+async function notifyUploadToSystem(fileCount, companyId, companyName) {
+  // companyId・companyName両方なくてもとりあえず送る（テーブル存在確認も兼ねる）
+  try {
+    const payload = {
+      file_count: fileCount,
+      source: 'jaim_dataup',
+      created_at: new Date().toISOString()
+    };
+    if (companyId) payload.company_id = companyId;
+    if (companyName) payload.company_name = companyName;
+    if (FOLDER_ID) payload.folder_id = FOLDER_ID;
+    console.log('📤 Supabase通知送信:', payload);
+    const res = await _uplRpc('upload_notify', { p_payload: payload });
+    if (res.ok) {
+      console.log('✅ 案件管理システムに通知しました (HTTP ' + res.status + ')');
+    } else {
+      const errText = await res.text();
+      console.error('❌ Supabase通知エラー (HTTP ' + res.status + '):', errText);
+    }
+  } catch(e) {
+    console.error('❌ 通知送信例外:', e);
+  }
+}
+
+const urlParams = new URLSearchParams(window.location.search);
+const FOLDER_ID = urlParams.get('folder') || '';
+const COMPANY_ID = urlParams.get('company') || '';
+const COMPANY_NAME = urlParams.get('name') ? decodeURIComponent(urlParams.get('name')) : '';
+// ver.20260525.01: 新パラメータ docs=BASE64URL(JSON [{l,r,t}])
+const DOCS_PARAM = urlParams.get('docs') || '';
+function _decodeDocsParam(s){
+  if(!s) return null;
+  try {
+    var b64 = s.replace(/-/g,'+').replace(/_/g,'/');
+    while(b64.length % 4) b64 += '=';
+    var bin = atob(b64);
+    var txt = decodeURIComponent(escape(bin));
+    var arr = JSON.parse(txt);
+    if(!Array.isArray(arr)) return null;
+    return arr;
+  } catch(e){
+    console.warn('docs param decode err:', e);
+    return null;
+  }
+}
+// ver.20260525.34: docs パラメータが空でも COMPANY_ID があれば upload_docs_cache から取得
+let DOCS_LIST = _decodeDocsParam(DOCS_PARAM);
+let USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
+
+const SUPABASE_URL_UPL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
+const SUPABASE_KEY_UPL = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
+function _loadDocsFromCache(){
+  return new Promise(function(resolve){
+    if(USE_NEW_DOCS){ resolve(DOCS_LIST); return; }
+    if(!COMPANY_ID){ resolve(null); return; }
+    _uplRpc('upload_docs_cache_get', { p_case_id: COMPANY_ID, p_kind: 'jaim' })
+    .then(function(r){ return r.ok ? r.json() : null; }).then(function(docs){
+      if(docs && Array.isArray(docs) && docs.length){
+        DOCS_LIST = docs;
+        USE_NEW_DOCS = true;
+        resolve(DOCS_LIST);
+      } else {
+        resolve(null);
+      }
+    }).catch(function(e){
+      console.warn('upload_docs_cache rpc err:', e);
+      resolve(null);
+    });
+  });
+}
+console.log('📋 USE_NEW_DOCS:', USE_NEW_DOCS, 'DOCS_LIST:', DOCS_LIST);
+
+// ver.20260525.22: 書類名にふりがな(ruby)を付与する辞書
+// マッチしない書類は日本語のまま表示
+const DOC_RUBY = {
+  // ── 会社（中小） ──
+  '決算文書の写し（損益計算書及び貸借対照表）': '<ruby>決算文書<rt>けっさんぶんしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し（<ruby>損益計算書<rt>そんえきけいさんしょ</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>貸借対照表<rt>たいしゃくたいしょうひょう</rt></ruby>）',
+  '決算文書の写し3期分（損益計算書及び貸借対照表）': '<ruby>決算文書<rt>けっさんぶんしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し3<ruby>期分<rt>きぶん</rt></ruby>（<ruby>損益計算書<rt>そんえきけいさんしょ</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>貸借対照表<rt>たいしゃくたいしょうひょう</rt></ruby>）',
+  '登記事項証明書（履歴事項全部証明書）': '<ruby>登記事項証明書<rt>とうきじこうしょうめいしょ</rt></ruby>（<ruby>履歴事項全部証明書<rt>りれきじこうぜんぶしょうめいしょ</rt></ruby>）',
+  '役員（代表で1名分）の住民票の写し': '<ruby>役員<rt>やくいん</rt></ruby>（<ruby>代表<rt>だいひょう</rt></ruby>で1<ruby>名分<rt>めいぶん</rt></ruby>）の<ruby>住民票<rt>じゅうみんひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '業務に関わる役員（最低1名分）の住民票の写し': '<ruby>業務<rt>ぎょうむ</rt></ruby>に<ruby>関<rt>かか</rt></ruby>わる<ruby>役員<rt>やくいん</rt></ruby>（<ruby>最低<rt>さいてい</rt></ruby>1<ruby>名分<rt>めいぶん</rt></ruby>）の<ruby>住民票<rt>じゅうみんひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '労働保険料等納付証明書（未納なし証明）': '<ruby>労働保険料等納付証明書<rt>ろうどうほけんりょうとうのうふしょうめいしょ</rt></ruby>（<ruby>未納<rt>みのう</rt></ruby>なし<ruby>証明<rt>しょうめい</rt></ruby>）',
+  '労働保険料等納付証明書': '<ruby>労働保険料等納付証明書<rt>ろうどうほけんりょうとうのうふしょうめいしょ</rt></ruby>',
+  '社会保険料納入状況照会回答票': '<ruby>社会保険料納入状況照会回答票<rt>しゃかいほけんりょうのうにゅうじょうきょうしょうかいかいとうひょう</rt></ruby>',
+  '社会保険料納入状況照会回答票または領収書24ヶ月分': '<ruby>社会保険料納入状況照会回答票<rt>しゃかいほけんりょうのうにゅうじょうきょうしょうかいかいとうひょう</rt></ruby>または<ruby>領収書<rt>りょうしゅうしょ</rt></ruby>24ヶ<ruby>月分<rt>げつぶん</rt></ruby>',
+  '納税証明書（その３）源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税 ＊税務署発行': '<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（その３）<ruby>源泉所得税<rt>げんせんしょとくぜい</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>復興特別所得税<rt>ふっこうとくべつしょとくぜい</rt></ruby>・<ruby>法人税<rt>ほうじんぜい</rt></ruby>・<ruby>消費税<rt>しょうひぜい</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>地方消費税<rt>ちほうしょうひぜい</rt></ruby> ＊<ruby>税務署発行<rt>ぜいむしょはっこう</rt></ruby>',
+  '納税証明書（地方税）法人住民税 ＊市町村発行': '<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（<ruby>地方税<rt>ちほうぜい</rt></ruby>）<ruby>法人住民税<rt>ほうじんじゅうみんぜい</rt></ruby> ＊<ruby>市町村発行<rt>しちょうそんはっこう</rt></ruby>',
+  '就業規則': '<ruby>就業規則<rt>しゅうぎょうきそく</rt></ruby>',
+  '賃金規定': '<ruby>賃金規定<rt>ちんぎんきてい</rt></ruby>',
+  '36協定届出書': '36<ruby>協定届出書<rt>きょうていとどけでしょ</rt></ruby>',
+  '変形労働届出書': '<ruby>変形労働届出書<rt>へんけいろうどうとどけでしょ</rt></ruby>',
+  '年間カレンダー': '<ruby>年間<rt>ねんかん</rt></ruby>カレンダー',
+  '③ 居住予定物件の物件資料': '③ <ruby>居住予定物件<rt>きょじゅうよていぶっけん</rt></ruby>の<ruby>物件資料<rt>ぶっけんしりょう</rt></ruby>',
+  '予定物件の間取り図、物件資料など': '<ruby>予定物件<rt>よていぶっけん</rt></ruby>の<ruby>間取<rt>まど</rt></ruby>り<ruby>図<rt>ず</rt></ruby>、<ruby>物件資料<rt>ぶっけんしりょう</rt></ruby>など',
+  '協議会加入証明書': '<ruby>協議会加入証明書<rt>きょうぎかいかにゅうしょうめいしょ</rt></ruby>',
+  // ── 会社（大企業） ──
+  '四季報の写しまたは法定調書合計表の写し': '<ruby>四季報<rt>しきほう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>しまたは<ruby>法定調書合計表<rt>ほうていちょうしょごうけいひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '四季報の写し、または上場証明書類': '<ruby>四季報<rt>しきほう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し、または<ruby>上場証明書類<rt>じょうじょうしょうめいしょるい</rt></ruby>',
+  '法定調書合計表の写し（税務署発行）': '<ruby>法定調書合計表<rt>ほうていちょうしょごうけいひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し（<ruby>税務署発行<rt>ぜいむしょはっこう</rt></ruby>）',
+  // ── 会社（個人事業主） ──
+  '個人事業主納税証明書その3(5項目)': '<ruby>個人事業主納税証明書<rt>こじんじぎょうぬしのうぜいしょうめいしょ</rt></ruby>その3(5<ruby>項目<rt>こうもく</rt></ruby>)',
+  '個人事業主の住民票の写し': '<ruby>個人事業主<rt>こじんじぎょうぬし</rt></ruby>の<ruby>住民票<rt>じゅうみんひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '住民税の納税証明書': '<ruby>住民税<rt>じゅうみんぜい</rt></ruby>の<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>',
+  '個人住民税の納税証明書（直近2年度分）＊市区町村発行': '<ruby>個人住民税<rt>こじんじゅうみんぜい</rt></ruby>の<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（<ruby>直近<rt>ちょっきん</rt></ruby>2<ruby>年度分<rt>ねんどぶん</rt></ruby>）＊<ruby>市区町村発行<rt>しくちょうそんはっこう</rt></ruby>',
+  '住民票': '<ruby>住民票<rt>じゅうみんひょう</rt></ruby>',
+  'マイナポータルからダウンロードした医療保険の資格情報の写し': 'マイナポータルからダウンロードした<ruby>医療保険<rt>いりょうほけん</rt></ruby>の<ruby>資格情報<rt>しかくじょうほう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  'マイナポータルからダウンロードした医療保険の資格情報の写し、または資格確認書の写し': 'マイナポータルからダウンロードした<ruby>医療保険<rt>いりょうほけん</rt></ruby>の<ruby>資格情報<rt>しかくじょうほう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し、または<ruby>資格確認書<rt>しかくかくにんしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '国民健康保険料(税)納付証明書(直近1年度)': '<ruby>国民健康保険料<rt>こくみんけんこうほけんりょう</rt></ruby>(<ruby>税<rt>ぜい</rt></ruby>)<ruby>納付証明書<rt>のうふしょうめいしょ</rt></ruby>(<ruby>直近<rt>ちょっきん</rt></ruby>1<ruby>年度<rt>ねんど</rt></ruby>)',
+  '国民健康保険料（税）納付証明書（直近2年分）': '<ruby>国民健康保険料<rt>こくみんけんこうほけんりょう</rt></ruby>（<ruby>税<rt>ぜい</rt></ruby>）<ruby>納付証明書<rt>のうふしょうめいしょ</rt></ruby>（<ruby>直近<rt>ちょっきん</rt></ruby>2<ruby>年分<rt>ねんぶん</rt></ruby>）',
+  '被保険者記録照会回答表': '<ruby>被保険者記録照会回答表<rt>ひほけんしゃきろくしょうかいかいとうひょう</rt></ruby>',
+  '被保険者記録照会(納付Ⅱ)': '<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>(<ruby>納付<rt>のうふ</rt></ruby>Ⅱ)',
+  '被保険者記録照会（納付Ⅱ）または国民年金保険料領収証書の写し（直近24ヶ月分）': '<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>（<ruby>納付<rt>のうふ</rt></ruby>Ⅱ）または<ruby>国民年金保険料領収証書<rt>こくみんねんきんほけんりょうりょうしゅうしょうしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し（<ruby>直近<rt>ちょっきん</rt></ruby>24ヶ<ruby>月分<rt>げつぶん</rt></ruby>）',
+  '納税証明書（その３）＊税務署発行　税目）源泉所得税及び復興特別所得税、法人税、消費税及び地方消費税': '<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（その３）＊<ruby>税務署発行<rt>ぜいむしょはっこう</rt></ruby>　<ruby>税目<rt>ぜいもく</rt></ruby>）<ruby>源泉所得税<rt>げんせんしょとくぜい</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>復興特別所得税<rt>ふっこうとくべつしょとくぜい</rt></ruby>、<ruby>法人税<rt>ほうじんぜい</rt></ruby>、<ruby>消費税<rt>しょうひぜい</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>地方消費税<rt>ちほうしょうひぜい</rt></ruby>',
+  '納税証明書（その３）＊税務署発行　税目）源泉所得税・申告所得税・消費税・地方消費税・相続税・贈与税': '<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（その３）＊<ruby>税務署発行<rt>ぜいむしょはっこう</rt></ruby>　<ruby>税目<rt>ぜいもく</rt></ruby>）<ruby>源泉所得税<rt>げんせんしょとくぜい</rt></ruby>・<ruby>申告所得税<rt>しんこくしょとくぜい</rt></ruby>・<ruby>消費税<rt>しょうひぜい</rt></ruby>・<ruby>地方消費税<rt>ちほうしょうひぜい</rt></ruby>・<ruby>相続税<rt>そうぞくぜい</rt></ruby>・<ruby>贈与税<rt>ぞうよぜい</rt></ruby>',
+  // ── 分野別 ──
+  '造船・舶用工業分野 特定技能評価試験結果': '<ruby>造船<rt>ぞうせん</rt></ruby>・<ruby>舶用工業分野<rt>はくようこうぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '自動車整備分野 特定技能評価試験結果': '<ruby>自動車整備分野<rt>じどうしゃせいびぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '認定自動車整備士資格証（写し）': '<ruby>認定自動車整備士資格証<rt>にんていじどうしゃせいびししかくしょう</rt></ruby>（<ruby>写<rt>うつ</rt></ruby>し）',
+  '航空分野 特定技能評価試験結果': '<ruby>航空分野<rt>こうくうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '宿泊分野 特定技能評価試験結果': '<ruby>宿泊分野<rt>しゅくはくぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '農業分野 特定技能評価試験結果': '<ruby>農業分野<rt>のうぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '漁業分野 特定技能評価試験結果': '<ruby>漁業分野<rt>ぎょぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '飲食料品製造業分野 特定技能評価試験結果': '<ruby>飲食料品製造業分野<rt>いんしょくりょうひんせいぞうぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '外食業分野 特定技能評価試験結果': '<ruby>外食業分野<rt>がいしょくぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  'ビルクリーニング分野 特定技能評価試験結果': 'ビルクリーニング<ruby>分野<rt>ぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '素形材・産業機械・電気電子情報産業分野 特定技能評価試験結果': '<ruby>素形材<rt>そけいざい</rt></ruby>・<ruby>産業機械<rt>さんぎょうきかい</rt></ruby>・<ruby>電気電子情報産業分野<rt>でんきでんしじょうほうさんぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '林業分野 特定技能評価試験結果': '<ruby>林業分野<rt>りんぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '木材産業分野 特定技能評価試験結果': '<ruby>木材産業分野<rt>もくざいさんぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  // ── その他 ──
+  'その他': 'その<ruby>他<rt>た</rt></ruby>'
+};
+
+function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');}
+function _labelWithRuby(ja){
+  return DOC_RUBY[ja] || _esc(ja);
+}
+
+if (COMPANY_NAME) {
+  const bar = document.getElementById('companyNameBar');
+  bar.textContent = '📦 ' + COMPANY_NAME + '（JAIM書類）';
+  bar.style.display = 'block';
+}
+
+// ─── 大企業（源泉1,000万円以上）の書類 ───
+const LARGE_KEYS = ['shikiho', 'hoteichosho'];
+const LARGE_DOCS = {
+  shikiho:     '四季報の写し、または上場証明書類',
+  hoteichosho: '法定調書合計表の写し（税務署発行）',
+};
+
+// ─── 中小企業の書類 ───
+const NORMAL_KEYS = [
+  'kessan', 'tokibo', 'jumin_hyo', 'rodo_hoken', 'shakai_hoken',
+  'zeimu_3', 'zeimu_shimin', 'shugyo_kisoku', 'chingin_kitei',
+  'san_roku', 'henkei_rodo', 'nengkan_cal', 'madori', 'other',
+];
+const NORMAL_DOCS = {
+  kessan:        '決算文書の写し3期分（損益計算書及び貸借対照表）',
+  tokibo:        '登記事項証明書（履歴事項全部証明書）',
+  jumin_hyo:     '業務に関わる役員（最低1名分）の住民票の写し',
+  rodo_hoken:    '労働保険料等納付証明書（未納なし証明）',
+  shakai_hoken:  '社会保険料納入状況照会回答票または領収書24ヶ月分',
+  zeimu_3:       '納税証明書（その３）＊税務署発行　税目）源泉所得税及び復興特別所得税、法人税、消費税及び地方消費税',
+  zeimu_shimin:  '納税証明書（地方税）法人住民税 ＊市町村発行',
+  shugyo_kisoku: '就業規則',
+  chingin_kitei: '賃金規定',
+  san_roku:      '36協定届出書',
+  henkei_rodo:   '変形労働届出書',
+  nengkan_cal:   '年間カレンダー',
+  madori:        '予定物件の間取り図、物件資料など',
+  other:         'その他',
+};
+
+// ─── 個人事業主の書類 ───
+const KOJIN_KEYS = [
+  'kojin_jumin', 'kojin_rodo', 'kojin_iryo', 'kojin_kokuho',
+  'kojin_nenkin_fu', 'kojin_nenkin_rec', 'kojin_zeimu3', 'kojin_shimin', 'other_kojin',
+];
+const KOJIN_DOCS = {
+  kojin_jumin:    '個人事業主の住民票の写し',
+  kojin_rodo:     '労働保険料等納付証明書（未納なし証明）',
+  kojin_iryo:     'マイナポータルからダウンロードした医療保険の資格情報の写し、または資格確認書の写し',
+  kojin_kokuho:   '国民健康保険料（税）納付証明書（直近2年分）',
+  kojin_nenkin_fu:'被保険者記録照会（納付Ⅱ）または国民年金保険料領収証書の写し（直近24ヶ月分）',
+  kojin_nenkin_rec:'被保険者記録照会回答票',
+  kojin_zeimu3:   '納税証明書（その３）＊税務署発行　税目）源泉所得税・申告所得税・消費税・地方消費税・相続税・贈与税',
+  kojin_shimin:   '個人住民税の納税証明書（直近2年度分）＊市区町村発行',
+  other_kojin:    'その他',
+};
+
+const fileData = {};
+
+// ─── タブ切り替え（タブUIは廃止。後方互換のためのガードのみ）───
+function switchTab(tab) {
+  try {
+    ['large', 'normal', 'kojin'].forEach(function(t){
+      var panelId = t === 'large' ? 'panelLarge' : t === 'normal' ? 'panelNormal' : 'panelKojin';
+      var btnId   = t === 'large' ? 'tabBtnLarge' : t === 'normal' ? 'tabBtnNormal' : 'tabBtnKojin';
+      var p = document.getElementById(panelId);
+      var b = document.getElementById(btnId);
+      if (p) p.classList.toggle('active', t === tab);
+      if (b) b.classList.toggle('active', t === tab);
+    });
+  } catch(e) { /* タブUI廃止済み: 何もしない */ }
+}
+
+// ─── フィールド行を生成 ───
+function buildFieldRow(key, docsMap) {
+  const arr = fileData[key] || [];
+  const hasFile = arr.length > 0;
+  const row = document.createElement('div');
+  row.className = 'field-row' + (hasFile ? ' has-file' : '');
+  row.dataset.key = key;
+
+  const header = document.createElement('div');
+  header.className = 'field-header';
+  header.innerHTML = `
+    <span class="field-label">${_labelWithRuby(docsMap[key])}</span>
+    <span class="field-status${hasFile ? ' ready' : ''}">${hasFile ? arr.length + '件選択済み ✓' : '未選択'}</span>
+    <span class="chevron">▼</span>
+  `;
+  header.onclick = () => row.classList.toggle('open');
+
+  const body = document.createElement('div');
+  body.className = 'field-body';
+
+  const fileListEl = document.createElement('div');
+  fileListEl.className = 'file-list';
+  renderFileList(key, fileListEl);
+  body.appendChild(fileListEl);
+
+  const addWrap = document.createElement('div');
+  addWrap.className = 'add-btn-wrap';
+  const label = document.createElement('label');
+  label.className = 'add-file-label';
+  label.innerHTML = '📷 ファイルを追加';
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,application/pdf';
+  input.multiple = true;
+  input.style.display = 'none';
+  input.onchange = async (e) => {
+    const files = Array.from(e.target.files);
+    for (const file of files) {
+      const b64 = await toBase64(file);
+      if (!fileData[key]) fileData[key] = [];
+      fileData[key].push({ name: file.name, mimeType: file.type || 'application/octet-stream', base64: b64 });
+    }
+    input.value = '';
+    buildAllFields();
+    updateSubmitBtn();
+  };
+  label.appendChild(input);
+  addWrap.appendChild(label);
+  body.appendChild(addWrap);
+  const hint = document.createElement('div');
+  hint.className = 'hint';
+  hint.textContent = 'JPG / PNG / PDF';
+  body.appendChild(hint);
+
+  row.appendChild(header);
+  row.appendChild(body);
+  if (hasFile) row.classList.add('open');
+  return row;
+}
+
+function renderFileList(key, container) {
+  container.innerHTML = '';
+  const arr = fileData[key] || [];
+  arr.forEach((d, i) => {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    item.innerHTML = `<span class="file-item-name">📄 ${d.name}</span><button class="file-remove" title="削除">✕</button>`;
+    item.querySelector('.file-remove').onclick = () => {
+      fileData[key].splice(i, 1);
+      buildAllFields();
+      updateSubmitBtn();
+    };
+    container.appendChild(item);
+  });
+}
+
+// ver.20260620.43: 国交省書類メタ（説明・見本・条件・★早め収集）。index側の番号付き書類名をキーに紐づけ
+const KOKKO_SAMPLE_BASE = 'https://ofusa2026.github.io/upload/samples/';
+// ver.20260701: JAIM書類4項目（kokko版から全面差し替え）
+const KOKKO_DOC_META = {
+  '1. 製造部品の写真': {
+    name:'製造部品の写真',
+    sample:'', desc:'特定技能外国人が従事するもので、産業分類に該当するものをお願いします。\n【単体かつ接写で明瞭なもの】\n複数枚（異なる角度・状態のもの）あるとより確実です。',
+    place:''
+  },
+  '2. 製造部品が利用される装置や機械の写真または図': {
+    name:'製造部品が利用される装置や機械の写真または図',
+    sample:'', desc:'【完成品のどの部分に装着されるか】をお教えください。\n写真のご用意が難しい場合は、こちらで準備いたしますので、名称のみでも構いません。\n複数枚（異なる角度・状態のもの）あるとより確実です。',
+    place:''
+  },
+  '3. 製造品を生産するために用いた設備の写真': {
+    name:'製造品を生産するために用いた設備の写真',
+    sample:'', desc:'工作機械、鋳造機、鍛造機、プレス機等。\n「手元が写っている」など作業内容を明瞭に示した写真をお願いいたします。\n複数枚（異なる角度・状態のもの）あるとより確実です。',
+    place:''
+  },
+  '4. 製造部品（①に対応）の直近1年以内の納品書': {
+    name:'製造部品（①に対応）の直近1年以内の納品書',
+    sample:'', desc:'出荷額の記載があるもの（PDFによる提出でも構いません）。\n複数枚ある場合はすべてアップロードしてください。',
+    place:''
+  }
+};
+
+// JAIMには「弊社作成書類」の概念はないため空配列
+const KOKKO_OFUSA_DOCS = [];
+function _kokkoIsOfusaDoc(name){ return false; }
+
+// JAIMには条件付き書類がないため空配列（buildKokkoFilters()が自動的にUI非表示にする）
+const KOKKO_FILTERS = [];
+// 回答状態（true=はい/必要, false=いいえ/不要, undefined=未回答）
+window._kokkoFilterAns = {};
+
+function _kokkoSampleUrl(name){
+  var m = KOKKO_DOC_META[name];
+  if(!m || !m.sample) return '';
+  return KOKKO_SAMPLE_BASE + m.sample;
+}
+// 書類名が条件付きで「不要」と判定されているか
+function _kokkoIsSkippedByFilter(name){
+  for(var i=0;i<KOKKO_FILTERS.length;i++){
+    var f = KOKKO_FILTERS[i];
+    if(f.targets.indexOf(name) >= 0 && window._kokkoFilterAns[f.id] === false){
+      return true;
+    }
+  }
+  return false;
+}
+
+// 条件フィルタUIを描画
+function buildKokkoFilters(){
+  // DOCS_LIST に条件付き書類が含まれる場合のみフィルタ表示
+  var names = (DOCS_LIST||[]).map(function(d){ return d.l || ''; });
+  var needFilters = KOKKO_FILTERS.filter(function(f){
+    return f.targets.some(function(t){ return names.indexOf(t) >= 0; });
+  });
+  var box = document.getElementById('kokkoFilterBox');
+  var qWrap = document.getElementById('kokkoFilterQuestions');
+  if(!box || !qWrap) return;
+  if(!needFilters.length){ box.style.display='none'; return; }
+  box.style.display='block';
+  qWrap.innerHTML = needFilters.map(function(f){
+    var ans = window._kokkoFilterAns[f.id];
+    function btn(val,label,color){
+      var on = ans === val;
+      return '<button onclick="setKokkoFilter(\''+f.id+'\','+val+')" style="flex:1;padding:7px;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;border:1.5px solid '+(on?color:'#cbd5e1')+';background:'+(on?color:'white')+';color:'+(on?'white':'#475569')+';">'+label+'</button>';
+    }
+    return '<div style="margin-bottom:10px;">'+
+      '<div style="font-size:12px;font-weight:700;color:#0c4a6e;margin-bottom:5px;">'+f.q+'</div>'+
+      '<div style="display:flex;gap:8px;">'+btn(true,'はい','#0369a1')+btn(false,'いいえ','#64748b')+'</div></div>';
+  }).join('');
+}
+function setKokkoFilter(id, val){
+  window._kokkoFilterAns[id] = val;
+  buildKokkoFilters();
+  buildAllFields();
+}
+
+function buildAllFields() {
+  // ver.20260602.08: タブ廃止・1リスト化。DBキャッシュ(kind=kokko)の DOCS_LIST=[{l,r,done,note}] を順次描画
+  const listEl = document.getElementById('fieldsList');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  // DBキャッシュ(kind=kokko)が無い場合は旧入管書類を出さず、案内文のみ表示
+  if (!USE_NEW_DOCS || !Array.isArray(DOCS_LIST) || !DOCS_LIST.length) {
+    const msg = document.createElement('div');
+    msg.className = 'notice-box';
+    msg.style.marginBottom = '0';
+    msg.innerHTML = '📄 現在アップロードできる書類が設定されていません。<br>お手数ですが担当者までお問い合わせください。';
+    listEl.appendChild(msg);
+    window._docLabelMap = {};
+    return;
+  }
+
+  // 各書類に安定キー d0, d1, ... を割り当て
+  const labelMap = {};
+  DOCS_LIST.forEach(function(d, i){ labelMap['d' + i] = d.l || ''; });
+  window._docLabelMap = labelMap;
+
+  DOCS_LIST.forEach(function(d, i){
+    const key = 'd' + i;
+    const row = buildFieldRow(key, labelMap);
+    const labelEl = row.querySelector('.field-label');
+    const meta = KOKKO_DOC_META[d.l] || null;
+    // 条件フィルタで不要判定された書類は done 扱い（不要表示＋スキップ）
+    const filterSkipped = _kokkoIsSkippedByFilter(d.l);
+    const isDone = d.done || filterSkipped;
+
+    // ★早め収集マーク（ラベル先頭）
+    if (meta && meta.slow && labelEl && labelEl.innerHTML.indexOf('★') === -1) {
+      labelEl.innerHTML = '<span style="color:#d97706;font-size:13px;font-weight:800;margin-right:3px;">★</span>' + labelEl.innerHTML;
+    }
+
+    // 必須マーク
+    if (d.r && labelEl && labelEl.innerHTML.indexOf('必須') === -1) {
+      labelEl.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + labelEl.innerHTML;
+    }
+
+    // 取得済み/不要: 濃いめのグレーで暗く見せる
+    if (isDone) {
+      row.style.background = '#cbd5e1';
+      row.style.borderColor = '#94a3b8';
+      row.style.opacity = '0.7';
+      if (labelEl) {
+        const doneEl = document.createElement('span');
+        doneEl.style.cssText = 'color:#16a34a;font-size:11px;font-weight:700;margin-left:4px;';
+        // ver.20260620.43: st（staff=提出済み / skip=不要 / ofusa=弊社作成）で表示を分ける
+        var _st = d.st || '';
+        if (_st === 'ofusa' || _kokkoIsOfusaDoc(d.l)) {
+          doneEl.textContent = '※弊社作成（ご提出は不要です）';
+          doneEl.style.color = '#7c3aed';
+        } else if (filterSkipped || _st === 'skip') {
+          doneEl.textContent = '― 不要';
+          doneEl.style.color = '#64748b';
+        } else {
+          doneEl.textContent = '✓ 提出済み（再提出が必要な場合のみ）';
+        }
+        labelEl.appendChild(doneEl);
+      }
+    }
+
+    // ★早め収集の注意（ラベル下）
+    if (meta && meta.slow && labelEl) {
+      const slowEl = document.createElement('div');
+      slowEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:700;margin-top:4px;line-height:1.6;';
+      slowEl.textContent = '★ 取得にお時間がかかる書類です。お早めのご準備にご協力ください。';
+      labelEl.appendChild(slowEl);
+    }
+
+    // 説明文（エクセル由来）＋発行場所
+    if (meta && meta.desc && labelEl) {
+      const descEl = document.createElement('div');
+      descEl.style.cssText = 'font-size:11px;color:#475569;font-weight:400;margin-top:5px;line-height:1.7;white-space:pre-wrap;word-break:break-word;';
+      var _t = meta.desc;
+      if (meta.place) _t += '\n【取得先】' + meta.place;
+      // HTMLエスケープしてからURLを<a>に変換（XSS対策・URLはクリックで開ける）
+      var _esc = _t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      var _linked = _esc.replace(/(https?:\/\/[^\s　、）)」]+)/g, function(u){
+        return '<a href="'+u+'" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:600;">'+u+'</a>';
+      });
+      descEl.innerHTML = _linked;
+      labelEl.appendChild(descEl);
+    }
+
+    // 見本画像（折りたたみ）
+    if (meta && meta.sample && labelEl) {
+      const url = _kokkoSampleUrl(d.l);
+      const sampleWrap = document.createElement('div');
+      sampleWrap.style.cssText = 'margin-top:6px;';
+      sampleWrap.innerHTML = '<details style="font-size:11px;"><summary style="cursor:pointer;color:#2563eb;font-weight:700;">🖼️ 見本を見る</summary>'+
+        '<div style="margin-top:6px;text-align:center;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:6px;">'+
+        '<img src="'+url+'" alt="見本" loading="lazy" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:4px;"></div></details>';
+      labelEl.appendChild(sampleWrap);
+    }
+
+    // ラベル下に注意書き 💡 + note
+    if (d.note && labelEl) {
+      const noteEl = document.createElement('div');
+      noteEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:400;margin-top:4px;line-height:1.6;';
+      noteEl.textContent = '💡 ' + d.note;
+      labelEl.appendChild(noteEl);
+    }
+
+    listEl.appendChild(row);
+  });
+  // 条件フィルタUIも（再）描画
+  if(typeof buildKokkoFilters==='function') buildKokkoFilters();
+}
+
+function updateSubmitBtn() {
+  // ver.20260602.08: 新ロジック(DBキャッシュ)の window._docLabelMap で判定
+  var allKeys = (USE_NEW_DOCS && window._docLabelMap) ? Object.keys(window._docLabelMap) : [];
+  var hasAny = allKeys.some(function(k){ return fileData[k] && fileData[k].length > 0; });
+  var btn = document.getElementById('submitBtn');
+  if (btn) btn.disabled = !hasAny;
+}
+
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = () => reject(new Error('Read failed'));
+    r.readAsDataURL(file);
+  });
+}
+
+// ver.20260525.34: DBキャッシュから書類リストを取得してから初期描画
+(async function _initDocsAndBuild(){
+  try { await _loadDocsFromCache(); } catch(e){ console.warn('_initDocsAndBuild err:', e); }
+  buildAllFields();
+})();
+
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  // ver.20260525.01: 新ロジックでは window._docLabelMap、旧ロジックでは LARGE/NORMAL/KOJIN_DOCS を結合
+  let allKeys, allDocs;
+  if (USE_NEW_DOCS && window._docLabelMap) {
+    allKeys = Object.keys(window._docLabelMap);
+    allDocs = window._docLabelMap;
+  } else {
+    allKeys = [...LARGE_KEYS, ...NORMAL_KEYS, ...KOJIN_KEYS];
+    allDocs = { ...LARGE_DOCS, ...NORMAL_DOCS, ...KOJIN_DOCS };
+  }
+  const hasAny = allKeys.some(k => fileData[k] && fileData[k].length > 0);
+  if (!hasAny) { alert('少なくとも1つのファイルを選択してください'); return; }
+
+  const submitBtn = document.getElementById('submitBtn');
+  const statusMsg = document.getElementById('statusMsg');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressBar = document.getElementById('progressBar');
+
+  submitBtn.disabled = true;
+  statusMsg.style.display = 'none';
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '10%';
+
+  const timestamp = Date.now();
+  const filesPayload = [];
+  allKeys.forEach(key => {
+    const arr = fileData[key] || [];
+    arr.forEach((d, i) => {
+      const ext = d.name.split('.').pop() || 'jpg';
+      const suffix = arr.length > 1 ? '_' + (i + 1) : '';
+      filesPayload.push({
+        name: allDocs[key] + suffix + '.' + ext,
+        mimeType: d.mimeType,
+        data: d.base64,
+      });
+    });
+  });
+
+  try {
+    progressBar.style.width = '40%';
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ files: filesPayload, folderId: FOLDER_ID }),
+    });
+    progressBar.style.width = '90%';
+    const json = await res.json();
+    if (json.success) {
+      progressBar.style.width = '100%';
+      statusMsg.className = 'status-msg success';
+      statusMsg.textContent = '✅ アップロード完了しました！\n担当者に届きました。';
+      statusMsg.style.display = 'block';
+      // 案件管理システムにアップロード通知
+      notifyUploadToSystem(filesPayload.length, COMPANY_ID, COMPANY_NAME);
+      allKeys.forEach(k => delete fileData[k]);
+      buildAllFields();
+      updateSubmitBtn();
+    } else {
+      throw new Error(json.error || 'error');
+    }
+  } catch (err) {
+    statusMsg.className = 'status-msg error';
+    statusMsg.textContent = '❌ 送信に失敗しました。\nもう一度お試しください。';
+    statusMsg.style.display = 'block';
+    submitBtn.disabled = false;
+  }
+
+  setTimeout(() => {
+    progressWrap.style.display = 'none';
+    progressBar.style.width = '0%';
+  }, 1200);
+});
+</script>
+</body>
+</html>
