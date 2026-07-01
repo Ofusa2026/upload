@@ -749,19 +749,27 @@ function buildAllFields() {
     window._allDocKeys = DOCS_LIST.map(function(d, i){ return 'd' + i; });
 
     // バッジ更新用に各タブの書類数表示
-    const renderBucket = function(listEl, items){
+    const renderBucket = function(listEl, items, fallbackItems){
       listEl.innerHTML = '';
-      if (!items.length) {
+      // 書類がない区分はnormal書類をフォールバック表示
+      const displayItems = (items && items.length) ? items : (fallbackItems && fallbackItems.length ? fallbackItems : []);
+      if (!displayItems.length) {
         const empty = document.createElement('div');
         empty.style.cssText = 'padding:20px;text-align:center;color:#94a3b8;font-size:13px;';
         empty.textContent = 'この区分の書類はありません';
         listEl.appendChild(empty);
         return;
       }
+      if ((!items || !items.length) && fallbackItems && fallbackItems.length) {
+        const note = document.createElement('div');
+        note.style.cssText = 'padding:8px 12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;font-size:12px;color:#92400e;margin-bottom:8px;';
+        note.textContent = '※ 区分未設定のため中小企業書類を表示しています';
+        listEl.appendChild(note);
+      }
       // docsMap を動的構築
       const docsMap = {};
-      items.forEach(function(it){ docsMap[it.key] = it.label; });
-      items.forEach(function(it){
+      displayItems.forEach(function(it){ docsMap[it.key] = it.label; });
+      displayItems.forEach(function(it){
         const row = buildFieldRow(it.key, docsMap);
         const labelEl = row.querySelector('.field-label');
         // 必須マーク
@@ -789,9 +797,10 @@ function buildAllFields() {
         listEl.appendChild(row);
       });
     };
-    renderBucket(document.getElementById('fieldsListLarge'),  buckets.large || []);
-    renderBucket(document.getElementById('fieldsListNormal'), buckets.normal || []);
-    renderBucket(document.getElementById('fieldsListKojin'),  buckets.kojin || []);
+    const normalFallback = buckets.normal || [];
+    renderBucket(document.getElementById('fieldsListLarge'),  buckets.large || [],  normalFallback);
+    renderBucket(document.getElementById('fieldsListNormal'), buckets.normal || [], []);
+    renderBucket(document.getElementById('fieldsListKojin'),  buckets.kojin || [],  normalFallback);
 
     // 書類があるタブを初期表示にする（normal優先 → kojin → large）
     if ((buckets.normal||[]).length === 0 && (buckets.kojin||[]).length > 0) {
