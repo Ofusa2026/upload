@@ -73,6 +73,9 @@
 </style>
 </head>
 <body>
+<!-- TEST版バナー（本番との識別用・同期時はこのブロックごと維持すること） -->
+<div style="position:sticky;top:0;z-index:99999;background:repeating-linear-gradient(45deg,#f59e0b,#f59e0b 12px,#fbbf24 12px,#fbbf24 24px);color:#7c2d12;font-size:13px;font-weight:900;text-align:center;padding:6px 10px;letter-spacing:1px;">🧪 テスト版（TEST）— 動作確認用ページです。本番はこちらではありません</div>
+
 <div style="position:fixed;top:6px;left:8px;font-size:9px;color:rgba(0,0,0,.3);z-index:9999;pointer-events:none;" id="verBadge"></div>
 
 <!-- 名前確認モーダル -->
@@ -124,46 +127,261 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260609.test.02';
-console.log('📄 zinzai_dataup_test.html', VERSION);
-
-// ===== 年度設定（毎年4-5月頃に更新する） =====
-// 課税証明書・納税証明書 → 「年度」表記
-// 源泉徴収票 → 「年分」表記
-const FISCAL_YEAR = {
-  reiwa: 7,
-  year_ad: 2025,
-  // 課税・納税証明書「令和7年度」のラベル
-  fy_label: {
-    ja: '令和7年度',
-    en: 'FY 2025 / Reiwa 7',
-    vi: 'Năm tài khóa 2025 / Reiwa 7',
-    id: 'Tahun Fiskal 2025 / Reiwa 7',
-    my: '၂၀၂၅ ဘဏ္ဍာရေးနှစ် / Reiwa 7',
-    ko: '2025년도 / 레이와 7년',
-    zh: '令和7年度 / 2025年度',
-    ne: 'आ.व. 2025 / Reiwa 7',
-    th: 'ปีงบประมาณ 2025 / Reiwa 7',
-    km: 'ឆ្នាំសារពើពន្ធ 2025 / Reiwa 7',
-    mn: 'Санхүүгийн жил 2025 / Reiwa 7',
-    si: 'මූල්‍ය වර්ෂය 2025 / Reiwa 7'
-  },
-  // 源泉徴収票「令和6年分」のラベル
-  year_label: {
-    ja: '令和6年分',
-    en: 'Year 2024 / Reiwa 6',
-    vi: 'Năm 2024 / Reiwa 6',
-    id: 'Tahun 2024 / Reiwa 6',
-    my: '၂၀၂၅ ခုနှစ် / Reiwa 7',
-    ko: '2024년분 / 레이와 6년',
-    zh: '令和6年 / 2024年',
-    ne: 'सन् 2025 / Reiwa 7',
-    th: 'ปี 2025 / Reiwa 7',
-    km: 'ឆ្នាំ 2025 / Reiwa 7',
-    mn: '2025 он / Reiwa 7',
-    si: '2025 වර්ෂය / Reiwa 7'
+const VERSION = 'ver.20260626.03';
+console.log('📄 zinzai_dataup.html', VERSION);
+// ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
+const urlParams = new URLSearchParams(window.location.search);
+const FOLDER_ID = urlParams.get('folder') || '';
+const FOLDER_ID2 = urlParams.get('folder2') || '';
+const CASE_ID = urlParams.get('case') || '';
+const APPLICANT_NAME = urlParams.get('name') ? decodeURIComponent(urlParams.get('name')) : '';
+const APP_TYPE = urlParams.get('appType') || '';
+const NATIONALITY = urlParams.get('nationality') || '';
+const IS_RYUGAKU = urlParams.get('ryugaku') === '1';
+// 旧パラメータ（後方互換）
+const SKIP_DOCS_RAW = urlParams.get('skipDocs') || '';
+const SKIP_DOCS = SKIP_DOCS_RAW ? decodeURIComponent(SKIP_DOCS_RAW).split(',').map(s => s.trim()).filter(Boolean) : [];
+// 新パラメータ（ver.20260525.01）: docs=BASE64URL(JSON [{l,r}])
+const DOCS_PARAM = urlParams.get('docs') || '';
+// base64url -> base64 -> UTF-8 文字列 -> JSON
+function _decodeDocsParam(s){
+  if(!s) return null;
+  try {
+    var b64 = s.replace(/-/g,'+').replace(/_/g,'/');
+    while(b64.length % 4) b64 += '=';
+    var bin = atob(b64);
+    var txt = decodeURIComponent(escape(bin));
+    var arr = JSON.parse(txt);
+    if(!Array.isArray(arr)) return null;
+    return arr;
+  } catch(e){
+    console.warn('docs param decode err:', e);
+    return null;
   }
+}
+// ver.20260525.34: docs パラメータが長すぎてLINEでハイパーリンク化されない問題対応
+//   - docs パラメータが空でも CASE_ID があれば upload_docs_cache から取得する
+//   - これらは初期は null/false、_loadDocsFromCache() で確定
+let DOCS_LIST = _decodeDocsParam(DOCS_PARAM);
+let USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
+
+// Supabaseの upload_docs_cache から書類リストを取得
+const SUPABASE_URL_UPL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
+const SUPABASE_KEY_UPL = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
+function _uplRpc(fn, body){ return fetch(SUPABASE_URL_UPL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY_UPL,'Authorization':'Bearer '+SUPABASE_KEY_UPL}, body: JSON.stringify(body||{}) }); }
+function _loadDocsFromCache(){
+  return new Promise(function(resolve){
+    if(USE_NEW_DOCS){ resolve(DOCS_LIST); return; }  // URLパラメータ優先
+    if(!CASE_ID){ resolve(null); return; }
+    _uplRpc('upload_docs_cache_get', { p_case_id: CASE_ID, p_kind: 'person' })
+    .then(function(r){ return r.ok ? r.json() : null; }).then(function(docs){
+      if(docs && Array.isArray(docs) && docs.length){
+        DOCS_LIST = docs;
+        USE_NEW_DOCS = true;
+        resolve(DOCS_LIST);
+      } else {
+        resolve(null);
+      }
+    }).catch(function(e){
+      console.warn('upload_docs_cache rpc err:', e);
+      resolve(null);
+    });
+  });
+}
+console.log('📋 USE_NEW_DOCS:', USE_NEW_DOCS, 'DOCS_LIST:', DOCS_LIST, 'SKIP_DOCS:', SKIP_DOCS);
+
+// 多言語翻訳辞書（日本語ラベル → 各言語 + ruby: 日本語表示用ふりがな付きHTML）
+// マッチしない書類は日本語のまま表示
+const DOC_TRANSLATIONS = {
+  // ── 人材書類（基本） ──
+  '顔写真':                      {ruby:'<ruby>顔写真<rt>かおじゃしん</rt></ruby>',en:'Photo',vi:'Ảnh',id:'Foto',my:'ဓာတ်ပုံ',ko:'사진',ne:'फोटो',zh:'照片',th:'รูปถ่าย',km:'រូបថត',mn:'Зураг',si:'ඡායාරූපය'},
+  'パスポート':                  {ruby:'パスポート',en:'Passport',vi:'Hộ chiếu',id:'Paspor',my:'နိုင်ငံကူးလက်မှတ်',ko:'여권',ne:'राहदानी',zh:'护照',th:'หนังสือเดินทาง',km:'លិខិតឆ្លងដែន',mn:'Паспорт',si:'ගමන් බලපත්‍රය'},
+  '在留カード':                  {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード',en:'Residence Card',vi:'Thẻ cư trú',id:'Kartu Izin Tinggal',my:'နေထိုင်ခွင့်ကတ်',ko:'재류카드',ne:'आवास कार्ड',zh:'居留卡',th:'บัตรถิ่นที่อยู่',km:'កាតស្នាក់នៅ',mn:'Оршин суух карт',si:'පදිංචිකාර්ඩ්'},
+  '在留カード（表）':             {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード（<ruby>表<rt>おもて</rt></ruby>）',en:'Residence Card (Front)',vi:'Thẻ cư trú (Mặt trước)',id:'Kartu Izin Tinggal (Depan)',my:'နေထိုင်ခွင့်ကတ်(ရှေ့)',ko:'재류카드 (앞면)',ne:'आवास कार्ड (अगाडि)',zh:'居留卡（正面）',th:'บัตรถิ่นที่อยู่ (ด้านหน้า)',km:'កាតស្នាក់នៅ(មុខ)',mn:'Оршин суух карт (нүүр)',si:'පදිංචිකාර්ඩ් (ඉදිරිපස)'},
+  '在留カード（裏）':             {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード（<ruby>裏<rt>うら</rt></ruby>）',en:'Residence Card (Back)',vi:'Thẻ cư trú (Mặt sau)',id:'Kartu Izin Tinggal (Belakang)',my:'နေထိုင်ခွင့်ကတ်(နောက်)',ko:'재류카드 (뒷면)',ne:'आवास कार्ड (पछाडि)',zh:'居留卡（背面）',th:'บัตรถิ่นที่อยู่ (ด้านหลัง)',km:'កាតស្នាក់នៅ(ក្រោយ)',mn:'Оршин суух карт (ар)',si:'පදිංචිකාර්ඩ් (පිටුපස)'},
+  '健康診断票':                  {ruby:'<ruby>健康診断票<rt>けんこうしんだんひょう</rt></ruby>',en:'Medical Examination Certificate',vi:'Giấy khám sức khỏe',id:'Sertifikat Pemeriksaan Kesehatan',my:'ကျန်းမာရေးစစ်ဆေးမှုလက်မှတ်',ko:'건강진단서',ne:'स्वास्थ्य परीक्षण प्रमाणपत्र',zh:'健康诊断书',th:'ใบรับรองตรวจสุขภาพ',km:'វិញ្ញាបនបត្រពិនិត្យសុខភាព',mn:'Эрүүл мэндийн үзлэгийн дүгнэлт',si:'සෞඛ්‍ය පරීක්ෂණ සහතිකය'},
+  '健康診断証':                  {ruby:'<ruby>健康診断証<rt>けんこうしんだんしょう</rt></ruby>',en:'Medical Certificate',vi:'Giấy khám sức khỏe',id:'Sertifikat Kesehatan',ko:'건강진단서',zh:'健康诊断证',th:'ใบรับรองสุขภาพ',km:'វិញ្ញាបនបត្រសុខភាព'},
+  // ── 試験合格証 ──
+  '合格証（技能）':               {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>技能<rt>ぎのう</rt></ruby>）',en:'Certificate (Skills Test)',vi:'Chứng chỉ (Kỳ thi kỹ năng)',id:'Sertifikat (Uji Keterampilan)',my:'အောင်လက်မှတ်(ကျွမ်းကျင်မှု)',ko:'합격증 (기능시험)',ne:'प्रमाणपत्र (सीप परीक्षा)',zh:'合格证（技能考试）',th:'ใบรับรอง (ทักษะ)',km:'វិញ្ញាបនបត្រ (ជំនាញ)',mn:'Гэрчилгээ (ур чадварын)',si:'සහතිකය (කුසලතා)'},
+  '合格証（技能試験）':           {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>技能試験<rt>ぎのうしけん</rt></ruby>）',en:'Certificate (Skills Test)',vi:'Chứng chỉ (Kỳ thi kỹ năng)',id:'Sertifikat (Uji Keterampilan)',ko:'합격증 (기능시험)',zh:'合格证（技能考试）',th:'ใบรับรอง (สอบทักษะ)',km:'វិញ្ញាបនបត្រ (ប្រឡងជំនាញ)'},
+  '合格証（日本語）':             {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>日本語<rt>にほんご</rt></ruby>）',en:'Certificate (Japanese)',vi:'Chứng chỉ (Tiếng Nhật)',id:'Sertifikat (Bahasa Jepang)',my:'အောင်လက်မှတ်(ဂျပန်ဘာသာ)',ko:'합격증 (일본어)',ne:'प्रमाणपत्र (जापानी भाषा)',zh:'合格证（日语）',th:'ใบรับรอง (ภาษาญี่ปุ่น)',km:'វិញ្ញាបនបត្រ (ភាសាជប៉ុន)',mn:'Гэрчилгээ (япон хэл)',si:'සහතිකය (ජපන් භාෂාව)'},
+  '合格証（専門級・3級）':       {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>専門級<rt>せんもんきゅう</rt></ruby>・3<ruby>級<rt>きゅう</rt></ruby>）',en:'Certificate (Specialist/Level 3)',vi:'Chứng chỉ (Chuyên ngành/Cấp 3)',id:'Sertifikat (Spesialis/Level 3)',ko:'합격증 (전문급·3급)',zh:'合格证（专项级·3级）',th:'ใบรับรอง (เฉพาะทาง/ระดับ 3)',km:'វិញ្ញាបនបត្រ (កម្រិតឯកទេស/កម្រិត3)'},
+  '専門級':                      {ruby:'<ruby>専門級<rt>せんもんきゅう</rt></ruby>',en:'Specialist Level',vi:'Cấp chuyên ngành',id:'Tingkat Spesialis',my:'အထူးပြုအဆင့်',ko:'전문급',ne:'विशेष तह',zh:'专项级',th:'ระดับเฉพาะทาง',km:'កម្រិតឯកទេស',mn:'Мэргэжлийн зэрэг',si:'විශේෂඥ මට්ටම'},
+  '技能実習の合格証':             {ruby:'<ruby>技能実習<rt>ぎのうじっしゅう</rt></ruby>の<ruby>合格証<rt>ごうかくしょう</rt></ruby>',en:'Technical Intern Training Certificate',vi:'Chứng chỉ thực tập kỹ năng',id:'Sertifikat Pemagangan Teknis',ko:'기능실습 합격증',zh:'技能实习合格证',th:'ใบรับรองฝึกงานทักษะ',km:'វិញ្ញាបនបត្រកម្មសិក្សាជំនាញ'},
+  // ── 税関係 ──
+  '所得・課税証明書':             {ruby:'<ruby>所得<rt>しょとく</rt></ruby>・<ruby>課税証明書<rt>かぜいしょうめいしょ</rt></ruby>',en:'Income/Taxation Certificate',vi:'Giấy chứng nhận thu nhập/thuế',id:'Surat Keterangan Penghasilan/Pajak',my:'ဝင်ငွေ/အခွန်လက်မှတ်',ko:'소득·과세증명서',ne:'आय/कर प्रमाणपत्र',zh:'收入·课税证明',th:'ใบรับรองรายได้/ภาษี',km:'វិញ្ញាបនបត្រប្រាក់ចំណូល/ពន្ធ',mn:'Орлого/татварын тодорхойлолт',si:'ආදායම්/බදු සහතිකය'},
+  '課税証明書':                  {ruby:'<ruby>課税証明書<rt>かぜいしょうめいしょ</rt></ruby>',en:'Taxation Certificate',vi:'Giấy chứng nhận thuế',id:'Surat Keterangan Pajak',ko:'과세증명서',zh:'课税证明',th:'ใบรับรองภาษี',km:'វិញ្ញាបនបត្រពន្ធ'},
+  '納税証明書':                  {ruby:'<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>',en:'Tax Payment Certificate',vi:'Giấy chứng nhận nộp thuế',id:'Bukti Pembayaran Pajak',my:'အခွန်ပေးဆောင်ပြီးကြောင်းလက်မှတ်',ko:'납세증명서',ne:'कर तिर्ने प्रमाणपत्र',zh:'纳税证明',th:'ใบรับรองการชำระภาษี',km:'វិញ្ញាបនបត្របង់ពន្ធ',mn:'Татвар төлсний тодорхойлолт',si:'බදු ගෙවීමේ සහතිකය'},
+  '源泉徴収票':                  {ruby:'<ruby>源泉徴収票<rt>げんせんちょうしゅうひょう</rt></ruby>',en:'Withholding Tax Statement',vi:'Phiếu khấu trừ thuế',id:'Slip Pemotongan Pajak',my:'အခွန်ဖြတ်တောက်လွှာ',ko:'원천징수영수증',ne:'स्रोत कर कट्टी विवरण',zh:'扣缴凭证',th:'ใบหักภาษี ณ ที่จ่าย',km:'របាយការណ៍ដកពន្ធទុក',mn:'Татварын суутгалын баримт',si:'උපුටාගත් බදු ප්‍රකාශය'},
+  // ── 保険・年金関係 ──
+  '健康保険証':                  {ruby:'<ruby>健康保険証<rt>けんこうほけんしょう</rt></ruby>',en:'Health Insurance Card',vi:'Thẻ bảo hiểm y tế',id:'Kartu Asuransi Kesehatan',ko:'건강보험증',zh:'健康保险证',th:'บัตรประกันสุขภาพ',km:'កាតធានារ៉ាប់រងសុខភាព'},
+  '国民健康保険被保険者証':       {ruby:'<ruby>国民健康保険被保険者証<rt>こくみんけんこうほけんひほけんしゃしょう</rt></ruby>',en:'National Health Insurance Card',vi:'Thẻ bảo hiểm y tế quốc dân',id:'Kartu Asuransi Kesehatan Nasional',ko:'국민건강보험증',zh:'国民健康保险被保险者证',th:'บัตรประกันสุขภาพแห่งชาติ',km:'កាតធានារ៉ាប់រងសុខភាពជាតិ'},
+  '国民健康保険料納付証明書':     {ruby:'<ruby>国民健康保険料納付証明書<rt>こくみんけんこうほけんりょうのうふしょうめいしょ</rt></ruby>',en:'National Health Insurance Payment Certificate',vi:'Giấy chứng nhận đóng bảo hiểm y tế quốc dân',id:'Bukti Pembayaran Asuransi Kesehatan Nasional',ko:'국민건강보험료 납부증명서',zh:'国民健康保险费缴费证明',th:'ใบรับรองการชำระค่าประกันสุขภาพแห่งชาติ',km:'វិញ្ញាបនបត្របង់ប្រាក់ធានារ៉ាប់រងសុខភាពជាតិ'},
+  '国民健康保険料（税）納付証明書':{ruby:'<ruby>国民健康保険料<rt>こくみんけんこうほけんりょう</rt></ruby>（<ruby>税<rt>ぜい</rt></ruby>）<ruby>納付証明書<rt>のうふしょうめいしょ</rt></ruby>',en:'National Health Insurance Premium (Tax) Payment Certificate',vi:'Giấy chứng nhận nộp phí (thuế) bảo hiểm y tế quốc dân',id:'Bukti Pembayaran Iuran (Pajak) Asuransi Kesehatan Nasional',ko:'국민건강보험료(세) 납부증명서',zh:'国民健康保险费(税)缴费证明',th:'ใบรับรองการชำระค่า(ภาษี)ประกันสุขภาพแห่งชาติ',km:'វិញ្ញាបនបត្របង់ប្រាក់(ពន្ធ)ធានារ៉ាប់រងសុខភាពជាតិ'},
+  '年金手帳':                    {ruby:'<ruby>年金手帳<rt>ねんきんてちょう</rt></ruby>',en:'Pension Booklet',vi:'Sổ hưu trí',id:'Buku Pensiun',my:'အငြိမ်းစားလက်စွဲ',ko:'연금수첩',ne:'पेन्सन पुस्तिका',zh:'养老金手册',th:'สมุดบำนาญ',km:'សៀវភៅសោធននិវត្តន៍',mn:'Тэтгэврийн дэвтэр',si:'විශ්‍රාම වැටුප් පොත'},
+  '資格確認書':                  {ruby:'<ruby>資格確認書<rt>しかくかくにんしょ</rt></ruby>',en:'Qualification Confirmation Document',vi:'Giấy xác nhận tư cách',id:'Surat Konfirmasi Kualifikasi',ko:'자격확인서',zh:'资格确认书',th:'หนังสือยืนยันคุณสมบัติ',km:'លិខិតបញ្ជាក់សិទ្ធិ'},
+  '被保険者記録照会回答票':       {ruby:'<ruby>被保険者記録照会回答票<rt>ひほけんしゃきろくしょうかいかいとうひょう</rt></ruby>',en:'Insured Person Record Inquiry Response',vi:'Phiếu trả lời tra cứu hồ sơ người được bảo hiểm',id:'Tanggapan Permintaan Catatan Tertanggung',ko:'피보험자 기록조회 회답표',zh:'被保险人记录查询回答表',th:'แบบตอบสอบถามบันทึกผู้เอาประกัน',km:'លិខិតឆ្លើយតបការសាកសួរកំណត់ត្រាអ្នកត្រូវបានធានារ៉ាប់រង'},
+  '被保険者記録照会回答表':       {ruby:'<ruby>被保険者記録照会回答表<rt>ひほけんしゃきろくしょうかいかいとうひょう</rt></ruby>',en:'Insured Person Record Inquiry Response',vi:'Bảng trả lời tra cứu hồ sơ người được bảo hiểm',id:'Tabel Tanggapan Catatan Tertanggung',ko:'피보험자 기록조회 회답표',zh:'被保险人记录查询回答表',th:'ตารางตอบสอบถามบันทึกผู้เอาประกัน',km:'តារាងឆ្លើយតបការសាកសួរកំណត់ត្រាអ្នកធានារ៉ាប់រង'},
+  '被保険者記録照会（納付Ⅱ）':   {ruby:'<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>（<ruby>納付<rt>のうふ</rt></ruby>Ⅱ）',en:'Insured Person Record Inquiry (Payment II)',vi:'Tra cứu hồ sơ người được bảo hiểm (Thanh toán II)',id:'Permintaan Catatan Tertanggung (Pembayaran II)',ko:'피보험자 기록조회 (납부Ⅱ)',zh:'被保险人记录查询(缴付Ⅱ)',th:'การสอบถามบันทึกผู้เอาประกัน (ชำระII)',km:'ការសាកសួរកំណត់ត្រាអ្នកធានារ៉ាប់រង(បង់Ⅱ)'},
+  '被保険者記録照会(納付Ⅱ)':     {ruby:'<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>(<ruby>納付<rt>のうふ</rt></ruby>Ⅱ)',en:'Insured Person Record Inquiry (Payment II)',vi:'Tra cứu hồ sơ người được bảo hiểm (Thanh toán II)',ko:'피보험자 기록조회(납부Ⅱ)',zh:'被保险人记录查询(缴付Ⅱ)',km:'ការសាកសួរកំណត់ត្រាអ្នកធានារ៉ាប់រង(បង់Ⅱ)'},
+  // ── 学歴関係 ──
+  '卒業証明書':                  {ruby:'<ruby>卒業証明書<rt>そつぎょうしょうめいしょ</rt></ruby>',en:'Graduation Certificate',vi:'Bằng tốt nghiệp',id:'Ijazah',my:'ဘွဲ့လက်မှတ်',ko:'졸업증명서',ne:'स्नातक प्रमाणपत्र',zh:'毕业证明书',th:'ใบรับรองจบการศึกษา',km:'វិញ្ញាបនបត្របញ្ចប់ការសិក្សា',mn:'Төгссөн тухай гэрчилгээ',si:'උපාධි සහතිකය'},
+  '卒業証明書（または卒業見込証明書）':{ruby:'<ruby>卒業証明書<rt>そつぎょうしょうめいしょ</rt></ruby>（または<ruby>卒業見込証明書<rt>そつぎょうみこみしょうめいしょ</rt></ruby>）',en:'Graduation Certificate (or Expected Graduation Certificate)',vi:'Bằng tốt nghiệp (hoặc Giấy chứng nhận sắp tốt nghiệp)',id:'Ijazah (atau Surat Keterangan Akan Lulus)',ko:'졸업증명서 (또는 졸업예정증명서)',zh:'毕业证明书（或预计毕业证明书）',th:'ใบรับรองจบการศึกษา (หรือใบคาดว่าจะจบ)',km:'វិញ្ញាបនបត្របញ្ចប់ការសិក្សា (ឬរំពឹងបញ្ចប់)'},
+  '成績証明書':                  {ruby:'<ruby>成績証明書<rt>せいせきしょうめいしょ</rt></ruby>',en:'Academic Transcript',vi:'Bảng điểm',id:'Transkrip Nilai',my:'အမှတ်လက်မှတ်',ko:'성적증명서',ne:'अंकपत्र',zh:'成绩单',th:'ใบรับรองผลการเรียน',km:'សន្លឹកពិន្ទុ',mn:'Үнэлгээний тодорхойлолт',si:'ශාස්ත්‍රීය පිටපත'},
+  '出席証明書':                  {ruby:'<ruby>出席証明書<rt>しゅっせきしょうめいしょ</rt></ruby>',en:'Attendance Certificate',vi:'Giấy chứng nhận đi học',id:'Surat Keterangan Kehadiran',ko:'출석증명서',zh:'出席证明书',th:'ใบรับรองการเข้าเรียน',km:'វិញ្ញាបនបត្រវត្តមាន'},
+  // ── 推薦関係 ──
+  '大使館推薦票':                {ruby:'<ruby>大使館推薦票<rt>たいしかんすいせんひょう</rt></ruby>',en:'Embassy Recommendation Letter',vi:'Giấy giới thiệu của Đại sứ quán',id:'Surat Rekomendasi Kedutaan',ko:'대사관 추천서',zh:'大使馆推荐书',th:'หนังสือแนะนำสถานทูต',km:'លិខិតណែនាំស្ថានទូត'},
+  '推薦状（送出機関）':          {ruby:'<ruby>推薦状<rt>すいせんじょう</rt></ruby>（<ruby>送出機関<rt>そうしゅつきかん</rt></ruby>）',en:'Recommendation Letter (Sending Agency)',vi:'Giấy giới thiệu (Cơ quan phái cử)',id:'Surat Rekomendasi (Lembaga Pengirim)',ko:'추천장 (송출기관)',zh:'推荐书（派遣机构）',th:'หนังสือแนะนำ (หน่วยงานส่งออก)',km:'លិខិតណែនាំ (ស្ថាប័នបញ្ជូន)'},
+  '推薦票':                      {ruby:'<ruby>推薦票<rt>すいせんひょう</rt></ruby>',en:'Recommendation',vi:'Phiếu giới thiệu',id:'Rekomendasi',ko:'추천표',zh:'推荐票',km:'សន្លឹកណែនាំ'},
+  '無犯罪証明書（カンボジア）':  {ruby:'<ruby>無犯罪証明書<rt>むはんざいしょうめいしょ</rt></ruby>（カンボジア）',en:'Police Clearance Certificate (Cambodia)',vi:'Lý lịch tư pháp (Campuchia)',id:'SKCK (Kamboja)',ko:'무범죄증명서 (캄보디아)',zh:'无犯罪证明书（柬埔寨）',km:'លិខិតបញ្ជាក់គ្មានបទល្មើស (កម្ពុជា)'},
+  '無犯罪証明書（ミャンマー）':  {ruby:'<ruby>無犯罪証明書<rt>むはんざいしょうめいしょ</rt></ruby>（ミャンマー）',en:'Police Clearance Certificate (Myanmar)',vi:'Lý lịch tư pháp (Myanmar)',id:'SKCK (Myanmar)',ko:'무범죄증명서 (미얀마)',zh:'无犯罪证明书（缅甸）',my:'ပြစ်မှုကင်းရှင်းကြောင်းလက်မှတ်(မြန်မာ)',km:'លិខិតបញ្ជាក់គ្មានបទល្មើស (មីយ៉ាន់ម៉ា)'},
+  // ── その他人材書類 ──
+  '住民票':                      {ruby:'<ruby>住民票<rt>じゅうみんひょう</rt></ruby>',en:'Residence Certificate',vi:'Giấy chứng nhận cư trú',id:'Surat Keterangan Domisili',my:'နေထိုင်ခွင့်လက်မှတ်',ko:'주민표',ne:'बसोबास प्रमाणपत्र',zh:'住民票',th:'ทะเบียนบ้าน',km:'លិខិតបញ្ជាក់ទីលំនៅ',mn:'Оршин суугчийн гэрчилгээ',si:'පදිංචිකරුවා සහතිකය'},
+  '技能者ID':                    {ruby:'<ruby>技能者<rt>ぎのうしゃ</rt></ruby>ID',en:'Technician ID',vi:'ID kỹ thuật viên',id:'ID Teknisi',ko:'기능자 ID',zh:'技能者ID',th:'ID ช่างเทคนิค',km:'លេខសម្គាល់ជាងជំនាញ'},
+  'その他':                      {ruby:'その<ruby>他<rt>た</rt></ruby>',en:'Other',vi:'Khác',id:'Lainnya',my:'အခြား',ko:'기타',ne:'अन्य',zh:'其他',th:'อื่นๆ',km:'ផ្សេងទៀត',mn:'Бусад',si:'වෙනත්'}
 };
+
+// 旧ロジック用（USE_NEW_DOCS=false のときだけ使用）
+const ALL_DOCS = [
+  {key:'zairyu_front',tags:['在留カード']},
+  {key:'zairyu_back',tags:['在留カード']},
+  {key:'passport',tags:['パスポート']},
+  {key:'cert_jp',tags:['合格証（日本語）']},
+  {key:'cert_skill',tags:['合格証（技能）']},
+  {key:'cert_specialist',tags:['合格証（専門級・3級）']},
+  {key:'tax_cert',tags:['所得・課税証明書']},
+  {key:'tax_payment',tags:['納税証明書']},
+  {key:'withholding',tags:['源泉徴収票']},
+  {key:'medical',tags:['健康診断票']},
+  {key:'mugshot',tags:['顔写真']},
+  {key:'health_ins',tags:['健康保険証']},
+  {key:'health_ins_cert',tags:['国民健康保険料納付証明書']},
+  {key:'graduation',tags:['卒業証明書']},
+  {key:'transcript',tags:['成績証明書']},
+  {key:'nenkin',tags:['年金手帳']},
+  {key:'embassy_rec',tags:['大使館推薦票']},
+  {key:'juminhyo',tags:['住民票']},
+  {key:'other',tags:[]},
+];
+const REQUIRED_RULES = {
+  '更新':['顔写真','所得・課税証明書','納税証明書','源泉徴収票','在留カード','パスポート','合格証（技能）','合格証（日本語）'],
+  '変更':['顔写真','所得・課税証明書','納税証明書','源泉徴収票','在留カード','パスポート','合格証（技能）','合格証（日本語）','健康診断票'],
+  '認定':['顔写真','パスポート','合格証（技能）','合格証（日本語）','健康診断票'],
+};
+const RYUGAKU_RULES = {
+  '更新':[],
+  '変更':['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帳'],
+  '認定':['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帳'],
+};
+function isDocSkipped(doc) {
+  if (!SKIP_DOCS.length || !doc.tags.length) return false;
+  return doc.tags.some(tag => SKIP_DOCS.some(s => s.indexOf(tag) >= 0 || tag.indexOf(s) >= 0));
+}
+function getDocPattern() {
+  const at = APP_TYPE;
+  if (at === '更新') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'optional',cert_skill:'optional',cert_specialist:'hidden',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:'hidden',health_ins_cert:'hidden',graduation:'hidden',transcript:'hidden',nenkin:'hidden',embassy_rec:'hidden',juminhyo:'optional',other:'optional'};
+  if (at === '変更') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'hidden',juminhyo:'optional',other:'optional'};
+  if (at === '認定') return {zairyu_front:'hidden',zairyu_back:'hidden',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'hidden',tax_payment:'hidden',withholding:'hidden',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'hidden',juminhyo:'optional',other:'optional'};
+  return Object.fromEntries(ALL_DOCS.map(d => [d.key,'optional']));
+}
+function getRequiredTags() {
+  if (!APP_TYPE) return null;
+  return (REQUIRED_RULES[APP_TYPE]||[]).concat(IS_RYUGAKU?(RYUGAKU_RULES[APP_TYPE]||[]):[]);
+}
+function getDocKeys() {
+  const required = getRequiredTags();
+  const pattern = APP_TYPE ? getDocPattern() : null;
+  if (!required) return ALL_DOCS.filter(doc => !isDocSkipped(doc)).map(d => d.key);
+  return ALL_DOCS.filter(doc => {
+    if (doc.key === 'other') return true;
+    if (!doc.tags.length) return false;
+    if (isDocSkipped(doc)) return false;
+    // patternでoptionalのものも表示
+    if (pattern && pattern[doc.key] === 'optional') return true;
+    // hiddenは除外
+    if (pattern && pattern[doc.key] === 'hidden') return false;
+    return doc.tags.some(tag => required.some(r => r.indexOf(tag) >= 0 || tag.indexOf(r) >= 0));
+  }).map(d => d.key);
+}
+// ver.20260525.01: docs パラメータがあれば新ロジック、なければ旧ロジック
+// ver.20260525.34: DBキャッシュから取得した場合も新ロジックを使う（_initDocKeys を _loadDocsFromCache 完了後に呼ぶ）
+let DOC_KEYS, DOC_LABELS_JA, DOC_REQUIRED, DOC_DONE;
+function _initDocKeys(){
+  if (USE_NEW_DOCS) {
+    // 新ロジック: DOCS_LIST = [{l: '書類名', r: 1}, ...]
+    DOC_KEYS = DOCS_LIST.map(function(d, i){ return 'd' + i; });
+    DOC_LABELS_JA = {};
+    DOC_REQUIRED = {};
+    DOC_DONE = {};
+    DOCS_LIST.forEach(function(d, i){
+      var key = 'd' + i;
+      // docs要素が文字列（['書類名',...]）の場合も書類名として扱う（後方互換: d0/d1表示防止）
+      if (typeof d === 'string') { d = { l: d, r: 1 }; }
+      DOC_LABELS_JA[key] = d.l || '';
+      DOC_REQUIRED[key] = !!d.r;
+      DOC_DONE[key] = !!d.done;
+    });
+  } else {
+    // 旧ロジック
+    DOC_KEYS = getDocKeys();
+    DOC_LABELS_JA = null;  // 旧ロジックは LANGS[].docs[key] を使う
+    DOC_REQUIRED = null;
+    // ver.20260611.03: 旧モードでも doc_check の取得済み/不要をグレーアウト反映
+    var _ds = window._liveDoneSet || null;
+    if(_ds && typeof LANGS!=='undefined' && LANGS.ja && LANGS.ja.docs){
+      var _norm = function(s){ return String(s||'').replace(/[\s　_().（）\/・]/g,'').toLowerCase(); };
+      var _dsNorm = {}; Object.keys(_ds).forEach(function(n){ _dsNorm[_norm(n)] = true; });
+      DOC_DONE = {};
+      DOC_KEYS.forEach(function(key){
+        var ja = LANGS.ja.docs[key] || '';
+        if(!ja) return;
+        if(_ds[ja] || _dsNorm[_norm(ja)]) DOC_DONE[key] = true;
+        else {
+          // 部分一致（ラベル揺れ対策）
+          var nk=_norm(ja);
+          for(var dn in _dsNorm){ if(dn && nk && (dn.indexOf(nk)>=0 || nk.indexOf(dn)>=0)){ DOC_DONE[key]=true; break; } }
+        }
+      });
+    } else {
+      DOC_DONE = null;
+    }
+  }
+}
+_initDocKeys();
+
+const LANGS = {
+  ja:{label:'日本語',title:'書類アップロード',subtitle:'必要な書類の写真をアップロードしてください\n（不要な項目はスキップできます）',tapToAdd:'📷 タップして写真を追加',hint:'JPG / PNG / PDF',btnSubmit:'送信する',noFile:'未選択',selected:'選択済み ✓',msgSuccess:'✅ アップロード完了しました！\n担当者に届きました。',msgError:'❌ 送信に失敗しました。\nもう一度お試しください。',msgNoFile:'少なくとも1枚の写真を選択してください',docs:{zairyu_front:'在留カード（表）',zairyu_back:'在留カード（裏）',passport:'パスポート',cert_jp:'合格証（日本語）',cert_skill:'合格証（技能試験）',cert_specialist:'合格証（専門級・3級）',tax_payment:'納税証明書',tax_cert:'課税証明書',withholding:'源泉徴収票',medical:'健康診断証',mugshot:'顔写真',health_ins:'健康保険証',health_ins_cert:'国民健康保険料納付証明書',graduation:'卒業証明書',transcript:'成績証明書',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'その他'}},
+  en:{label:'English',title:'Document Upload',subtitle:'Please upload photos of required documents\n(You can skip items that are not needed)',tapToAdd:'📷 Tap to add photo',hint:'JPG / PNG / PDF',btnSubmit:'Submit',noFile:'Not selected',selected:'Selected ✓',msgSuccess:'✅ Upload complete!\nYour documents have been received.',msgError:'❌ Upload failed.\nPlease try again.',msgNoFile:'Please select at least one photo',docs:{zairyu_front:'Residence Card (Front)',zairyu_back:'Residence Card (Back)',passport:'Passport',cert_jp:'Certificate (Japanese)',cert_skill:'Certificate (Skills Test)',cert_specialist:'Certificate (Specialist/Level 3)',tax_payment:'Tax Payment Certificate',tax_cert:'Taxation Certificate',withholding:'Withholding Tax Statement',medical:'Medical Certificate',mugshot:'Photo',health_ins:'Health Insurance Card',health_ins_cert:'National Health Insurance Payment Certificate',graduation:'Graduation Certificate',transcript:'Academic Transcript',nenkin:'Pension Booklet',embassy_rec:'Embassy Recommendation Letter',juminhyo:'住民票',other:'Other'}},
+  vi:{label:'Tiếng Việt',title:'Tải lên tài liệu',subtitle:'Vui lòng tải ảnh các tài liệu cần thiết\n(Có thể bỏ qua các mục không cần thiết)',tapToAdd:'📷 Nhấn để thêm ảnh',hint:'JPG / PNG / PDF',btnSubmit:'Gửi',noFile:'Chưa chọn',selected:'Đã chọn ✓',msgSuccess:'✅ Tải lên thành công!\nTài liệu của bạn đã được nhận.',msgError:'❌ Tải lên thất bại.\nVui lòng thử lại.',msgNoFile:'Vui lòng chọn ít nhất một ảnh',docs:{zairyu_front:'Thẻ cư trú (Mặt trước)',zairyu_back:'Thẻ cư trú (Mặt sau)',passport:'Hộ chiếu',cert_jp:'Chứng chỉ (Tiếng Nhật)',cert_skill:'Chứng chỉ (Kỳ thi kỹ năng)',cert_specialist:'Chứng chỉ (Chuyên ngành/Cấp 3)',tax_payment:'Giấy chứng nhận nộp thuế',tax_cert:'Giấy chứng nhận thuế',withholding:'Phiếu khấu trừ thuế',medical:'Giấy khám sức khỏe',mugshot:'Ảnh',health_ins:'Thẻ bảo hiểm y tế',health_ins_cert:'Chứng nhận đóng bảo hiểm y tế',graduation:'Bằng tốt nghiệp',transcript:'Bảng điểm',nenkin:'Sổ hưu trí',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'Khác'}},
+  id:{label:'Indonesia',title:'Unggah Dokumen',subtitle:'Silakan unggah foto dokumen yang diperlukan\n(Item yang tidak diperlukan dapat dilewati)',tapToAdd:'📷 Ketuk untuk menambah foto',hint:'JPG / PNG / PDF',btnSubmit:'Kirim',noFile:'Belum dipilih',selected:'Dipilih ✓',msgSuccess:'✅ Unggah berhasil!\nDokumen Anda telah diterima.',msgError:'❌ Unggah gagal.\nSilakan coba lagi.',msgNoFile:'Silakan pilih setidaknya satu foto',docs:{zairyu_front:'Kartu Izin Tinggal (Depan)',zairyu_back:'Kartu Izin Tinggal (Belakang)',passport:'Paspor',cert_jp:'Sertifikat (Bahasa Jepang)',cert_skill:'Sertifikat (Uji Keterampilan)',cert_specialist:'Sertifikat (Spesialis/Level 3)',tax_payment:'Bukti Pembayaran Pajak',tax_cert:'Surat Keterangan Pajak',withholding:'Slip Pemotongan Pajak',medical:'Sertifikat Kesehatan',mugshot:'Foto',health_ins:'Kartu Asuransi Kesehatan',health_ins_cert:'Sertifikat Pembayaran Asuransi Kesehatan',graduation:'Ijazah',transcript:'Transkrip Nilai',nenkin:'Buku Pensiun',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'Lainnya'}},
+  my:{label:'မြန်မာ',title:'စာရွက်စာတမ်းတင်ရန်',subtitle:'လိုအပ်သောစာရွက်စာတမ်းများ၏ဓာတ်ပုံတင်ပါ\n(မလိုအပ်သောအရာများကိုကျော်နိုင်သည်)',tapToAdd:'📷 ဓာတ်ပုံထည့်ရန်နှိပ်ပါ',hint:'JPG / PNG / PDF',btnSubmit:'ပေးပို့ရန်',noFile:'မရွေးချယ်ရသေး',selected:'ရွေးချယ်ပြီး ✓',msgSuccess:'✅ တင်ခြင်းအောင်မြင်သည်!\nသင့်စာရွက်စာတမ်းကိုလက်ခံရရှိပြီ။',msgError:'❌ တင်ခြင်းမအောင်မြင်ပါ။\nထပ်မံကြိုးစားပါ။',msgNoFile:'ဓာတ်ပုံတစ်ပုံရွေးချယ်ပါ',docs:{zairyu_front:'နေထိုင်ခွင့်ကတ် (ရှေ့ဘက်)',zairyu_back:'နေထိုင်ခွင့်ကတ် (နောက်ဘက်)',passport:'နိုင်ငံကူးလက်မှတ်',cert_jp:'လက်မှတ် (ဂျပန်ဘာသာ)',cert_skill:'လက်မှတ် (ကျွမ်းကျင်မှုစာမေးပွဲ)',cert_specialist:'လက်မှတ် (ကျွမ်းကျင်ရည်မှန်း/အဆင့် 3)',tax_payment:'အခွန်ပေးဆောင်မှုသက်သေခံ',tax_cert:'အခွန်သက်သေခံလက်မှတ်',withholding:'အခွန်နုတ်ယူသည့်ဖော်ပြချက်',medical:'ကျန်းမာရေးသက်သေခံ',mugshot:'ဒာတ်ပုံ',health_ins:'ကျန်မာရေးကာတ်',health_ins_cert:'မှတ်တမ်',graduation:'ဘွဲ့လက်မှတ်',transcript:'ကျောင်းမှတ်တမ်း',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'အခြား'}},
+  ko:{label:'한국어',title:'서류 업로드',subtitle:'필요한 서류의 사진을 업로드해 주세요\n(불필요한 항목은 건너뛸 수 있습니다)',tapToAdd:'📷 탭하여 사진 추가',hint:'JPG / PNG / PDF',btnSubmit:'제출',noFile:'미선택',selected:'선택됨 ✓',msgSuccess:'✅ 업로드 완료!\n담당자에게 전달되었습니다.',msgError:'❌ 업로드 실패.\n다시 시도해 주세요.',msgNoFile:'사진을 최소 한 장 선택해 주세요',docs:{zairyu_front:'재류카드 (앞면)',zairyu_back:'재류카드 (뒷면)',passport:'여권',cert_jp:'합격증 (일본어)',cert_skill:'합격증 (기능시험)',cert_specialist:'합격증 (전문급·3급)',tax_payment:'납세증명서',tax_cert:'과세증명서',withholding:'원천징수영수증',medical:'건강진단서',mugshot:'사진',health_ins:'건강보험증',health_ins_cert:'국민건강보험료 납부증명서',graduation:'졸업증명서',transcript:'성적증명서',nenkin:'연금수첩',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'기타'}},
+  ne:{label:'नेपाली',title:'कागजात अपलोड',subtitle:'आवश्यक कागजातको फोटो अपलोड गर्नुहोस्\n(अनावश्यक वस्तुहरू छोड्न सकिन्छ)',tapToAdd:'📷 फोटो थप्न थिच्नुहोस्',hint:'JPG / PNG / PDF',btnSubmit:'पेश गर्नुहोस्',noFile:'छनोट गरिएको छैन',selected:'छनोट भयो ✓',msgSuccess:'✅ अपलोड सफल भयो!\nतपाईंको कागजात प्राप्त भयो।',msgError:'❌ अपलोड असफल भयो।\nपुनः प्रयास गर्नुहोस्।',msgNoFile:'कम्तीमा एउटा फोटो छनोट गर्नुहोस्',docs:{zairyu_front:'आवास कार्ड (अगाडि)',zairyu_back:'आवास कार्ड (पछाडि)',passport:'राहदानी',cert_jp:'प्रमाणपत्र (जापानी भाषा)',cert_skill:'प्रमाणपत्र (सीप परीक्षण)',cert_specialist:'प्रमाणपत्र (विशेषज्ञ/स्तर ३)',tax_payment:'कर तिरेको प्रमाणपत्र',tax_cert:'कर प्रमाणपत्र',withholding:'स्रोतमा कर कटौती विवरण',medical:'स्वास्थ्य परीक्षण प्रमाणपत्र',mugshot:'फोटो',health_ins:'स्वास्थ्य बिमा कार्ड',health_ins_cert:'राष्ट्रिय स्वास्थ्य बिमा भुक्तानी प्रमाणपत्र',graduation:'उपाधि',transcript:'अङ्कतालिका',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'अन्य'}},
+  zh:{label:'中文',title:'文件上传',subtitle:'请上传所需文件的照片\n（不需要的项目可以跳过）',tapToAdd:'📷 点击添加照片',hint:'JPG / PNG / PDF',btnSubmit:'提交',noFile:'未选择',selected:'已选择 ✓',msgSuccess:'✅ 上传成功！\n您的文件已收到。',msgError:'❌ 上传失败。\n请重试。',msgNoFile:'请至少选择一张照片',docs:{zairyu_front:'居留卡（正面）',zairyu_back:'居留卡（背面）',passport:'护照',cert_jp:'合格证（日语）',cert_skill:'合格证（技能考试）',cert_specialist:'合格证（专项级·3级）',tax_payment:'纳税证明',tax_cert:'课税证明',withholding:'扣缴凭证',medical:'健康诊断证明',mugshot:'照片',health_ins:'健康保险证',health_ins_cert:'国民健康保险缴费证明',graduation:'毕业证明书',transcript:'成绩单',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'其他'}},
+  th:{label:'ไทย',title:'อัปโหลดเอกสาร',subtitle:'กรุณาอัปโหลดรูปภาพเอกสารที่จำเป็น\n(สามารถข้ามรายการที่ไม่จำเป็นได้)',tapToAdd:'📷 แตะเพื่อเพิ่มรูปภาพ',hint:'JPG / PNG / PDF',btnSubmit:'ส่ง',noFile:'ยังไม่ได้เลือก',selected:'เลือกแล้ว ✓',msgSuccess:'✅ อัปโหลดสำเร็จ!\nได้รับเอกสารของคุณแล้ว',msgError:'❌ อัปโหลดล้มเหลว\nกรุณาลองใหม่อีกครั้ง',msgNoFile:'กรุณาเลือกรูปภาพอย่างน้อยหนึ่งภาพ',docs:{zairyu_front:'บัตรถิ่นที่อยู่ (ด้านหน้า)',zairyu_back:'บัตรถิ่นที่อยู่ (ด้านหลัง)',passport:'หนังสือเดินทาง',cert_jp:'ใบรับรอง (ภาษาญี่ปุ่น)',cert_skill:'ใบรับรอง (การสอบทักษะ)',cert_specialist:'ใบรับรอง (ผู้เชี่ยวชาญ/ระดับ 3)',tax_payment:'ใบรับรองการชำระภาษี',tax_cert:'ใบรับรองภาษี',withholding:'ใบหักภาษี ณ ที่จ่าย',medical:'ใบรับรองสุขภาพ',mugshot:'รูปถ่าย',health_ins:'บัตรประกันสุขภาพ',health_ins_cert:'ใบรับรองการชำระประกันสุขภาพ',graduation:'ใบประกาศนียบัตร',transcript:'ผลการเรียน',nenkin:'สมุดบัญชีเงินบำนาญชรา',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'อื่นๆ'}},
+  km:{label:'ខ្មែរ',title:'បង្ហោះឯកសារ',subtitle:'សូមបង្ហោះរូបថតឯកសារដែលត្រូវការ\n(អ្នកអាចរំលងធាតុដែលមិនចាំបាច់)',tapToAdd:'📷 ចុចដើម្បីបន្ថែមរូបថត',hint:'JPG / PNG / PDF',btnSubmit:'បញ្ជូន',noFile:'មិនទាន់ជ្រើសរើស',selected:'បានជ្រើសរើស ✓',msgSuccess:'✅ បង្ហោះបានជោគជ័យ!\nឯកសាររបស់អ្នកត្រូវបានទទួល។',msgError:'❌ បង្ហោះបានបរាជ័យ។\nសូមព្យាយាមម្តងទៀត។',msgNoFile:'សូមជ្រើសរើសរូបថតយ៉ាងហោចណាស់មួយ',docs:{zairyu_front:'កាតស្នាក់នៅ (ខាងមុខ)',zairyu_back:'កាតស្នាក់នៅ (ខាងក្រោយ)',passport:'លិខិតឆ្លងដែន',cert_jp:'វិញ្ញាបនបត្រ (ភាសាជប៉ុន)',cert_skill:'វិញ្ញាបនបត្រ (ការប្រឡងជំនាញ)',cert_specialist:'វិញ្ញាបនបត្រ (ថ្នាក់ជំនាញ/កម្រិត 3)',tax_payment:'វិញ្ញាបនបត្របង់ពន្ធ',tax_cert:'វិញ្ញាបនបត្រពន្ធ',withholding:'លិខិតកាត់ពន្ធ',medical:'វិញ្ញាបនបត្រសុខភាព',mugshot:'រូបថត',health_ins:'កាតប្រកញសុខភាព',health_ins_cert:'វិញ្ញាបនបត្របង់ប្រកញសុខ',graduation:'សញ្ញាបត្រ',transcript:'លត្តផល',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'ផ្សេងទៀត'}},
+  mn:{label:'Монгол',title:'Баримт бичиг байршуулах',subtitle:'Шаардлагатай баримт бичгийн зургийг байршуулна уу\n(Шаардлагагүй зүйлийг алгасаж болно)',tapToAdd:'📷 Зураг нэмэхийн тулд дарна уу',hint:'JPG / PNG / PDF',btnSubmit:'Илгээх',noFile:'Сонгоогүй',selected:'Сонгосон ✓',msgSuccess:'✅ Байршуулалт амжилттай!\nТаны баримт бичиг хүлээн авагдлаа.',msgError:'❌ Илгээхэд алдаа гарлаа.\nДахин оролдоно уу.',msgNoFile:'Дор хаяж нэг зураг сонгоно уу',docs:{zairyu_front:'Оршин суух карт (Урд тал)',zairyu_back:'Оршин суух карт (Арын тал)',passport:'Паспорт',cert_jp:'Гэрчилгээ (Япон хэл)',cert_skill:'Гэрчилгээ (Ур чадварын шалгалт)',cert_specialist:'Гэрчилгээ (Мэргэжлийн/3-р түвшин)',tax_payment:'Татвар төлсний гэрчилгээ',tax_cert:'Татварын гэрчилгээ',withholding:'Татварын тодорхойлолт',medical:'Эрүүл мэндийн гэрчилгээ',mugshot:'Зураг',health_ins:'Даатгалын карт',health_ins_cert:'Даатгалын төлбөрийн тодорхойлолт',graduation:'Дипломын гэрчилгээ',transcript:'Дүнгийн гэрчилгээ',nenkin:'Тэтгэврийн дэвтэр',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'Бусад'}},
+  si:{label:'සිංහල',title:'ලේඛන උඩුගත කිරීම',subtitle:'අවශ්‍ය ලේඛනවල ඡායාරූප උඩුගත කරන්න\n(අනවශ්‍ය අයිතම මඟ හැරිය හැකිය)',tapToAdd:'📷 ඡායාරූප එකතු කිරීමට තට්ටු කරන්න',hint:'JPG / PNG / PDF',btnSubmit:'යොමු කරන්න',noFile:'තෝරා නැත',selected:'තෝරා ඇත ✓',msgSuccess:'✅ උඩුගත කිරීම සාර්ථකයි!\nඔබේ ලේඛන ලැබී ඇත.',msgError:'❌ උඩුගත කිරීම අසාර්ථකයි.\nනැවත උත්සාහ කරන්න.',msgNoFile:'අවම වශයෙන් ඡායාරූපයක් තෝරන්න',docs:{zairyu_front:'පදිංචිකාර්ඩ් (ඉදිරිපස)',zairyu_back:'පදිංචිකාර්ඩ් (පිටුපස)',passport:'ගමන් බලපත්‍රය',cert_jp:'සහතිකය (ජපන් භාෂාව)',cert_skill:'සහතිකය (කුසලතා විභාගය)',cert_specialist:'සහතිකය (විශේෂඥ/මට්ටම 3)',tax_payment:'බදු ගෙවීමේ සහතිකය',tax_cert:'බදු සහතිකය',withholding:'රඳවා ගත් බදු ප්‍රකාශය',medical:'වෛද්‍ය සහතිකය',mugshot:'ජායාරූපය',health_ins:'සෞඛ්‍ය රක්ෂණ කාඩ්පත',health_ins_cert:'ජාතික සෞඛ්‍ය රක්ෂණ ගෙවීම් සහතිකය',graduation:'උපාධි සහතිකය',transcript:'ශ්‍රේණි ලිපිය',nenkin:'විශ්‍රාම වේතන පොත',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'වෙනත්'}},
+};
+const LANG_ORDER = ['ja','en','vi','id','my','ko','ne','zh','th','km','mn','si'];
+let currentLang = 'ja';
+const fileData = {};
+const langBar = document.getElementById('langBar');
+const fieldsList = document.getElementById('fieldsList');
+const submitBtn = document.getElementById('submitBtn');
+const progressWrap = document.getElementById('progressWrap');
+const progressBar = document.getElementById('progressBar');
+const statusMsg = document.getElementById('statusMsg');
+
+LANG_ORDER.forEach(code => {
+  if (!LANGS[code]) return;
+  const btn = document.createElement('button');
+  btn.className = 'lang-btn' + (code === 'ja' ? ' active' : '');
+  btn.textContent = LANGS[code].label;
+  btn.addEventListener('click', () => setLang(code));
+  langBar.appendChild(btn);
+});
 
 // ===== サンプル画像（💡見本ボタン用、URLはダミー、本番用は後で差し替え） =====
 // 全書類17種類分のサンプル画像URLマップ。多言語の補足説明＋取得場所も含む。
@@ -494,6 +712,30 @@ const DOC_SAMPLES = {
   },
 };
 
+// 書類名(日本語ラベル) → サンプルキー 変換。新ロジックでは key が 'd0','d1'... なので
+// DOC_LABELS_JA[key] の日本語ラベルから DOC_SAMPLES のキーを引き当てる。
+const DOC_NAME2KEY = {
+ 'パスポート':'passport',
+ '在留カード（表）':'zairyu_front','在留カード（裏）':'zairyu_back','在留カード':'zairyu_front',
+ '顔写真':'mugshot',
+ '健康診断票':'medical','健康診断証':'medical','健康診断書':'medical',
+ '合格証（技能）':'cert_skill','合格証（技能試験）':'cert_skill',
+ '合格証（日本語）':'cert_jp',
+ '専門級':'cert_specialist','合格証（専門級・3級）':'cert_specialist','合格証（専門級）':'cert_specialist',
+ '所得・課税証明書':'tax_cert','課税証明書':'tax_cert',
+ '納税証明書':'tax_payment',
+ '源泉徴収票':'withholding',
+ '健康保険証':'health_ins',
+ '国民健康保険料納付証明書':'health_ins_cert','国民健康保険料納付証明':'health_ins_cert',
+ '卒業証明書':'graduation','成績証明書':'transcript','年金手帳':'nenkin','大使館推薦票':'embassy_rec','住民票':'juminhyo'
+};
+function _sampleKey(key){
+  if (DOC_SAMPLES[key]) return key; // 旧ロジック: 既にサンプルキー
+  var ja = (DOC_LABELS_JA && DOC_LABELS_JA[key]) ? DOC_LABELS_JA[key]
+         : ((typeof LANGS!=='undefined' && LANGS.ja && LANGS.ja.docs && LANGS.ja.docs[key]) ? LANGS.ja.docs[key] : key);
+  return DOC_NAME2KEY[ja] || DOC_NAME2KEY[String(ja).replace(/[（(].*$/,'').trim()] || null;
+}
+
 // 💡見本ボタンクリック時にモーダル表示
 function showDocSample(docKey) {
   const sample = DOC_SAMPLES[docKey];
@@ -559,234 +801,84 @@ function showDocSample(docKey) {
   document.getElementById('docSampleCloseBtn').addEventListener('click', closeFn);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFn(); });
 }
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
-const urlParams = new URLSearchParams(window.location.search);
-const FOLDER_ID = urlParams.get('folder') || '';
-const CASE_ID = urlParams.get('case') || '';
-const APPLICANT_NAME = urlParams.get('name') ? decodeURIComponent(urlParams.get('name')) : '';
-const APP_TYPE = urlParams.get('appType') || '';
-const NATIONALITY = urlParams.get('nationality') || '';
-const IS_RYUGAKU = urlParams.get('ryugaku') === '1';
-// 旧パラメータ（後方互換）
-const SKIP_DOCS_RAW = urlParams.get('skipDocs') || '';
-const SKIP_DOCS = SKIP_DOCS_RAW ? decodeURIComponent(SKIP_DOCS_RAW).split(',').map(s => s.trim()).filter(Boolean) : [];
-// 新パラメータ（ver.20260525.01）: docs=BASE64URL(JSON [{l,r}])
-const DOCS_PARAM = urlParams.get('docs') || '';
-// base64url -> base64 -> UTF-8 文字列 -> JSON
-function _decodeDocsParam(s){
-  if(!s) return null;
-  try {
-    var b64 = s.replace(/-/g,'+').replace(/_/g,'/');
-    while(b64.length % 4) b64 += '=';
-    var bin = atob(b64);
-    var txt = decodeURIComponent(escape(bin));
-    var arr = JSON.parse(txt);
-    if(!Array.isArray(arr)) return null;
-    return arr;
-  } catch(e){
-    console.warn('docs param decode err:', e);
-    return null;
-  }
-}
-// ver.20260525.34: docs パラメータが長すぎてLINEでハイパーリンク化されない問題対応
-//   - docs パラメータが空でも CASE_ID があれば upload_docs_cache から取得する
-//   - これらは初期は null/false、_loadDocsFromCache() で確定
-let DOCS_LIST = _decodeDocsParam(DOCS_PARAM);
-let USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
 
-// Supabaseの upload_docs_cache から書類リストを取得
-const SUPABASE_URL_UPL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
-const SUPABASE_KEY_UPL = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
-function _uplRpc(fn, body){ return fetch(SUPABASE_URL_UPL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY_UPL,'Authorization':'Bearer '+SUPABASE_KEY_UPL}, body: JSON.stringify(body||{}) }); }
-function _loadDocsFromCache(){
-  return new Promise(function(resolve){
-    if(USE_NEW_DOCS){ resolve(DOCS_LIST); return; }  // URLパラメータ優先
-    if(!CASE_ID){ resolve(null); return; }
-    _uplRpc('upload_docs_cache_get', { p_case_id: CASE_ID, p_kind: 'person' })
-    .then(function(r){ return r.ok ? r.json() : null; }).then(function(docs){
-      if(docs && Array.isArray(docs) && docs.length){
-        DOCS_LIST = docs;
-        USE_NEW_DOCS = true;
-        resolve(DOCS_LIST);
-      } else {
-        resolve(null);
+// ver.20260616.02: 説明文（取得方法）にふりがな自動付与（ja表示時のみ・最長一致・絵文字保持）
+var FZ_EXP={
+ '出入国在留管理庁':'しゅつにゅうこくざいりゅうかんりちょう','特定技能評価試験':'とくていぎのうひょうかしけん','日本語能力試験':'にほんごのうりょくしけん',
+ '国民健康保険料':'こくみんけんこうほけんりょう','国民健康保険課':'こくみんけんこうほけんか','国民健康保険':'こくみんけんこうほけん',
+ '納税証明書':'のうぜいしょうめいしょ','課税証明書':'かぜいしょうめいしょ','年末調整後':'ねんまつちょうせいご','健康保険証':'けんこうほけんしょう',
+ '日本語学校':'にほんごがっこう','学校事務局':'がっこうじむきょく','成績証明書':'せいせきしょうめいしょ','年金事務所':'ねんきんじむしょ',
+ '取得方法':'しゅとくほうほう','技能実習':'ぎのうじっしゅう','住民登録':'じゅうみんとうろく','健康診断':'けんこうしんだん','提出写真':'ていしゅつしゃしん',
+ '試験団体':'しけんだんたい','発行団体':'はっこうだんたい','監理団体':'かんりだんたい','所属企業':'しょぞくきぎょう','評価調書':'ひょうかちょうしょ',
+ '人事担当':'じんじたんとう','認定申請':'にんていしんせい','更新申請':'こうしんしんせい','社会保険':'しゃかいほけん','年金手帳':'ねんきんてちょう',
+ '世帯全員':'せたいぜんいん','市区町村':'しくちょうそん','ヶ月以内':'かげついない','市役所':'しやくしょ','区役所':'くやくしょ',
+ '顔写真':'かおじゃしん','合格証':'ごうかくしょう','再発行':'さいはっこう','自治体':'じちたい','円程度':'えんていど','住民税':'じゅうみんぜい',
+ '無背景':'むはいけい','専門級':'せんもんきゅう','不合格':'ふごうかく','勤務先':'きんむさき','所得税':'しょとくぜい','担当者':'たんとうしゃ',
+ '年以内':'ねんいない','月以内':'げついない','保険証':'ほけんしょう','証明書':'しょうめいしょ','住民票':'じゅうみんひょう','役所':'やくしょ',
+ '発行':'はっこう','場合':'ばあい','在留':'ざいりゅう','会社':'かいしゃ','自身':'じしん','依頼':'いらい','学校':'がっこう','写真':'しゃしん',
+ '合格':'ごうかく','令和':'れいわ','費用':'ひよう','補足':'ほそく','証明':'しょうめい','書類':'しょるい','結果':'けっか','受診':'じゅしん',
+ '正面':'しょうめん','撮影':'さつえい','規格':'きかく','背景':'はいけい','試験':'しけん','年度':'ねんど','窓口':'まどぐち','給与':'きゅうよ',
+ '所得':'しょとく','配布':'はいふ','無料':'むりょう','卒業':'そつぎょう','青色':'あおいろ','手帳':'てちょう','記載':'きさい','問題':'もんだい',
+ '無帽':'むぼう','横向':'よこむ','帽子':'ぼうし','加工':'かこう','美白':'びはく','出典':'しゅってん','表面':'ひょうめん','両面':'りょうめん',
+ '裏面':'うらめん','裏側':'うらがわ','住所':'じゅうしょ','名前':'なまえ','分野':'ぶんや','提出':'ていしゅつ','自動':'じどう','年末':'ねんまつ',
+ '年分':'ねんぶん','経理':'けいり','年間':'ねんかん','普通':'ふつう','転職':'てんしょく','途中':'とちゅう','退職':'たいしょく','時点':'じてん',
+ '病院':'びょういん','専用':'せんよう','用紙':'ようし','変更':'へんこう','持参':'じさん','保管':'ほかん','不要':'ふよう','取得':'しゅとく',
+ '年':'ねん','紙':'かみ','出':'で','持':'も','書':'か','時':'とき','住':'す','例':'れい','影':'かげ','撮':'と','物':'もの','願':'ねが',
+ '払':'はら','引':'ひ','縦':'たて','横':'よこ','良':'よ','向':'む','顔':'かお','写':'うつ','面':'めん','載':'の','等':'など','異':'こと',
+ '級':'きゅう','人':'ひと','枚':'まい','差':'さ','受':'う','方':'かた'
+};
+var FZ_EXP_KEYS=Object.keys(FZ_EXP).sort(function(a,b){return Array.from(b).length-Array.from(a).length;});
+function _escFz(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fzExp(text){
+  if(text==null) return '';
+  text=String(text);
+  var chars=Array.from(text), out='', i=0, n=chars.length;
+  while(i<n){
+    var matched=false;
+    for(var k=0;k<FZ_EXP_KEYS.length;k++){
+      var key=FZ_EXP_KEYS[k], kc=Array.from(key), kl=kc.length;
+      if(i+kl<=n && chars.slice(i,i+kl).join('')===key){
+        out+='<ruby>'+_escFz(key)+'<rt>'+_escFz(FZ_EXP[key])+'</rt></ruby>'; i+=kl; matched=true; break;
       }
-    }).catch(function(e){
-      console.warn('upload_docs_cache rpc err:', e);
-      resolve(null);
-    });
-  });
-}
-console.log('📋 USE_NEW_DOCS:', USE_NEW_DOCS, 'DOCS_LIST:', DOCS_LIST, 'SKIP_DOCS:', SKIP_DOCS);
-
-// 多言語翻訳辞書（日本語ラベル → 各言語 + ruby: 日本語表示用ふりがな付きHTML）
-// マッチしない書類は日本語のまま表示
-const DOC_TRANSLATIONS = {
-  // ── 人材書類（基本） ──
-  '顔写真':                      {ruby:'<ruby>顔写真<rt>かおじゃしん</rt></ruby>',en:'Photo',vi:'Ảnh',id:'Foto',my:'ဓာတ်ပုံ',ko:'사진',ne:'फोटो',zh:'照片',th:'รูปถ่าย',km:'រូបថត',mn:'Зураг',si:'ඡායාරූපය'},
-  'パスポート':                  {ruby:'パスポート',en:'Passport',vi:'Hộ chiếu',id:'Paspor',my:'နိုင်ငံကူးလက်မှတ်',ko:'여권',ne:'राहदानी',zh:'护照',th:'หนังสือเดินทาง',km:'លិខិតឆ្លងដែន',mn:'Паспорт',si:'ගමන් බලපත්‍රය'},
-  '在留カード':                  {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード',en:'Residence Card',vi:'Thẻ cư trú',id:'Kartu Izin Tinggal',my:'နေထိုင်ခွင့်ကတ်',ko:'재류카드',ne:'आवास कार्ड',zh:'居留卡',th:'บัตรถิ่นที่อยู่',km:'កាតស្នាក់នៅ',mn:'Оршин суух карт',si:'පදිංචිකාර්ඩ්'},
-  '在留カード（表）':             {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード（<ruby>表<rt>おもて</rt></ruby>）',en:'Residence Card (Front)',vi:'Thẻ cư trú (Mặt trước)',id:'Kartu Izin Tinggal (Depan)',my:'နေထိုင်ခွင့်ကတ်(ရှေ့)',ko:'재류카드 (앞면)',ne:'आवास कार्ड (अगाडि)',zh:'居留卡（正面）',th:'บัตรถิ่นที่อยู่ (ด้านหน้า)',km:'កាតស្នាក់នៅ(មុខ)',mn:'Оршин суух карт (нүүр)',si:'පදිංචිකාර්ඩ් (ඉදිරිපස)'},
-  '在留カード（裏）':             {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード（<ruby>裏<rt>うら</rt></ruby>）',en:'Residence Card (Back)',vi:'Thẻ cư trú (Mặt sau)',id:'Kartu Izin Tinggal (Belakang)',my:'နေထိုင်ခွင့်ကတ်(နောက်)',ko:'재류카드 (뒷면)',ne:'आवास कार्ड (पछाडि)',zh:'居留卡（背面）',th:'บัตรถิ่นที่อยู่ (ด้านหลัง)',km:'កាតស្នាក់នៅ(ក្រោយ)',mn:'Оршин суух карт (ар)',si:'පදිංචිකාර්ඩ් (පිටුපස)'},
-  '健康診断票':                  {ruby:'<ruby>健康診断票<rt>けんこうしんだんひょう</rt></ruby>',en:'Medical Examination Certificate',vi:'Giấy khám sức khỏe',id:'Sertifikat Pemeriksaan Kesehatan',my:'ကျန်းမာရေးစစ်ဆေးမှုလက်မှတ်',ko:'건강진단서',ne:'स्वास्थ्य परीक्षण प्रमाणपत्र',zh:'健康诊断书',th:'ใบรับรองตรวจสุขภาพ',km:'វិញ្ញាបនបត្រពិនិត្យសុខភាព',mn:'Эрүүл мэндийн үзлэгийн дүгнэлт',si:'සෞඛ්‍ය පරීක්ෂණ සහතිකය'},
-  '健康診断証':                  {ruby:'<ruby>健康診断証<rt>けんこうしんだんしょう</rt></ruby>',en:'Medical Certificate',vi:'Giấy khám sức khỏe',id:'Sertifikat Kesehatan',ko:'건강진단서',zh:'健康诊断证',th:'ใบรับรองสุขภาพ',km:'វិញ្ញាបនបត្រសុខភាព'},
-  // ── 試験合格証 ──
-  '合格証（技能）':               {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>技能<rt>ぎのう</rt></ruby>）',en:'Certificate (Skills Test)',vi:'Chứng chỉ (Kỳ thi kỹ năng)',id:'Sertifikat (Uji Keterampilan)',my:'အောင်လက်မှတ်(ကျွမ်းကျင်မှု)',ko:'합격증 (기능시험)',ne:'प्रमाणपत्र (सीप परीक्षा)',zh:'合格证（技能考试）',th:'ใบรับรอง (ทักษะ)',km:'វិញ្ញាបនបត្រ (ជំនាញ)',mn:'Гэрчилгээ (ур чадварын)',si:'සහතිකය (කුසලතා)'},
-  '合格証（技能試験）':           {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>技能試験<rt>ぎのうしけん</rt></ruby>）',en:'Certificate (Skills Test)',vi:'Chứng chỉ (Kỳ thi kỹ năng)',id:'Sertifikat (Uji Keterampilan)',ko:'합격증 (기능시험)',zh:'合格证（技能考试）',th:'ใบรับรอง (สอบทักษะ)',km:'វិញ្ញាបនបត្រ (ប្រឡងជំនាញ)'},
-  '合格証（日本語）':             {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>日本語<rt>にほんご</rt></ruby>）',en:'Certificate (Japanese)',vi:'Chứng chỉ (Tiếng Nhật)',id:'Sertifikat (Bahasa Jepang)',my:'အောင်လက်မှတ်(ဂျပန်ဘာသာ)',ko:'합격증 (일본어)',ne:'प्रमाणपत्र (जापानी भाषा)',zh:'合格证（日语）',th:'ใบรับรอง (ภาษาญี่ปุ่น)',km:'វិញ្ញាបនបត្រ (ភាសាជប៉ុន)',mn:'Гэрчилгээ (япон хэл)',si:'සහතිකය (ජපන් භාෂාව)'},
-  '合格証（専門級・3級）':       {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>専門級<rt>せんもんきゅう</rt></ruby>・3<ruby>級<rt>きゅう</rt></ruby>）',en:'Certificate (Specialist/Level 3)',vi:'Chứng chỉ (Chuyên ngành/Cấp 3)',id:'Sertifikat (Spesialis/Level 3)',ko:'합격증 (전문급·3급)',zh:'合格证（专项级·3级）',th:'ใบรับรอง (เฉพาะทาง/ระดับ 3)',km:'វិញ្ញាបនបត្រ (កម្រិតឯកទេស/កម្រិត3)'},
-  '専門級':                      {ruby:'<ruby>専門級<rt>せんもんきゅう</rt></ruby>',en:'Specialist Level',vi:'Cấp chuyên ngành',id:'Tingkat Spesialis',my:'အထူးပြုအဆင့်',ko:'전문급',ne:'विशेष तह',zh:'专项级',th:'ระดับเฉพาะทาง',km:'កម្រិតឯកទេស',mn:'Мэргэжлийн зэрэг',si:'විශේෂඥ මට්ටම'},
-  '技能実習の合格証':             {ruby:'<ruby>技能実習<rt>ぎのうじっしゅう</rt></ruby>の<ruby>合格証<rt>ごうかくしょう</rt></ruby>',en:'Technical Intern Training Certificate',vi:'Chứng chỉ thực tập kỹ năng',id:'Sertifikat Pemagangan Teknis',ko:'기능실습 합격증',zh:'技能实习合格证',th:'ใบรับรองฝึกงานทักษะ',km:'វិញ្ញាបនបត្រកម្មសិក្សាជំនាញ'},
-  // ── 税関係 ──
-  '所得・課税証明書':             {ruby:'<ruby>所得<rt>しょとく</rt></ruby>・<ruby>課税証明書<rt>かぜいしょうめいしょ</rt></ruby>（<strong style="color:#0ea5e9;">令和7年度</strong>）',en:'Income/Taxation Certificate (FY 2025 / Reiwa 7)',vi:'Giấy chứng nhận thu nhập/thuế (Năm tài khóa 2025 / Reiwa 7)',id:'Surat Keterangan Penghasilan/Pajak (Tahun Fiskal 2025 / Reiwa 7)',my:'ဝင်ငွေ/အခွန်လက်မှတ် (၂၀၂၅ ဘဏ္ဍာရေးနှစ် / Reiwa 7)',ko:'소득·과세증명서 (2025년도 / 레이와 7년)',ne:'आय/कर प्रमाणपत्र (आ.व. 2025 / Reiwa 7)',zh:'收入·课税证明（令和7年度 / 2025年度）',th:'ใบรับรองรายได้/ภาษี (ปีงบประมาณ 2025 / Reiwa 7)',km:'វិញ្ញាបនបត្រប្រាក់ចំណូល/ពន្ធ (ឆ្នាំសារពើពន្ធ 2025 / Reiwa 7)',mn:'Орлого/татварын тодорхойлолт (Санхүүгийн жил 2025 / Reiwa 7)',si:'ආදායම්/බදු සහතිකය (මූල්‍ය වර්ෂය 2025 / Reiwa 7)'},
-  '課税証明書':                  {ruby:'<ruby>課税証明書<rt>かぜいしょうめいしょ</rt></ruby>（<strong style="color:#0ea5e9;">令和7年度</strong>）',en:'Taxation Certificate (FY 2025 / Reiwa 7)',vi:'Giấy chứng nhận thuế (Năm tài khóa 2025 / Reiwa 7)',id:'Surat Keterangan Pajak (Tahun Fiskal 2025 / Reiwa 7)',ko:'과세증명서 (2025년도 / 레이와 7년)',zh:'课税证明（令和7年度 / 2025年度）',th:'ใบรับรองภาษี (ปีงบประมาณ 2025 / Reiwa 7)',km:'វិញ្ញាបនបត្រពន្ធ (ឆ្នាំសារពើពន្ធ 2025 / Reiwa 7)'},
-  '納税証明書':                  {ruby:'<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（<strong style="color:#0ea5e9;">令和7年度</strong>）',en:'Tax Payment Certificate (FY 2025 / Reiwa 7)',vi:'Giấy chứng nhận nộp thuế (Năm tài khóa 2025 / Reiwa 7)',id:'Bukti Pembayaran Pajak (Tahun Fiskal 2025 / Reiwa 7)',my:'အခွန်ပေးဆောင်ပြီးကြောင်းလက်မှတ် (၂၀၂၅ ဘဏ္ဍာရေးနှစ် / Reiwa 7)',ko:'납세증명서 (2025년도 / 레이와 7년)',ne:'कर तिर्ने प्रमाणपत्र (आ.व. 2025 / Reiwa 7)',zh:'纳税证明（令和7年度 / 2025年度）',th:'ใบรับรองการชำระภาษี (ปีงบประมาณ 2025 / Reiwa 7)',km:'វិញ្ញាបនបត្របង់ពន្ធ (ឆ្នាំសារពើពន្ធ 2025 / Reiwa 7)',mn:'Татвар төлсний тодорхойлолт (Санхүүгийн жил 2025 / Reiwa 7)',si:'බදු ගෙවීමේ සහතිකය (මූල්‍ය වර්ෂය 2025 / Reiwa 7)'},
-  '源泉徴収票':                  {ruby:'<ruby>源泉徴収票<rt>げんせんちょうしゅうひょう</rt></ruby>（<strong style="color:#0ea5e9;">令和6年分</strong>）',en:'Withholding Tax Statement (Year 2024 / Reiwa 6)',vi:'Phiếu khấu trừ thuế (Năm 2024 / Reiwa 6)',id:'Slip Pemotongan Pajak (Tahun 2024 / Reiwa 6)',my:'အခွန်ဖြတ်တောက်လွှာ (၂၀၂၄ ခုနှစ် / Reiwa 6)',ko:'원천징수영수증 (2024년분 / 레이와 6년)',ne:'स्रोत कर कट्टी विवरण (सन् 2024 / Reiwa 6)',zh:'扣缴凭证（令和6年 / 2024年）',th:'ใบหักภาษี ณ ที่จ่าย (ปี 2024 / Reiwa 6)',km:'របាយការណ៍ដកពន្ធទុក (ឆ្នាំ 2024 / Reiwa 6)',mn:'Татварын суутгалын баримт (2024 он / Reiwa 6)',si:'උපුටாගත් බදු ප්‍රකාශය (2024 වර්ෂය / Reiwa 6)'},
-  // ── 保険・年金関係 ──
-  '健康保険証':                  {ruby:'<ruby>健康保険証<rt>けんこうほけんしょう</rt></ruby>',en:'Health Insurance Card',vi:'Thẻ bảo hiểm y tế',id:'Kartu Asuransi Kesehatan',ko:'건강보험증',zh:'健康保险证',th:'บัตรประกันสุขภาพ',km:'កាតធានារ៉ាប់រងសុខភាព'},
-  '国民健康保険被保険者証':       {ruby:'<ruby>国民健康保険被保険者証<rt>こくみんけんこうほけんひほけんしゃしょう</rt></ruby>',en:'National Health Insurance Card',vi:'Thẻ bảo hiểm y tế quốc dân',id:'Kartu Asuransi Kesehatan Nasional',ko:'국민건강보험증',zh:'国民健康保险被保险者证',th:'บัตรประกันสุขภาพแห่งชาติ',km:'កាតធានារ៉ាប់រងសុខភាពជាតិ'},
-  '国民健康保険料納付証明書':     {ruby:'<ruby>国民健康保険料納付証明書<rt>こくみんけんこうほけんりょうのうふしょうめいしょ</rt></ruby>',en:'National Health Insurance Payment Certificate',vi:'Giấy chứng nhận đóng bảo hiểm y tế quốc dân',id:'Bukti Pembayaran Asuransi Kesehatan Nasional',ko:'국민건강보험료 납부증명서',zh:'国民健康保险费缴费证明',th:'ใบรับรองการชำระค่าประกันสุขภาพแห่งชาติ',km:'វិញ្ញាបនបត្របង់ប្រាក់ធានារ៉ាប់រងសុខភាពជាតិ'},
-  '国民健康保険料（税）納付証明書':{ruby:'<ruby>国民健康保険料<rt>こくみんけんこうほけんりょう</rt></ruby>（<ruby>税<rt>ぜい</rt></ruby>）<ruby>納付証明書<rt>のうふしょうめいしょ</rt></ruby>',en:'National Health Insurance Premium (Tax) Payment Certificate',vi:'Giấy chứng nhận nộp phí (thuế) bảo hiểm y tế quốc dân',id:'Bukti Pembayaran Iuran (Pajak) Asuransi Kesehatan Nasional',ko:'국민건강보험료(세) 납부증명서',zh:'国民健康保险费(税)缴费证明',th:'ใบรับรองการชำระค่า(ภาษี)ประกันสุขภาพแห่งชาติ',km:'វិញ្ញាបនបត្របង់ប្រាក់(ពន្ធ)ធានារ៉ាប់រងសុខភាពជាតិ'},
-  '年金手帳':                    {ruby:'<ruby>年金手帳<rt>ねんきんてちょう</rt></ruby>',en:'Pension Booklet',vi:'Sổ hưu trí',id:'Buku Pensiun',my:'အငြိမ်းစားလက်စွဲ',ko:'연금수첩',ne:'पेन्सन पुस्तिका',zh:'养老金手册',th:'สมุดบำนาญ',km:'សៀវភៅសោធននិវត្តន៍',mn:'Тэтгэврийн дэвтэр',si:'විශ්‍රාම වැටුප් පොත'},
-  '資格確認書':                  {ruby:'<ruby>資格確認書<rt>しかくかくにんしょ</rt></ruby>',en:'Qualification Confirmation Document',vi:'Giấy xác nhận tư cách',id:'Surat Konfirmasi Kualifikasi',ko:'자격확인서',zh:'资格确认书',th:'หนังสือยืนยันคุณสมบัติ',km:'លិខិតបញ្ជាក់សិទ្ធិ'},
-  '被保険者記録照会回答票':       {ruby:'<ruby>被保険者記録照会回答票<rt>ひほけんしゃきろくしょうかいかいとうひょう</rt></ruby>',en:'Insured Person Record Inquiry Response',vi:'Phiếu trả lời tra cứu hồ sơ người được bảo hiểm',id:'Tanggapan Permintaan Catatan Tertanggung',ko:'피보험자 기록조회 회답표',zh:'被保险人记录查询回答表',th:'แบบตอบสอบถามบันทึกผู้เอาประกัน',km:'លិខិតឆ្លើយតបការសាកសួរកំណត់ត្រាអ្នកត្រូវបានធានារ៉ាប់រង'},
-  '被保険者記録照会回答表':       {ruby:'<ruby>被保険者記録照会回答表<rt>ひほけんしゃきろくしょうかいかいとうひょう</rt></ruby>',en:'Insured Person Record Inquiry Response',vi:'Bảng trả lời tra cứu hồ sơ người được bảo hiểm',id:'Tabel Tanggapan Catatan Tertanggung',ko:'피보험자 기록조회 회답표',zh:'被保险人记录查询回答表',th:'ตารางตอบสอบถามบันทึกผู้เอาประกัน',km:'តារាងឆ្លើយតបការសាកសួរកំណត់ត្រាអ្នកធានារ៉ាប់រង'},
-  '被保険者記録照会（納付Ⅱ）':   {ruby:'<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>（<ruby>納付<rt>のうふ</rt></ruby>Ⅱ）',en:'Insured Person Record Inquiry (Payment II)',vi:'Tra cứu hồ sơ người được bảo hiểm (Thanh toán II)',id:'Permintaan Catatan Tertanggung (Pembayaran II)',ko:'피보험자 기록조회 (납부Ⅱ)',zh:'被保险人记录查询(缴付Ⅱ)',th:'การสอบถามบันทึกผู้เอาประกัน (ชำระII)',km:'ការសាកសួរកំណត់ត្រាអ្នកធានារ៉ាប់រង(បង់Ⅱ)'},
-  '被保険者記録照会(納付Ⅱ)':     {ruby:'<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>(<ruby>納付<rt>のうふ</rt></ruby>Ⅱ)',en:'Insured Person Record Inquiry (Payment II)',vi:'Tra cứu hồ sơ người được bảo hiểm (Thanh toán II)',ko:'피보험자 기록조회(납부Ⅱ)',zh:'被保险人记录查询(缴付Ⅱ)',km:'ការសាកសួរកំណត់ត្រាអ្នកធានារ៉ាប់រង(បង់Ⅱ)'},
-  // ── 学歴関係 ──
-  '卒業証明書':                  {ruby:'<ruby>卒業証明書<rt>そつぎょうしょうめいしょ</rt></ruby>',en:'Graduation Certificate',vi:'Bằng tốt nghiệp',id:'Ijazah',my:'ဘွဲ့လက်မှတ်',ko:'졸업증명서',ne:'स्नातक प्रमाणपत्र',zh:'毕业证明书',th:'ใบรับรองจบการศึกษา',km:'វិញ្ញាបនបត្របញ្ចប់ការសិក្សា',mn:'Төгссөн тухай гэрчилгээ',si:'උපාධි සහතිකය'},
-  '卒業証明書（または卒業見込証明書）':{ruby:'<ruby>卒業証明書<rt>そつぎょうしょうめいしょ</rt></ruby>（または<ruby>卒業見込証明書<rt>そつぎょうみこみしょうめいしょ</rt></ruby>）',en:'Graduation Certificate (or Expected Graduation Certificate)',vi:'Bằng tốt nghiệp (hoặc Giấy chứng nhận sắp tốt nghiệp)',id:'Ijazah (atau Surat Keterangan Akan Lulus)',ko:'졸업증명서 (또는 졸업예정증명서)',zh:'毕业证明书（或预计毕业证明书）',th:'ใบรับรองจบการศึกษา (หรือใบคาดว่าจะจบ)',km:'វិញ្ញាបនបត្របញ្ចប់ការសិក្សា (ឬរំពឹងបញ្ចប់)'},
-  '成績証明書':                  {ruby:'<ruby>成績証明書<rt>せいせきしょうめいしょ</rt></ruby>',en:'Academic Transcript',vi:'Bảng điểm',id:'Transkrip Nilai',my:'အမှတ်လက်မှတ်',ko:'성적증명서',ne:'अंकपत्र',zh:'成绩单',th:'ใบรับรองผลการเรียน',km:'សន្លឹកពិន្ទុ',mn:'Үнэлгээний тодорхойлолт',si:'ශාස්ත්‍රීය පිටපත'},
-  '出席証明書':                  {ruby:'<ruby>出席証明書<rt>しゅっせきしょうめいしょ</rt></ruby>',en:'Attendance Certificate',vi:'Giấy chứng nhận đi học',id:'Surat Keterangan Kehadiran',ko:'출석증명서',zh:'出席证明书',th:'ใบรับรองการเข้าเรียน',km:'វិញ្ញាបនបត្រវត្តមាន'},
-  // ── 推薦関係 ──
-  '大使館推薦票':                {ruby:'<ruby>大使館推薦票<rt>たいしかんすいせんひょう</rt></ruby>',en:'Embassy Recommendation Letter',vi:'Giấy giới thiệu của Đại sứ quán',id:'Surat Rekomendasi Kedutaan',ko:'대사관 추천서',zh:'大使馆推荐书',th:'หนังสือแนะนำสถานทูต',km:'លិខិតណែនាំស្ថានទូត'},
-  '推薦状（送出機関）':          {ruby:'<ruby>推薦状<rt>すいせんじょう</rt></ruby>（<ruby>送出機関<rt>そうしゅつきかん</rt></ruby>）',en:'Recommendation Letter (Sending Agency)',vi:'Giấy giới thiệu (Cơ quan phái cử)',id:'Surat Rekomendasi (Lembaga Pengirim)',ko:'추천장 (송출기관)',zh:'推荐书（派遣机构）',th:'หนังสือแนะนำ (หน่วยงานส่งออก)',km:'លិខិតណែនាំ (ស្ថាប័នបញ្ជូន)'},
-  '推薦票':                      {ruby:'<ruby>推薦票<rt>すいせんひょう</rt></ruby>',en:'Recommendation',vi:'Phiếu giới thiệu',id:'Rekomendasi',ko:'추천표',zh:'推荐票',km:'សន្លឹកណែនាំ'},
-  '無犯罪証明書（カンボジア）':  {ruby:'<ruby>無犯罪証明書<rt>むはんざいしょうめいしょ</rt></ruby>（カンボジア）',en:'Police Clearance Certificate (Cambodia)',vi:'Lý lịch tư pháp (Campuchia)',id:'SKCK (Kamboja)',ko:'무범죄증명서 (캄보디아)',zh:'无犯罪证明书（柬埔寨）',km:'លិខិតបញ្ជាក់គ្មានបទល្មើស (កម្ពុជា)'},
-  '無犯罪証明書（ミャンマー）':  {ruby:'<ruby>無犯罪証明書<rt>むはんざいしょうめいしょ</rt></ruby>（ミャンマー）',en:'Police Clearance Certificate (Myanmar)',vi:'Lý lịch tư pháp (Myanmar)',id:'SKCK (Myanmar)',ko:'무범죄증명서 (미얀마)',zh:'无犯罪证明书（缅甸）',my:'ပြစ်မှုကင်းရှင်းကြောင်းလက်မှတ်(မြန်မာ)',km:'លិខិតបញ្ជាក់គ្មានបទល្មើស (មីយ៉ាន់ម៉ា)'},
-  // ── その他人材書類 ──
-  '住民票':                      {ruby:'<ruby>住民票<rt>じゅうみんひょう</rt></ruby>',en:'Residence Certificate',vi:'Giấy chứng nhận cư trú',id:'Surat Keterangan Domisili',my:'နေထိုင်ခွင့်လက်မှတ်',ko:'주민표',ne:'बसोबास प्रमाणपत्र',zh:'住民票',th:'ทะเบียนบ้าน',km:'លិខិតបញ្ជាក់ទីលំនៅ',mn:'Оршин суугчийн гэрчилгээ',si:'පදිංචිකරුවා සහතිකය'},
-  '技能者ID':                    {ruby:'<ruby>技能者<rt>ぎのうしゃ</rt></ruby>ID',en:'Technician ID',vi:'ID kỹ thuật viên',id:'ID Teknisi',ko:'기능자 ID',zh:'技能者ID',th:'ID ช่างเทคนิค',km:'លេខសម្គាល់ជាងជំនាញ'},
-  'その他':                      {ruby:'その<ruby>他<rt>た</rt></ruby>',en:'Other',vi:'Khác',id:'Lainnya',my:'အခြား',ko:'기타',ne:'अन्य',zh:'其他',th:'อื่นๆ',km:'ផ្សេងទៀត',mn:'Бусад',si:'වෙනත්'}
-};
-
-// 旧ロジック用（USE_NEW_DOCS=false のときだけ使用）
-const ALL_DOCS = [
-  {key:'zairyu_front',tags:['在留カード']},
-  {key:'zairyu_back',tags:['在留カード']},
-  {key:'passport',tags:['パスポート']},
-  {key:'cert_jp',tags:['合格証（日本語）']},
-  {key:'cert_skill',tags:['合格証（技能）']},
-  {key:'cert_specialist',tags:['合格証（専門級・3級）']},
-  {key:'tax_cert',tags:['所得・課税証明書']},
-  {key:'tax_payment',tags:['納税証明書']},
-  {key:'withholding',tags:['源泉徴収票']},
-  {key:'medical',tags:['健康診断票']},
-  {key:'mugshot',tags:['顔写真']},
-  {key:'health_ins',tags:['健康保険証']},
-  {key:'health_ins_cert',tags:['国民健康保険料納付証明書']},
-  {key:'graduation',tags:['卒業証明書']},
-  {key:'transcript',tags:['成績証明書']},
-  {key:'nenkin',tags:['年金手帳']},
-  {key:'embassy_rec',tags:['大使館推薦票']},
-  {key:'juminhyo',tags:['住民票']},
-  {key:'other',tags:[]},
-];
-const REQUIRED_RULES = {
-  '更新':['顔写真','所得・課税証明書','納税証明書','源泉徴収票','在留カード','パスポート','合格証（技能）','合格証（日本語）'],
-  '変更':['顔写真','所得・課税証明書','納税証明書','源泉徴収票','在留カード','パスポート','合格証（技能）','合格証（日本語）','健康診断票'],
-  '認定':['顔写真','パスポート','合格証（技能）','合格証（日本語）','健康診断票'],
-};
-const RYUGAKU_RULES = {
-  '更新':[],
-  '変更':['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帳'],
-  '認定':['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帳'],
-};
-function isDocSkipped(doc) {
-  if (!SKIP_DOCS.length || !doc.tags.length) return false;
-  return doc.tags.some(tag => SKIP_DOCS.some(s => s.indexOf(tag) >= 0 || tag.indexOf(s) >= 0));
-}
-function getDocPattern() {
-  const at = APP_TYPE;
-  if (at === '更新') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'optional',cert_skill:'optional',cert_specialist:'hidden',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:'hidden',health_ins_cert:'hidden',graduation:'hidden',transcript:'hidden',nenkin:'hidden',embassy_rec:'hidden',juminhyo:'optional',other:'optional'};
-  if (at === '変更') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'hidden',juminhyo:'optional',other:'optional'};
-  if (at === '認定') return {zairyu_front:'hidden',zairyu_back:'hidden',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'hidden',tax_payment:'hidden',withholding:'hidden',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'hidden',juminhyo:'optional',other:'optional'};
-  return Object.fromEntries(ALL_DOCS.map(d => [d.key,'optional']));
-}
-function getRequiredTags() {
-  if (!APP_TYPE) return null;
-  return (REQUIRED_RULES[APP_TYPE]||[]).concat(IS_RYUGAKU?(RYUGAKU_RULES[APP_TYPE]||[]):[]);
-}
-function getDocKeys() {
-  const required = getRequiredTags();
-  const pattern = APP_TYPE ? getDocPattern() : null;
-  if (!required) return ALL_DOCS.filter(doc => !isDocSkipped(doc)).map(d => d.key);
-  return ALL_DOCS.filter(doc => {
-    if (doc.key === 'other') return true;
-    if (!doc.tags.length) return false;
-    if (isDocSkipped(doc)) return false;
-    // patternでoptionalのものも表示
-    if (pattern && pattern[doc.key] === 'optional') return true;
-    // hiddenは除外
-    if (pattern && pattern[doc.key] === 'hidden') return false;
-    return doc.tags.some(tag => required.some(r => r.indexOf(tag) >= 0 || tag.indexOf(r) >= 0));
-  }).map(d => d.key);
-}
-// ver.20260525.01: docs パラメータがあれば新ロジック、なければ旧ロジック
-// ver.20260525.34: DBキャッシュから取得した場合も新ロジックを使う（_initDocKeys を _loadDocsFromCache 完了後に呼ぶ）
-let DOC_KEYS, DOC_LABELS_JA, DOC_REQUIRED;
-function _initDocKeys(){
-  if (USE_NEW_DOCS) {
-    // 新ロジック: DOCS_LIST = [{l: '書類名', r: 1}, ...]
-    DOC_KEYS = DOCS_LIST.map(function(d, i){ return 'd' + i; });
-    DOC_LABELS_JA = {};
-    DOC_REQUIRED = {};
-    DOCS_LIST.forEach(function(d, i){
-      var key = 'd' + i;
-      DOC_LABELS_JA[key] = d.l || '';
-      DOC_REQUIRED[key] = !!d.r;
-    });
-  } else {
-    // 旧ロジック
-    DOC_KEYS = getDocKeys();
-    DOC_LABELS_JA = null;  // 旧ロジックは LANGS[].docs[key] を使う
-    DOC_REQUIRED = null;
+    }
+    if(!matched){ out+=_escFz(chars[i]); i++; }
   }
+  return out;
 }
-_initDocKeys();
 
-const LANGS = {
-  ja:{label:'日本語',title:'書類アップロード',subtitle:'必要な書類の写真をアップロードしてください\n（不要な項目はスキップできます）',tapToAdd:'📷 タップして写真を追加',hint:'JPG / PNG / PDF',btnSubmit:'送信する',noFile:'未選択',selected:'選択済み ✓',msgSuccess:'✅ アップロード完了しました！\n担当者に届きました。',msgError:'❌ 送信に失敗しました。\nもう一度お試しください。',msgNoFile:'少なくとも1枚の写真を選択してください',docs:{zairyu_front:'在留カード（表）',zairyu_back:'在留カード（裏）',passport:'パスポート',cert_jp:'合格証（日本語）',cert_skill:'合格証（技能試験）',cert_specialist:'合格証（専門級・3級）',tax_payment:'納税証明書（令和7年度）',tax_cert:'課税証明書（令和7年度）',withholding:'源泉徴収票（令和6年分）',medical:'健康診断証',mugshot:'顔写真',health_ins:'健康保険証',health_ins_cert:'国民健康保険料納付証明書',graduation:'卒業証明書',transcript:'成績証明書',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'その他'}},
-  en:{label:'English',title:'Document Upload',subtitle:'Please upload photos of required documents\n(You can skip items that are not needed)',tapToAdd:'📷 Tap to add photo',hint:'JPG / PNG / PDF',btnSubmit:'Submit',noFile:'Not selected',selected:'Selected ✓',msgSuccess:'✅ Upload complete!\nYour documents have been received.',msgError:'❌ Upload failed.\nPlease try again.',msgNoFile:'Please select at least one photo',docs:{zairyu_front:'Residence Card (Front)',zairyu_back:'Residence Card (Back)',passport:'Passport',cert_jp:'Certificate (Japanese)',cert_skill:'Certificate (Skills Test)',cert_specialist:'Certificate (Specialist/Level 3)',tax_payment:'Tax Payment Certificate (FY 2025)',tax_cert:'Taxation Certificate (FY 2025)',withholding:'Withholding Tax Statement (Year 2024)',medical:'Medical Certificate',mugshot:'Photo',health_ins:'Health Insurance Card',health_ins_cert:'National Health Insurance Payment Certificate',graduation:'Graduation Certificate',transcript:'Academic Transcript',nenkin:'Pension Booklet',embassy_rec:'Embassy Recommendation Letter',juminhyo:'住民票',other:'Other'}},
-  vi:{label:'Tiếng Việt',title:'Tải lên tài liệu',subtitle:'Vui lòng tải ảnh các tài liệu cần thiết\n(Có thể bỏ qua các mục không cần thiết)',tapToAdd:'📷 Nhấn để thêm ảnh',hint:'JPG / PNG / PDF',btnSubmit:'Gửi',noFile:'Chưa chọn',selected:'Đã chọn ✓',msgSuccess:'✅ Tải lên thành công!\nTài liệu của bạn đã được nhận.',msgError:'❌ Tải lên thất bại.\nVui lòng thử lại.',msgNoFile:'Vui lòng chọn ít nhất một ảnh',docs:{zairyu_front:'Thẻ cư trú (Mặt trước)',zairyu_back:'Thẻ cư trú (Mặt sau)',passport:'Hộ chiếu',cert_jp:'Chứng chỉ (Tiếng Nhật)',cert_skill:'Chứng chỉ (Kỳ thi kỹ năng)',cert_specialist:'Chứng chỉ (Chuyên ngành/Cấp 3)',tax_payment:'Giấy chứng nhận nộp thuế (Năm 2025)',tax_cert:'Giấy chứng nhận thuế (Năm 2025)',withholding:'Phiếu khấu trừ thuế (Năm 2024)',medical:'Giấy khám sức khỏe',mugshot:'Ảnh',health_ins:'Thẻ bảo hiểm y tế',health_ins_cert:'Chứng nhận đóng bảo hiểm y tế',graduation:'Bằng tốt nghiệp',transcript:'Bảng điểm',nenkin:'Sổ hưu trí',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'Khác'}},
-  id:{label:'Indonesia',title:'Unggah Dokumen',subtitle:'Silakan unggah foto dokumen yang diperlukan\n(Item yang tidak diperlukan dapat dilewati)',tapToAdd:'📷 Ketuk untuk menambah foto',hint:'JPG / PNG / PDF',btnSubmit:'Kirim',noFile:'Belum dipilih',selected:'Dipilih ✓',msgSuccess:'✅ Unggah berhasil!\nDokumen Anda telah diterima.',msgError:'❌ Unggah gagal.\nSilakan coba lagi.',msgNoFile:'Silakan pilih setidaknya satu foto',docs:{zairyu_front:'Kartu Izin Tinggal (Depan)',zairyu_back:'Kartu Izin Tinggal (Belakang)',passport:'Paspor',cert_jp:'Sertifikat (Bahasa Jepang)',cert_skill:'Sertifikat (Uji Keterampilan)',cert_specialist:'Sertifikat (Spesialis/Level 3)',tax_payment:'Bukti Pembayaran Pajak (Tahun 2025)',tax_cert:'Surat Keterangan Pajak (Tahun 2025)',withholding:'Slip Pemotongan Pajak (Tahun 2024)',medical:'Sertifikat Kesehatan',mugshot:'Foto',health_ins:'Kartu Asuransi Kesehatan',health_ins_cert:'Sertifikat Pembayaran Asuransi Kesehatan',graduation:'Ijazah',transcript:'Transkrip Nilai',nenkin:'Buku Pensiun',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'Lainnya'}},
-  my:{label:'မြန်မာ',title:'စာရွက်စာတမ်းတင်ရန်',subtitle:'လိုအပ်သောစာရွက်စာတမ်းများ၏ဓာတ်ပုံတင်ပါ\n(မလိုအပ်သောအရာများကိုကျော်နိုင်သည်)',tapToAdd:'📷 ဓာတ်ပုံထည့်ရန်နှိပ်ပါ',hint:'JPG / PNG / PDF',btnSubmit:'ပေးပို့ရန်',noFile:'မရွေးချယ်ရသေး',selected:'ရွေးချယ်ပြီး ✓',msgSuccess:'✅ တင်ခြင်းအောင်မြင်သည်!\nသင့်စာရွက်စာတမ်းကိုလက်ခံရရှိပြီ။',msgError:'❌ တင်ခြင်းမအောင်မြင်ပါ။\nထပ်မံကြိုးစားပါ။',msgNoFile:'ဓာတ်ပုံတစ်ပုံရွေးချယ်ပါ',docs:{zairyu_front:'နေထိုင်ခွင့်ကတ် (ရှေ့ဘက်)',zairyu_back:'နေထိုင်ခွင့်ကတ် (နောက်ဘက်)',passport:'နိုင်ငံကူးလက်မှတ်',cert_jp:'လက်မှတ် (ဂျပန်ဘာသာ)',cert_skill:'လက်မှတ် (ကျွမ်းကျင်မှုစာမေးပွဲ)',cert_specialist:'လက်မှတ် (ကျွမ်းကျင်ရည်မှန်း/အဆင့် 3)',tax_payment:'အခွန်ပေးဆောင်မှုသက်သေခံ (၂၀၂၅)',tax_cert:'အခွန်သက်သေခံလက်မှတ် (၂၀၂၅)',withholding:'အခွန်နုတ်ယူသည့်ဖော်ပြချက် (၂၀၂၄)',medical:'ကျန်းမာရေးသက်သေခံ',mugshot:'ဒာတ်ပုံ',health_ins:'ကျန်မာရေးကာတ်',health_ins_cert:'မှတ်တမ်',graduation:'ဘွဲ့လက်မှတ်',transcript:'ကျောင်းမှတ်တမ်း',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'အခြား'}},
-  ko:{label:'한국어',title:'서류 업로드',subtitle:'필요한 서류의 사진을 업로드해 주세요\n(불필요한 항목은 건너뛸 수 있습니다)',tapToAdd:'📷 탭하여 사진 추가',hint:'JPG / PNG / PDF',btnSubmit:'제출',noFile:'미선택',selected:'선택됨 ✓',msgSuccess:'✅ 업로드 완료!\n담당자에게 전달되었습니다.',msgError:'❌ 업로드 실패.\n다시 시도해 주세요.',msgNoFile:'사진을 최소 한 장 선택해 주세요',docs:{zairyu_front:'재류카드 (앞면)',zairyu_back:'재류카드 (뒷면)',passport:'여권',cert_jp:'합격증 (일본어)',cert_skill:'합격증 (기능시험)',cert_specialist:'합격증 (전문급·3급)',tax_payment:'납세증명서 (2025년도)',tax_cert:'과세증명서 (2025년도)',withholding:'원천징수영수증 (2024년분)',medical:'건강진단서',mugshot:'사진',health_ins:'건강보험증',health_ins_cert:'국민건강보험료 납부증명서',graduation:'졸업증명서',transcript:'성적증명서',nenkin:'연금수첩',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'기타'}},
-  ne:{label:'नेपाली',title:'कागजात अपलोड',subtitle:'आवश्यक कागजातको फोटो अपलोड गर्नुहोस्\n(अनावश्यक वस्तुहरू छोड्न सकिन्छ)',tapToAdd:'📷 फोटो थप्न थिच्नुहोस्',hint:'JPG / PNG / PDF',btnSubmit:'पेश गर्नुहोस्',noFile:'छनोट गरिएको छैन',selected:'छनोट भयो ✓',msgSuccess:'✅ अपलोड सफल भयो!\nतपाईंको कागजात प्राप्त भयो।',msgError:'❌ अपलोड असफल भयो।\nपुनः प्रयास गर्नुहोस्।',msgNoFile:'कम्तीमा एउटा फोटो छनोट गर्नुहोस्',docs:{zairyu_front:'आवास कार्ड (अगाडि)',zairyu_back:'आवास कार्ड (पछाडि)',passport:'राहदानी',cert_jp:'प्रमाणपत्र (जापानी भाषा)',cert_skill:'प्रमाणपत्र (सीप परीक्षण)',cert_specialist:'प्रमाणपत्र (विशेषज्ञ/स्तर ३)',tax_payment:'कर तिरेको प्रमाणपत्र (आ.व. 2025)',tax_cert:'कर प्रमाणपत्र (आ.व. 2025)',withholding:'स्रोतमा कर कटौती विवरण (सन् 2024)',medical:'स्वास्थ्य परीक्षण प्रमाणपत्र',mugshot:'फोटो',health_ins:'स्वास्थ्य बिमा कार्ड',health_ins_cert:'राष्ट्रिय स्वास्थ्य बिमा भुक्तानी प्रमाणपत्र',graduation:'उपाधि',transcript:'अङ्कतालिका',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'अन्य'}},
-  zh:{label:'中文',title:'文件上传',subtitle:'请上传所需文件的照片\n（不需要的项目可以跳过）',tapToAdd:'📷 点击添加照片',hint:'JPG / PNG / PDF',btnSubmit:'提交',noFile:'未选择',selected:'已选择 ✓',msgSuccess:'✅ 上传成功！\n您的文件已收到。',msgError:'❌ 上传失败。\n请重试。',msgNoFile:'请至少选择一张照片',docs:{zairyu_front:'居留卡（正面）',zairyu_back:'居留卡（背面）',passport:'护照',cert_jp:'合格证（日语）',cert_skill:'合格证（技能考试）',cert_specialist:'合格证（专项级·3级）',tax_payment:'纳税证明（令和7年度）',tax_cert:'课税证明（令和7年度）',withholding:'扣缴凭证（令和6年）',medical:'健康诊断证明',mugshot:'照片',health_ins:'健康保险证',health_ins_cert:'国民健康保险缴费证明',graduation:'毕业证明书',transcript:'成绩单',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'其他'}},
-  th:{label:'ไทย',title:'อัปโหลดเอกสาร',subtitle:'กรุณาอัปโหลดรูปภาพเอกสารที่จำเป็น\n(สามารถข้ามรายการที่ไม่จำเป็นได้)',tapToAdd:'📷 แตะเพื่อเพิ่มรูปภาพ',hint:'JPG / PNG / PDF',btnSubmit:'ส่ง',noFile:'ยังไม่ได้เลือก',selected:'เลือกแล้ว ✓',msgSuccess:'✅ อัปโหลดสำเร็จ!\nได้รับเอกสารของคุณแล้ว',msgError:'❌ อัปโหลดล้มเหลว\nกรุณาลองใหม่อีกครั้ง',msgNoFile:'กรุณาเลือกรูปภาพอย่างน้อยหนึ่งภาพ',docs:{zairyu_front:'บัตรถิ่นที่อยู่ (ด้านหน้า)',zairyu_back:'บัตรถิ่นที่อยู่ (ด้านหลัง)',passport:'หนังสือเดินทาง',cert_jp:'ใบรับรอง (ภาษาญี่ปุ่น)',cert_skill:'ใบรับรอง (การสอบทักษะ)',cert_specialist:'ใบรับรอง (ผู้เชี่ยวชาญ/ระดับ 3)',tax_payment:'ใบรับรองการชำระภาษี (ปี 2025)',tax_cert:'ใบรับรองภาษี (ปี 2025)',withholding:'ใบหักภาษี ณ ที่จ่าย (ปี 2024)',medical:'ใบรับรองสุขภาพ',mugshot:'รูปถ่าย',health_ins:'บัตรประกันสุขภาพ',health_ins_cert:'ใบรับรองการชำระประกันสุขภาพ',graduation:'ใบประกาศนียบัตร',transcript:'ผลการเรียน',nenkin:'สมุดบัญชีเงินบำนาญชรา',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'อื่นๆ'}},
-  km:{label:'ខ្មែរ',title:'បង្ហោះឯកសារ',subtitle:'សូមបង្ហោះរូបថតឯកសារដែលត្រូវការ\n(អ្នកអាចរំលងធាតុដែលមិនចាំបាច់)',tapToAdd:'📷 ចុចដើម្បីបន្ថែមរូបថត',hint:'JPG / PNG / PDF',btnSubmit:'បញ្ជូន',noFile:'មិនទាន់ជ្រើសរើស',selected:'បានជ្រើសរើស ✓',msgSuccess:'✅ បង្ហោះបានជោគជ័យ!\nឯកសាររបស់អ្នកត្រូវបានទទួល។',msgError:'❌ បង្ហោះបានបរាជ័យ។\nសូមព្យាយាមម្តងទៀត។',msgNoFile:'សូមជ្រើសរើសរូបថតយ៉ាងហោចណាស់មួយ',docs:{zairyu_front:'កាតស្នាក់នៅ (ខាងមុខ)',zairyu_back:'កាតស្នាក់នៅ (ខាងក្រោយ)',passport:'លិខិតឆ្លងដែន',cert_jp:'វិញ្ញាបនបត្រ (ភាសាជប៉ុន)',cert_skill:'វិញ្ញាបនបត្រ (ការប្រឡងជំនាញ)',cert_specialist:'វិញ្ញាបនបត្រ (ថ្នាក់ជំនាញ/កម្រិត 3)',tax_payment:'វិញ្ញាបនបត្របង់ពន្ធ (2025)',tax_cert:'វិញ្ញាបនបត្រពន្ធ (2025)',withholding:'លិខិតកាត់ពន្ធ (2024)',medical:'វិញ្ញាបនបត្រសុខភាព',mugshot:'រូបថត',health_ins:'កាតប្រកញសុខភាព',health_ins_cert:'វិញ្ញាបនបត្របង់ប្រកញសុខ',graduation:'សញ្ញាបត្រ',transcript:'លត្តផល',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'ផ្សេងទៀត'}},
-  mn:{label:'Монгол',title:'Баримт бичиг байршуулах',subtitle:'Шаардлагатай баримт бичгийн зургийг байршуулна уу\n(Шаардлагагүй зүйлийг алгасаж болно)',tapToAdd:'📷 Зураг нэмэхийн тулд дарна уу',hint:'JPG / PNG / PDF',btnSubmit:'Илгээх',noFile:'Сонгоогүй',selected:'Сонгосон ✓',msgSuccess:'✅ Байршуулалт амжилттай!\nТаны баримт бичиг хүлээн авагдлаа.',msgError:'❌ Илгээхэд алдаа гарлаа.\nДахин оролдоно уу.',msgNoFile:'Дор хаяж нэг зураг сонгоно уу',docs:{zairyu_front:'Оршин суух карт (Урд тал)',zairyu_back:'Оршин суух карт (Арын тал)',passport:'Паспорт',cert_jp:'Гэрчилгээ (Япон хэл)',cert_skill:'Гэрчилгээ (Ур чадварын шалгалт)',cert_specialist:'Гэрчилгээ (Мэргэжлийн/3-р түвшин)',tax_payment:'Татвар төлсний гэрчилгээ (2025)',tax_cert:'Татварын гэрчилгээ (2025)',withholding:'Татварын тодорхойлолт (2024)',medical:'Эрүүл мэндийн гэрчилгээ',mugshot:'Зураг',health_ins:'Даатгалын карт',health_ins_cert:'Даатгалын төлбөрийн тодорхойлолт',graduation:'Дипломын гэрчилгээ',transcript:'Дүнгийн гэрчилгээ',nenkin:'Тэтгэврийн дэвтэр',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'Бусад'}},
-  si:{label:'සිංහල',title:'ලේඛන උඩුගත කිරීම',subtitle:'අවශ්‍ය ලේඛනවල ඡායාරූප උඩුගත කරන්න\n(අනවශ්‍ය අයිතම මඟ හැරිය හැකිය)',tapToAdd:'📷 ඡායාරූප එකතු කිරීමට තට්ටු කරන්න',hint:'JPG / PNG / PDF',btnSubmit:'යොමු කරන්න',noFile:'තෝරා නැත',selected:'තෝරා ඇත ✓',msgSuccess:'✅ උඩුගත කිරීම සාර්ථකයි!\nඔබේ ලේඛන ලැබී ඇත.',msgError:'❌ උඩුගත කිරීම අසාර්ථකයි.\nනැවත උත්සාහ කරන්න.',msgNoFile:'අවම වශයෙන් ඡායාරූපයක් තෝරන්න',docs:{zairyu_front:'පදිංචිකාර්ඩ් (ඉදිරිපස)',zairyu_back:'පදිංචිකාර්ඩ් (පිටුපස)',passport:'ගමන් බලපත්‍රය',cert_jp:'සහතිකය (ජපන් භාෂාව)',cert_skill:'සහතිකය (කුසලතා විභාගය)',cert_specialist:'සහතිකය (විශේෂඥ/මට්ටම 3)',tax_payment:'බදු ගෙවීමේ සහතිකය (2025)',tax_cert:'බදු සහතිකය (2025)',withholding:'රඳවා ගත් බදු ප්‍රකාශය (2024)',medical:'වෛද්‍ය සහතිකය',mugshot:'ජායාරූපය',health_ins:'සෞඛ්‍ය රක්ෂණ කාඩ්පත',health_ins_cert:'ජාතික සෞඛ්‍ය රක්ෂණ ගෙවීම් සහතිකය',graduation:'උපාධි සහතිකය',transcript:'ශ්‍රේණි ලිපිය',nenkin:'විශ්‍රාම වේතන පොත',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'වෙනත්'}},
-};
-const LANG_ORDER = ['ja','en','vi','id','my','ko','ne','zh','th','km','mn','si'];
-let currentLang = 'ja';
-const fileData = {};
-const langBar = document.getElementById('langBar');
-const fieldsList = document.getElementById('fieldsList');
-const submitBtn = document.getElementById('submitBtn');
-const progressWrap = document.getElementById('progressWrap');
-const progressBar = document.getElementById('progressBar');
-const statusMsg = document.getElementById('statusMsg');
-
-LANG_ORDER.forEach(code => {
-  if (!LANGS[code]) return;
-  const btn = document.createElement('button');
-  btn.className = 'lang-btn' + (code === 'ja' ? ' active' : '');
-  btn.textContent = LANGS[code].label;
-  btn.addEventListener('click', () => setLang(code));
-  langBar.appendChild(btn);
-});
+function buildSampleInline(docKey){
+  const sample = DOC_SAMPLES[docKey];
+  if (!sample) return null;
+  const whereText = sample.where ? (sample.where[currentLang] || sample.where.en || sample.where.ja || '') : '';
+  const helpText = sample.help ? (sample.help[currentLang] || sample.help.en || sample.help.ja || '') : '';
+  const whereLabels = {
+    ja: '📝 説明（取得方法・出どころ）',
+    en: '📝 Description (How to get / Source)',
+    vi: '📝 Mô tả (Cách lấy / Nguồn)',
+    id: '📝 Penjelasan (Cara mendapatkan / Sumber)',
+    my: '📝 ရှင်းပြချက် (ရယူပုံ / ရင်းမြစ်)',
+    ko: '📝 설명 (취득 방법 / 발급처)',
+    ne: '📝 विवरण (कसरी पाउने / स्रोत)',
+    zh: '📝 说明（取得方法・出处）',
+    th: '📝 คำอธิบาย (วิธีรับ / แหล่งที่มา)',
+    km: '📝 ការពិពណ៌នា (របៀបទទួល / ប្រភព)',
+    mn: '📝 Тайлбар (Авах арга / Гарал үүсэл)',
+    si: '📝 විස්තරය (ලබා ගන්නා ආකාරය / මූලාශ්‍රය)'
+  };
+  const whereLabel = whereLabels[currentLang] || whereLabels.en;
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-bottom:10px;';
+  let html = '<div style="background:#f9fafb;border-radius:8px;padding:6px;margin-bottom:8px;text-align:center;"><img src="' + sample.image + '" alt="sample" loading="lazy" style="max-width:100%;max-height:40vh;border-radius:4px;" onerror="this.parentElement.style.display=\'none\';"></div>';
+  if (whereText) {
+    const wt = (currentLang === 'ja') ? fzExp(whereText) : whereText;
+    html += '<div style="background:#dbeafe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 12px;font-size:13px;color:#1e40af;line-height:1.9;white-space:pre-line;"><div style="font-weight:700;margin-bottom:6px;">' + whereLabel + '</div>' + wt + '</div>';
+  } else if (helpText) {
+    const ht = (currentLang === 'ja') ? fzExp(helpText) : helpText;
+    html += '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 12px;font-size:13px;color:#92400e;line-height:1.8;">' + ht + '</div>';
+  }
+  wrap.innerHTML = html;
+  return wrap;
+}
 
 function buildFields() {
   const L = LANGS[currentLang];
@@ -831,6 +923,51 @@ function buildFields() {
     } else {
       label.innerHTML = labelIsHtml ? labelText : _escName(labelText);
     }
+    // ver.20260616.03: 専門級は「技能実習をしていた方のみ」の注釈を表示
+    var _jaLbl = (typeof DOC_LABELS_JA !== 'undefined' && DOC_LABELS_JA && DOC_LABELS_JA[key]) ? DOC_LABELS_JA[key] : key;
+    if (String(_jaLbl).indexOf('専門級') >= 0) {
+      const noteLabels = {
+        ja: '※ 技能実習をしていた方のみ',
+        en: '* Only for those who did Technical Intern Training (Ginou Jisshu)',
+        vi: '* Chỉ dành cho người từng thực tập kỹ năng (Ginou Jisshu)',
+        id: '* Hanya untuk yang pernah ikut Pemagangan Teknis (Ginou Jisshu)',
+        my: '* နည်းပညာအလုပ်သင် (Ginou Jisshu) လုပ်ခဲ့ဖူးသူများသာ',
+        ko: '* 기능실습을 한 분만 (Ginou Jisshu)',
+        ne: '* प्राविधिक प्रशिक्षण (Ginou Jisshu) गरेकाहरूका लागि मात्र',
+        zh: '※ 仅限曾参加技能实习（技能実習）者',
+        th: '* เฉพาะผู้ที่เคยฝึกงานทักษะ (Ginou Jisshu) เท่านั้น',
+        km: '* សម្រាប់តែអ្នកធ្លាប់កម្មសិក្សាជំនាញ (Ginou Jisshu) ប៉ុណ្ណោះ',
+        mn: '* Зөвхөн дадлага хийсэн хүмүүст (Ginou Jisshu)',
+        si: '* තාක්ෂණික පුහුණුව (Ginou Jisshu) කළ අයට පමණි'
+      };
+      const _nt = noteLabels[currentLang] || noteLabels.en;
+      const noteEl = document.createElement('div');
+      noteEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:700;margin-top:3px;line-height:1.6;';
+      noteEl.innerHTML = (currentLang === 'ja') ? fzExp(_nt) : _escName(_nt);
+      label.appendChild(noteEl);
+    }
+    if (DOC_DONE && DOC_DONE[key]) {
+      row.style.background = '#cbd5e1'; row.style.borderColor = '#94a3b8'; row.style.opacity = '0.7';
+      const _doneEl = document.createElement('span');
+      _doneEl.style.cssText = 'color:#16a34a;font-size:11px;font-weight:700;margin-left:4px;';
+      // ver.20260612.01: 「提出済み（再提出が必要な場合のみ）」を各言語に翻訳
+      const _doneLabels = {
+        ja: '✓ 提出済み（再提出が必要な場合のみ）',
+        en: '✓ Already submitted (only if re-submission is needed)',
+        vi: '✓ Đã nộp (chỉ nộp lại nếu cần)',
+        id: '✓ Sudah dikirim (hanya jika perlu kirim ulang)',
+        my: '✓ တင်ပြီး (ပြန်တင်ရန် လိုအပ်မှသာ)',
+        ko: '✓ 제출 완료 (재제출이 필요한 경우에만)',
+        ne: '✓ पेश गरिएको (पुनः पेश गर्न आवश्यक भएमा मात्र)',
+        zh: '✓ 已提交（仅在需要重新提交时）',
+        th: '✓ ส่งแล้ว (เฉพาะกรณีที่ต้องส่งใหม่)',
+        km: '✓ បានដាក់ស្នើ (តែពេលត្រូវដាក់ស្នើឡើងវិញ)',
+        mn: '✓ Илгээсэн (зөвхөн дахин илгээх шаардлагатай үед)',
+        si: '✓ ඉදිරිපත් කර ඇත (නැවත ඉදිරිපත් කිරීමට අවශ්‍ය නම් පමණි)'
+      };
+      _doneEl.textContent = _doneLabels[currentLang] || _doneLabels.en;
+      label.appendChild(_doneEl);
+    }
     const status = document.createElement('span');
     status.className = 'field-status' + (hasFiles ? ' ready' : '');
     status.textContent = hasFiles ? L.selected : L.noFile;
@@ -841,35 +978,11 @@ function buildFields() {
     header.addEventListener('click', () => row.classList.toggle('open'));
     const body = document.createElement('div');
     body.className = 'field-body';
-    // ver.20260526.test.02: 開いた時だけ表示される「📷 見本を見る」リンク（DOC_SAMPLESに登録された書類のみ）
-    if (DOC_SAMPLES && DOC_SAMPLES[key]) {
-      const sampleLink = document.createElement('div');
-      sampleLink.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px;';
-      const sampleA = document.createElement('a');
-      sampleA.href = 'javascript:void(0)';
-      sampleA.style.cssText = 'display:inline-flex;align-items:center;gap:4px;color:#3b82f6;text-decoration:none;font-size:12px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:6px;background:#eff6ff;border:1px solid #bfdbfe;';
-      // 言語ごとのリンクテキスト
-      const linkLabels = {
-        ja: '📷 見本を見る',
-        en: '📷 View Sample',
-        vi: '📷 Xem mẫu',
-        id: '📷 Lihat Contoh',
-        my: '📷 နမူနာကြည့်ရန်',
-        ko: '📷 견본 보기',
-        ne: '📷 नमूना हेर्नुहोस्',
-        zh: '📷 查看样本',
-        th: '📷 ดูตัวอย่าง',
-        km: '📷 មើលគំរូ',
-        mn: '📷 Жишээ үзэх',
-        si: '📷 උදාහරණය බලන්න'
-      };
-      sampleA.textContent = linkLabels[currentLang] || linkLabels.en;
-      sampleA.addEventListener('click', (e) => {
-        e.stopPropagation();
-        showDocSample(key);
-      });
-      sampleLink.appendChild(sampleA);
-      body.appendChild(sampleLink);
+// ver.20260616: 「見本を見る」クリックを廃止し、取得方法（説明＋見本）を常時インライン表示
+    var __sk = _sampleKey(key);
+    if (__sk) {
+      const inlineHelp = buildSampleInline(__sk);
+      if (inlineHelp) body.appendChild(inlineHelp);
     }
     if (hasFiles) {
       fileData[key].forEach((fd, fi) => {
@@ -916,9 +1029,34 @@ function setLang(code) {
   buildFields(); updateSubmitBtn();
 }
 // ver.20260525.34: DBキャッシュから書類リストを取得してから初期描画
+// ver.20260607.01: doc_check をライブ読みして done(取得済み staff / 不要 skip) を付与（再生成不要）
+function _applyLiveDoneFromDocCheck(){
+  return new Promise(function(resolve){
+    if(!CASE_ID){ resolve(); return; }
+    _uplRpc('upload_doc_check_get', { p_case_id: CASE_ID })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(rows){
+      var doneSet = {};
+      (rows||[]).forEach(function(row){
+        var dk = row.doc_key || ''; var idx = dk.indexOf('::'); if(idx<0) return;
+        var prefix = dk.substring(0, idx); var name = dk.substring(idx+2);
+        var v = row.value; var truthy = (v!=null && v!=='' && v!=='false');
+        if((prefix==='staff' || prefix==='skip') && truthy){ doneSet[name] = true; }
+      });
+      // ver.20260611.03: 旧モード(DOCS_LIST無し)でもグレーアウトできるよう doneSet を保持
+      window._liveDoneSet = doneSet;
+      if(Array.isArray(DOCS_LIST) && DOCS_LIST.length){
+        DOCS_LIST.forEach(function(d){ if(d && d.l){ d.done = !!doneSet[d.l]; } });
+      }
+      resolve();
+    })
+    .catch(function(e){ console.warn('doc_check live fetch err:', e); resolve(); });
+  });
+}
 (async function _initDocsAndLang(){
   try {
     await _loadDocsFromCache();
+    await _applyLiveDoneFromDocCheck();
     _initDocKeys();
   } catch(e){ console.warn('_initDocsAndLang err:', e); }
   setLang('ja');
@@ -1056,20 +1194,44 @@ function dataUrlToBlob(dataUrl, mimeType) {
 
 // ============================================================
 // 1ファイルずつ送信（直列処理）
+// ver.20260625.02: メインGASに合わせてaction/data形式でPOST、成功判定をstatus:'ok'に変更
 // ============================================================
 async function uploadOneFile(payload) {
   const res = await fetch(GAS_URL, {
     method: 'POST',
     redirect: 'follow',
-    body: JSON.stringify({ files: [payload], folderId: FOLDER_ID })
+    body: JSON.stringify({
+      action: 'uploadFileToDrive',
+      data: {
+        folderId: payload.folderId || FOLDER_ID,
+        base64:   payload.data     || payload.base64,    // 旧形式(data)・新形式(base64)両対応
+        fileName: payload.name     || payload.fileName,  // 旧形式(name)・新形式(fileName)両対応
+        mimeType: payload.mimeType || 'application/octet-stream'
+      }
+    })
   });
-  let json = { success: true };
+  let json = { status: 'ok' };
   try {
     const text = await res.text();
     if (text && text.trim().startsWith('{')) json = JSON.parse(text);
   } catch (e) {}
-  if (!json.success) throw new Error(json.error || 'upload failed');
+  // メインGASは {status:'ok'} 形式、旧GASは {success:true} 形式 → 両対応
+  const ok = (json.status === 'ok') || (json.success === true);
+  if (!ok) throw new Error(json.msg || json.error || 'upload failed');
   return json;
+}
+
+// ver.20260611.01: GASの応答から保存ファイルのドライブURLを取り出す（実装差を吸収）
+function _extractDriveUrl(json) {
+  if (!json || typeof json !== 'object') return '';
+  var cand = json.url || json.webViewLink || json.fileUrl || json.driveUrl || json.link || '';
+  if (!cand && Array.isArray(json.files) && json.files.length) {
+    var f0 = json.files[0] || {};
+    cand = f0.url || f0.webViewLink || f0.fileUrl || f0.driveUrl || f0.link || '';
+    if (!cand && f0.id) cand = 'https://drive.google.com/file/d/' + f0.id + '/view';
+  }
+  if (!cand && json.id) cand = 'https://drive.google.com/file/d/' + json.id + '/view';
+  return cand || '';
 }
 
 submitBtn.addEventListener('click', async () => {
@@ -1147,7 +1309,8 @@ submitBtn.addEventListener('click', async () => {
       statusMsg.textContent = stepLabel + ' ' + f.docLabel + ' を送信中…';
       progressBar.style.width = Math.round(((i + 0.5) / total) * 90 + 2) + '%';
       
-      await uploadOneFile(payload);
+      var _upJson = await uploadOneFile(payload);
+      var _uploadedUrl = _extractDriveUrl(_upJson);
       
       // Supabase通知（1ファイルごと）
       if (CASE_ID) {
@@ -1156,9 +1319,43 @@ submitBtn.addEventListener('click', async () => {
               case_id: CASE_ID,
               folder_id: FOLDER_ID,
               file_count: 1,
-              file_names: finalName
+              file_names: finalName,
+              doc_label: f.docLabel,
+              drive_url: _uploadedUrl || null
             } });
         } catch (e) { console.warn('通知保存失敗:', e); }
+      }
+      
+      // folder2 が設定されていれば2つ目のフォルダにも送信
+      if (FOLDER_ID2) {
+        try {
+          var _upJson2 = await (async function() {
+            const res2 = await fetch(GAS_URL, {
+              method: 'POST',
+              redirect: 'follow',
+              body: JSON.stringify({
+                action: 'uploadFileToDrive',
+                data: { folderId: FOLDER_ID2, base64: payload.base64, fileName: payload.fileName, mimeType: payload.mimeType || 'application/octet-stream' }
+              })
+            });
+            let json2 = { status: 'ok' };
+            try { const t2 = await res2.text(); if (t2 && t2.trim().startsWith('{')) json2 = JSON.parse(t2); } catch(e2){}
+            return json2;
+          })();
+          var _uploadedUrl2 = _extractDriveUrl(_upJson2);
+          if (CASE_ID) {
+            try {
+              await _uplRpc('upload_notify', { p_payload: {
+                  case_id: CASE_ID,
+                  folder_id: FOLDER_ID2,
+                  file_count: 1,
+                  file_names: finalName,
+                  doc_label: f.docLabel,
+                  drive_url: _uploadedUrl2 || null
+                } });
+            } catch (e) { console.warn('通知保存失敗(folder2):', e); }
+          }
+        } catch (e2) { console.warn('folder2アップロード失敗:', f.docLabel, e2); }
       }
       
       successKeys.push({ key: f.key, idx: f.idx });
