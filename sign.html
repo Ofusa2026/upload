@@ -389,9 +389,12 @@ async function loadSignRequest(token){
     var _fallbackPos = (data.sig_x != null)
       ? [{ page: (data.sig_page||1), x: data.sig_x, y: data.sig_y, w: data.sig_w, h: data.sig_h }]
       : null;
+    // ver.20260724.20: Saysayで作成したHTML(docs[].html)も受け付ける。
+    //   PDFを介さずSaysayの書類をそのまま表示し、％座標の位置に署名を重ねる方式。
     docsArr = (Array.isArray(data.docs) && data.docs.length)
-      ? data.docs.filter(function(d){ return d && d.pdf_base64; }).map(function(d){
-          return { idx:d.idx, pdf_base64:d.pdf_base64, sig_positions:(d.sig_positions||_fallbackPos) };
+      ? data.docs.filter(function(d){ return d && (d.pdf_base64 || d.html); }).map(function(d){
+          return { idx:d.idx, code:d.code||'', pdf_base64:d.pdf_base64||null, html:d.html||null,
+                   sig_positions:(d.sig_positions||_fallbackPos) };
         })
       : (data.pdf_base64 ? [{ idx:0, pdf_base64:data.pdf_base64, sig_positions:(data.sig_positions||_fallbackPos) }] : []);
     if(!docsArr.length){
@@ -475,6 +478,23 @@ async function loadDocForReview(i){
   if(i<0||i>=docsArr.length)return;
   curDocIdx=i;
   var d=docsArr[i];
+  if(d.html){
+    // ver.20260724.20: Saysay方式。HTMLをiframeで表示する（ページ送りは不要）
+    var cont=document.getElementById('pdfContainer');
+    cont.innerHTML='<iframe id="docFrame" style="width:100%;height:70vh;border:none;background:#fff;"></iframe>';
+    var fr=document.getElementById('docFrame');
+    fr.srcdoc=d.html;
+    await new Promise(function(res){ fr.onload=function(){ setTimeout(res,300); }; setTimeout(res,6000); });
+    _htmlPaintSign(i);
+    var _pi=document.getElementById('pageInfo'); if(_pi) _pi.textContent='書類を表示中';
+    var _bp=document.getElementById('btnPrev'); if(_bp) _bp.style.display='none';
+    var _bn=document.getElementById('btnNext'); if(_bn) _bn.style.display='none';
+    var di0=document.getElementById('docInfo');
+    if(di0) di0.textContent='書類 '+(i+1)+'/'+docsArr.length+(d.code?('：'+d.code):'');
+    var dp0=document.getElementById('btnDocPrev'); if(dp0) dp0.disabled=(i<=0);
+    var dn0=document.getElementById('btnDocNext'); if(dn0) dn0.disabled=(i>=docsArr.length-1);
+    return;
+  }
   pdfBytes=b64ToPdfBytes(d.pdf_base64);
   await renderPdf(pdfBytes);
   var di=document.getElementById('docInfo');
@@ -483,6 +503,36 @@ async function loadDocForReview(i){
   var dn=document.getElementById('btnDocNext'); if(dn) dn.disabled=(i>=docsArr.length-1);
 }
 function changeDoc(d){ loadDocForReview(curDocIdx+d); }
+
+// ver.20260724.20: HTML書類の用紙(.doc)に、％座標で署名画像を重ねる
+function _htmlPaintSign(i){
+  try{
+    var d=docsArr[i]; if(!d||!d.html) return;
+    var fr=document.getElementById('docFrame'); if(!fr||!fr.contentDocument) return;
+    var doc=fr.contentDocument;
+    Array.prototype.forEach.call(doc.querySelectorAll('.ss-sig'), function(x){ x.remove(); });
+    var url=(window._lastSigDataUrl||null);
+    var pages=doc.querySelectorAll('.doc');
+    (d.sig_positions||[]).forEach(function(p){
+      var pg=pages[(p.page!=null?p.page:((p.page_no||1)-1))]||pages[pages.length-1];
+      if(!pg) return;
+      if(getComputedStyle(pg).position==='static') pg.style.position='relative';
+      var box=doc.createElement('div');
+      box.className='ss-sig';
+      box.style.cssText='position:absolute;left:'+p.x_pct+'%;top:'+p.y_pct+'%;width:'+p.w_pct+'%;height:'+p.h_pct+'%;'
+        +'z-index:9999;box-sizing:border-box;'
+        +(url?'':'border:1.5px dashed #7F77DD;background:rgba(127,119,221,.10);');
+      if(url){
+        var im=doc.createElement('img');
+        im.src=url; im.style.cssText='width:100%;height:100%;object-fit:contain;';
+        box.appendChild(im);
+      }else{
+        box.innerHTML='<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:#7F77DD;">署名がここに入ります</span>';
+      }
+      pg.appendChild(box);
+    });
+  }catch(e){ console.error('[sign] htmlPaint', e); }
+}
 
 // ===== 署名キャンバス =====
 function initCanvas(){
@@ -675,6 +725,13 @@ async function submitSign(){
   if(!hasDrawn){alert('署名してください');return;}
   const btn=document.getElementById('btnSubmit');
   btn.disabled=true;btn.innerHTML='<span>⏳ 処理中…</span>';
+  // ver.20260724.20: Saysay方式(html)の保存経路は未完成。
+  //   sign_submit_multi が署名済みPDFを前提としているため、誤って「完了」にせず中断する。
+  if(docsArr.some(function(d){ return d && d.html; })){
+    alert('この書類はまだ送信に対応していません。\n\nお手数ですが、担当者にご連絡ください。');
+    btn.disabled=false; btn.innerHTML='<span>送信する</span>';
+    return;
+  }
   var _sn=document.getElementById('submitNote'); if(_sn)_sn.style.display='block';
   const signedAt=new Date().toISOString();
   const sigDataUrl=_sigDataUrl();
