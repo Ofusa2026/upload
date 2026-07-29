@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260626.03';
+const VERSION = 'ver.20260729.01';
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -235,7 +235,7 @@ const DOC_TRANSLATIONS = {
   '無犯罪証明書（ミャンマー）':  {ruby:'<ruby>無犯罪証明書<rt>むはんざいしょうめいしょ</rt></ruby>（ミャンマー）',en:'Police Clearance Certificate (Myanmar)',vi:'Lý lịch tư pháp (Myanmar)',id:'SKCK (Myanmar)',ko:'무범죄증명서 (미얀마)',zh:'无犯罪证明书（缅甸）',my:'ပြစ်မှုကင်းရှင်းကြောင်းလက်မှတ်(မြန်မာ)',km:'លិខិតបញ្ជាក់គ្មានបទល្មើស (មីយ៉ាន់ម៉ា)'},
   // ── その他人材書類 ──
   '住民票':                      {ruby:'<ruby>住民票<rt>じゅうみんひょう</rt></ruby>',en:'Residence Certificate',vi:'Giấy chứng nhận cư trú',id:'Surat Keterangan Domisili',my:'နေထိုင်ခွင့်လက်မှတ်',ko:'주민표',ne:'बसोबास प्रमाणपत्र',zh:'住民票',th:'ทะเบียนบ้าน',km:'លិខិតបញ្ជាក់ទីលំនៅ',mn:'Оршин суугчийн гэрчилгээ',si:'පදිංචිකරුවා සහතිකය'},
-  '技能者ID':                    {ruby:'<ruby>技能者<rt>ぎのうしゃ</rt></ruby>ID',en:'Technician ID',vi:'ID kỹ thuật viên',id:'ID Teknisi',ko:'기능자 ID',zh:'技能者ID',th:'ID ช่างเทคนิค',km:'លេខសម្គាល់ជាងជំនាញ'},
+  '技能者ID':                    {ruby:'<ruby>建設<rt>けんせつ</rt></ruby>キャリアアップシステム<ruby>技能者<rt>ぎのうしゃ</rt></ruby>カード',en:'CCUS Technician Card',vi:'Thẻ kỹ năng viên CCUS',id:'Kartu CCUS Teknisi',ko:'CCUS 기능자 카드',zh:'建设职业能力提升系统技能者卡',th:'บัตรช่างเทคนิค CCUS',km:'កាតជ្រើសរើសកម្មករ CCUS'},
   'その他':                      {ruby:'その<ruby>他<rt>た</rt></ruby>',en:'Other',vi:'Khác',id:'Lainnya',my:'အခြား',ko:'기타',ne:'अन्य',zh:'其他',th:'อื่นๆ',km:'ផ្សេងទៀត',mn:'Бусад',si:'වෙනත්'}
 };
 
@@ -704,7 +704,26 @@ const DOC_SAMPLES = {
       vi: '🏛️ Lấy tại văn phòng quận/thành phố, hoặc tại cửa hàng tiện lợi bằng thẻ My Number. Cấp trong vòng 3 tháng.',
       id: '🏛️ Diperoleh di kantor kota/distrik, atau di minimarket dengan kartu My Number. Diterbitkan dalam 3 bulan terakhir.',
       ko: '🏛️ 시구정촌 관공서, 또는 마이넘버 카드로 편의점에서 발급. 발행 후 3개월 이내.',
-      zh: '🏛️ 可在市区町村政府办公室，或持My Number卡在便利店获取。需为3个月内开具。'
+      zh: '🏛️ 可在市区町村政府办公室，或持My Number卡在便利店获取。需为3个月以内开具。'
+    }
+  },
+  ccus_card: {
+    image: 'samples/ccus_card_sample.jpg',
+    help: {
+      ja: '建設キャリアアップシステム（CCUS）の技能者カード',
+      en: 'Construction Career Up System (CCUS) Technician Card',
+      vi: 'Thẻ kỹ năng viên Hệ thống Nâng cao Nghề nghiệp Xây dựng (CCUS)',
+      id: 'Kartu Teknisi Sistem Peningkatan Karir Konstruksi (CCUS)',
+      ko: '건설 커리어업 시스템(CCUS) 기능자 카드',
+      zh: '建设职业能力提升系统（CCUS）技能者卡'
+    },
+    where: {
+      ja: '💳 建設キャリアアップシステムに登録した際に発行されるICカードです。\n📋 カードの表面に顔写真・氏名・技能者ID・有効期限が記載されています。\n💡 紛失した場合は建設キャリアアップシステム（CCUS）サポートセンターへご連絡ください。\n🌐 https://ccus.jp/',
+      en: '💳 An IC card issued when you register with the Construction Career Up System (CCUS).\n📋 The front of the card shows your photo, name, technician ID, and expiry date.\n💡 If lost, contact the CCUS support center.\n🌐 https://ccus.jp/',
+      vi: '💳 Thẻ IC được cấp khi đăng ký vào Hệ thống Nâng cao Nghề nghiệp Xây dựng (CCUS).\n📋 Mặt trước thẻ ghi ảnh, tên, ID kỹ năng viên và ngày hết hạn.\n💡 Nếu mất thẻ, hãy liên hệ trung tâm hỗ trợ CCUS.\n🌐 https://ccus.jp/',
+      id: '💳 Kartu IC yang diterbitkan saat mendaftar ke Sistem Peningkatan Karir Konstruksi (CCUS).\n📋 Bagian depan kartu menampilkan foto, nama, ID teknisi, dan tanggal kedaluwarsa.\n💡 Jika hilang, hubungi pusat dukungan CCUS.\n🌐 https://ccus.jp/',
+      ko: '💳 건설 커리어업 시스템(CCUS)에 등록할 때 발급되는 IC카드입니다.\n📋 카드 앞면에 사진·이름·기능자ID·유효기간이 기재되어 있습니다.\n💡 분실한 경우 CCUS 지원센터에 연락하세요.\n🌐 https://ccus.jp/',
+      zh: '💳 注册建设职业能力提升系统（CCUS）时发行的IC卡。\n📋 卡片正面印有照片、姓名、技能者ID和有效期。\n💡 若遗失，请联系CCUS支持中心。\n🌐 https://ccus.jp/'
     }
   },
 };
@@ -724,7 +743,8 @@ const DOC_NAME2KEY = {
  '源泉徴収票':'withholding',
  '健康保険証':'health_ins',
  '国民健康保険料納付証明書':'health_ins_cert','国民健康保険料納付証明':'health_ins_cert',
- '卒業証明書':'graduation','成績証明書':'transcript','年金手帳':'nenkin','大使館推薦票':'embassy_rec','住民票':'juminhyo'
+ '卒業証明書':'graduation','成績証明書':'transcript','年金手帳':'nenkin','大使館推薦票':'embassy_rec','住民票':'juminhyo',
+ '技能者ID':'ccus_card','建設キャリアアップシステム技能者カード':'ccus_card','キャリアアップシステム技能者カード':'ccus_card','CCUSカード':'ccus_card'
 };
 function _sampleKey(key){
   if (DOC_SAMPLES[key]) return key; // 旧ロジック: 既にサンプルキー
