@@ -88,11 +88,25 @@ input:focus{border-color:var(--accent);background:white;}
 .notice{background:#fffbf0;border:1px solid #f0d080;border-radius:8px;padding:11px 13px;font-size:12px;color:#7a6010;line-height:1.6;margin-top:10px;}
 .notice strong{font-weight:700;}
 .btn-download{width:100%;padding:14px;background:#1a1a2e;color:white;border:none;border-radius:50px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;}
+/* パスポート署名案内カード */
+.pp-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-top:20px;}
+.pp-card-title{font-size:14px;font-weight:800;color:var(--ink);line-height:1.6;margin-bottom:12px;}
+.pp-card-title strong{color:var(--accent);}
+.pp-img-wrap{position:relative;width:100%;max-width:360px;margin:0 auto;border-radius:8px;overflow:hidden;border:1px solid var(--border);}
+.pp-img-wrap img{display:block;width:100%;height:auto;}
+/* 氏名欄を囲う赤枠（画像に対する%指定）*/
+.pp-highlight{position:absolute;left:35%;top:28%;width:44%;height:24%;border:3px solid var(--accent);border-radius:6px;animation:ppPulse 1.6s ease-in-out infinite;pointer-events:none;}
+@keyframes ppPulse{0%,100%{box-shadow:0 0 0 3px rgba(200,16,46,.25);}50%{box-shadow:0 0 0 7px rgba(200,16,46,0);}}
+.pp-arrow{position:absolute;left:35%;top:19%;font-size:11px;font-weight:800;color:var(--accent);background:white;border:1.5px solid var(--accent);border-radius:6px;padding:1px 7px;white-space:nowrap;pointer-events:none;}
+.pp-note{font-size:12px;color:var(--muted);line-height:1.7;margin-top:12px;}
+.pp-check{display:flex;align-items:flex-start;gap:10px;margin-top:14px;padding:12px 14px;background:var(--paper);border:1px solid var(--border);border-radius:10px;cursor:pointer;}
+.pp-check input{width:20px;height:20px;margin-top:1px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;}
+.pp-check span{font-size:13px;font-weight:700;color:var(--ink);line-height:1.6;}
 </style>
 </head>
 <body>
 <div class="header" style="position:relative;">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260710.19</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260730.20</span></div>
   <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
   <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
     <option value="ja">🌐 日本語</option>
@@ -136,7 +150,20 @@ input:focus{border-color:var(--accent);background:white;}
       </div>
     </div>
     <div class="notice" data-i18n="s1_notice"><strong>ご<ruby>本人様<rt>ほんにんさま</rt></ruby>へ：</strong><ruby>書類<rt>しょるい</rt></ruby>の<ruby>内容<rt>ないよう</rt></ruby>を<ruby>確認<rt>かくにん</rt></ruby>し、<ruby>署名<rt>しょめい</rt></ruby>してください。</div>
-    <button class="btn-primary" data-i18n="s1_btn" onclick="goStep(2)">📄 <ruby>書類<rt>しょるい</rt></ruby>を<ruby>確認<rt>かくにん</rt></ruby>して<ruby>署名<rt>しょめい</rt></ruby>する →</button>
+    <div class="pp-card">
+      <div class="pp-card-title" data-i18n="pp_title">サインは、<strong>パスポートの<ruby>氏名<rt>しめい</rt></ruby>（ローマ<ruby>字<rt>じ</rt></ruby>）と<ruby>同<rt>おな</rt></ruby>じつづり</strong>で<ruby>書<rt>か</rt></ruby>いてください。</div>
+      <div class="pp-img-wrap">
+        <img src="samples/passport_sign_sample.png" alt="passport sample">
+        <div class="pp-arrow" data-i18n="pp_arrow">ここ / here</div>
+        <div class="pp-highlight"></div>
+      </div>
+      <div class="pp-note" data-i18n="pp_note"><ruby>赤<rt>あか</rt></ruby>いわくの<ruby>氏名<rt>しめい</rt></ruby>（<ruby>大文字<rt>おおもじ</rt></ruby>アルファベット）と<ruby>同<rt>おな</rt></ruby>じように、フルネームで<ruby>署名<rt>しょめい</rt></ruby>してください。<br>Please sign your full name, exactly as the name (in capital letters) shown in the red box.</div>
+      <label class="pp-check">
+        <input type="checkbox" id="ppAgree" onchange="document.getElementById('s1Btn').disabled=!this.checked;">
+        <span data-i18n="pp_check"><ruby>確認<rt>かくにん</rt></ruby>しました。パスポートの<ruby>氏名<rt>しめい</rt></ruby>と<ruby>同<rt>おな</rt></ruby>じつづりで<ruby>署名<rt>しょめい</rt></ruby>します。<br>I understand. I will sign exactly as my passport name.</span>
+      </label>
+    </div>
+    <button class="btn-primary" id="s1Btn" data-i18n="s1_btn" onclick="goStep(2)" disabled>📄 <ruby>書類<rt>しょるい</rt></ruby>を<ruby>確認<rt>かくにん</rt></ruby>して<ruby>署名<rt>しょめい</rt></ruby>する →</button>
   </div>
 
   <div id="step2" class="step">
@@ -248,7 +275,11 @@ var I18N = {
   k_company:{en:'Organization',id:'Instansi',vi:'Cơ quan',zh:'所属机构',km:'ស្ថាប័ន',my:'အဖွဲ့အစည်း',th:'หน่วยงาน'},
   k_doc:{en:'Document',id:'Dokumen',vi:'Tài liệu',zh:'文件',km:'ឯកសារ',my:'စာရွက်စာတမ်း',th:'เอกสาร'},
   s1_notice:{en:'<strong>To the signer:</strong> Please review the document and sign.',id:'<strong>Kepada Anda:</strong> Mohon periksa isi dokumen dan tanda tangani.',vi:'<strong>Gửi quý vị:</strong> Vui lòng kiểm tra nội dung tài liệu và ký tên.',zh:'<strong>致本人：</strong>请确认文件内容后签名。',km:'<strong>ជូនចំពោះអ្នក៖</strong> សូមពិនិត្យខ្លឹមសារឯកសារ រួចចុះហត្ថលេខា។',my:'<strong>သက်ဆိုင်သူထံ—</strong> စာရွက်အကြောင်းအရာစစ်ဆေးပြီး လက်မှတ်ထိုးပါ။',th:'<strong>ถึงเจ้าตัว:</strong> กรุณาตรวจสอบเนื้อหาเอกสารแล้วลงนาม'},
-  s1_btn:{en:'📄 Review and sign →',id:'📄 Periksa lalu tanda tangan →',vi:'📄 Kiểm tra và ký →',zh:'📄 确认文件并签名 →',km:'📄 ពិនិត្យ និងចុះហត្ថលេខា →',my:'📄 စစ်ဆေး၍ လက်မှတ်ထိုးရန် →',th:'📄 ตรวจสอบแล้วลงนาม →'},
+  s1_btn:{en:'📄 Review and sign →',id:'📄 Periksa lalu tanda tangan →',vi:'📄 Kiểm tra và ký →',zh:'📄 确认文件并签名 →',km:'📄 ពិនិត្យ និងចុះហត្ថលេខា →',my:'📄 စစ်ဆេး၍ လက်မှတ်ထိုးရန် →',th:'📄 ตรวจสอบแล้วลงนาม →'},
+  pp_title:{en:'Please sign with the <strong>same spelling as your passport name (Roman letters)</strong>.',id:'Tanda tangani dengan <strong>ejaan yang sama seperti nama di paspor (huruf Latin)</strong>.',vi:'Hãy ký <strong>đúng như tên trên hộ chiếu (chữ Latinh)</strong>.',zh:'请使用<strong>与护照姓名（罗马字母）相同的拼写</strong>签名。',km:'សូមចុះហត្ថលេខា <strong>ដូចនឹងឈ្មោះលើលិខិតឆ្លងដែន (អក្សរឡាតាំង)</strong>។',my:'<strong>ပတ်စ်ပို့အမည် (ရောမအက္ခရာ) အတိုင်း</strong> လက်မှတ်ထိုးပါ။',th:'กรุณาลงนาม<strong>ให้ตรงกับชื่อในพาสปอร์ต (อักษรโรมัน)</strong>'},
+  pp_arrow:{en:'here',id:'di sini',vi:'ở đây',zh:'这里',km:'ត្រង់នេះ',my:'ဒီနေရာ',th:'ตรงนี้'},
+  pp_note:{en:'Please sign your full name, exactly as the name (in capital letters) shown in the red box.',id:'Tanda tangani nama lengkap Anda, persis seperti nama (huruf kapital) dalam kotak merah.',vi:'Vui lòng ký đầy đủ họ tên, giống hệt tên (chữ in hoa) trong ô đỏ.',zh:'请按红框内的姓名（大写字母）一样，签写全名。',km:'សូមចុះហត្ថលេខាឈ្មោះពេញ ដូចនឹងឈ្មោះ (អក្សរធំ) ក្នុងប្រអប់ក្រហម។',my:'အနီရောင်ဘောင်ထဲက အမည် (စာလုံးကြီး) အတိုင်း အမည်အပြည့်အစုံ လက်မှတ်ထိုးပါ။',th:'กรุณาลงชื่อเต็มให้ตรงกับชื่อ (ตัวพิมพ์ใหญ่) ในกรอบสีแดง'},
+  pp_check:{en:'I understand. I will sign exactly as my passport name.',id:'Saya mengerti. Saya akan tanda tangan persis seperti nama paspor saya.',vi:'Tôi đã hiểu. Tôi sẽ ký đúng như tên trên hộ chiếu.',zh:'我已确认。我将按护照姓名一样签名。',km:'ខ្ញុំយល់ហើយ។ ខ្ញុំនឹងចុះហត្ថលេខាដូចឈ្មោះលើលិខិតឆ្លងដែន។',my:'နားလည်ပါပြီ။ ပတ်စ်ပို့အမည်အတိုင်း လက်မှတ်ထိုးပါမည်။',th:'ฉันเข้าใจแล้ว จะลงนามให้ตรงกับชื่อในพาสปอร์ต'},
   step2_label:{en:'Review & Sign',id:'Periksa & TTD',vi:'Kiểm tra & Ký',zh:'确认·签名',km:'ពិនិត្យ និងចុះហត្ថលេខា',my:'စစ်၍ လက်မှတ်ထိုး',th:'ตรวจสอบ·ลงนาม'},
   s2_doclabel:{en:'Document (please check all pages)',id:'Dokumen (periksa semua halaman)',vi:'Tài liệu (xem tất cả các trang)',zh:'文件（请确认所有页面）',km:'ឯកសារ (សូមពិនិត្យគ្រប់ទំព័រ)',my:'စာရွက် (စာမျက်နှာအားလုံးစစ်ပါ)',th:'เอกสาร (กรุณาตรวจทุกหน้า)'},
   doc_prev:{en:'◀ Prev doc',id:'◀ Dok. sebelumnya',vi:'◀ Tài liệu trước',zh:'◀ 上一份',km:'◀ ឯកសារមុន',my:'◀ ယခင်စာရွက်',th:'◀ เอกสารก่อน'},
@@ -321,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function(){
 // ※ GASをデプロイしたURLに変更してください
 const GAS_URL='https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 
-// ver.20260710.19: SIG_COORDS削除（DBのsig_x/y/w/h/pageを使用）
+// ver.20260730.20: SIG_COORDS削除（DBのsig_x/y/w/h/pageを使用）
 
 // ===== 状態 =====
 let requestToken=null,signRequestId=null,caseData=null;
@@ -371,7 +402,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 });
 
 async function loadSignRequest(token){
-  console.log('%c OFUSA upload/sign.html ver.20260710.19 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
+  console.log('%c OFUSA upload/sign.html ver.20260730.20 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
   try{
     const {data,error}=await sb.rpc('sign_get',{ p_token: token });
     if(error||!data){showError('リンクが見つかりません');return;}
@@ -385,7 +416,7 @@ async function loadSignRequest(token){
     document.getElementById('workerName').textContent=data.applicant||'—';
     document.getElementById('companyName').textContent=data.company||'—';
     // docs（N枚）を構築：新方式は data.docs、旧方式は pdf_base64/sig_positions から1件
-    // ver.20260710.19: sig_x/y/w/h/pageをsig_positionsに変換してフォールバック
+    // ver.20260730.20: sig_x/y/w/h/pageをsig_positionsに変換してフォールバック
     var _fallbackPos = (data.sig_x != null)
       ? [{ page: (data.sig_page||1), x: data.sig_x, y: data.sig_y, w: data.sig_w, h: data.sig_h }]
       : null;
@@ -591,7 +622,7 @@ function bytesToB64(bytes){
   return btoa(bin);
 }
 // 1つのPDFバイト列に署名を焼き込む（positions=その書類の枠配列）
-// ver.20260710.19: 署名キャンバスをdeg度回転させたdataURLを返す
+// ver.20260730.20: 署名キャンバスをdeg度回転させたdataURLを返す
 function _sigDataUrlRotated(deg){
   var srcUrl = _sigDataUrl();
   if(!deg || deg === 0) return Promise.resolve(srcUrl);
@@ -622,10 +653,10 @@ async function embedSignatureToOne(srcBytes, positions){
     var p=pos[i];
     const pg=pages[(p.page||1)-1]||pages[pages.length-1];
     var pgSize=pg.getSize();
-    // ver.20260710.19: PDFのRotateに応じて座標変換＋画像回転
+    // ver.20260730.20: PDFのRotateに応じて座標変換＋画像回転
     var rotate=(pg.getRotation && pg.getRotation().angle)||0;
     var px,py,pw,ph,sigDeg;
-    // ver.20260710.19: Rotate変換式修正
+    // ver.20260730.20: Rotate変換式修正
     // naturalVp座標→生mediabox座標
     // Rotate=270(時計回り90度): raw_x=W-pdfY-ph, raw_y=pdfX
     // Rotate=90: px=W-p.y-p.h, py=p.x （W=生mediabox幅, H=生mediabox高さ）
@@ -638,7 +669,7 @@ async function embedSignatureToOne(srcBytes, positions){
     } else {
       px=p.x; py=p.y; pw=p.w; ph=p.h; sigDeg=0;
     }
-    // ver.20260710.19: 署名前セルフチェック。変換後の署名枠(px,py,pw,ph)が生MediaBox範囲に収まるか検査し、
+    // ver.20260730.20: 署名前セルフチェック。変換後の署名枠(px,py,pw,ph)が生MediaBox範囲に収まるか検査し、
     //   はみ出し・NaN・負値・面積異常などがあれば警告を出す（将来の座標式ミスを本番確定前に検知する安全網）。
     (function(){
       var W=pgSize.width, H=pgSize.height;
