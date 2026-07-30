@@ -95,9 +95,9 @@ input:focus{border-color:var(--accent);background:white;}
 .pp-img-wrap{position:relative;width:100%;max-width:360px;margin:0 auto;border-radius:8px;overflow:hidden;border:1px solid var(--border);}
 .pp-img-wrap img{display:block;width:100%;height:auto;}
 /* 氏名欄を囲う赤枠（画像に対する%指定）*/
-.pp-highlight{position:absolute;left:35%;top:28%;width:44%;height:24%;border:3px solid var(--accent);border-radius:6px;animation:ppPulse 1.6s ease-in-out infinite;pointer-events:none;}
+.pp-highlight{position:absolute;left:31%;top:28%;width:40%;height:24%;border:3px solid var(--accent);border-radius:6px;animation:ppPulse 1.6s ease-in-out infinite;pointer-events:none;}
 @keyframes ppPulse{0%,100%{box-shadow:0 0 0 3px rgba(200,16,46,.25);}50%{box-shadow:0 0 0 7px rgba(200,16,46,0);}}
-.pp-arrow{position:absolute;left:35%;top:19%;font-size:11px;font-weight:800;color:var(--accent);background:white;border:1.5px solid var(--accent);border-radius:6px;padding:1px 7px;white-space:nowrap;pointer-events:none;}
+.pp-arrow{position:absolute;left:31%;top:19%;font-size:11px;font-weight:800;color:var(--accent);background:white;border:1.5px solid var(--accent);border-radius:6px;padding:1px 7px;white-space:nowrap;pointer-events:none;}
 .pp-note{font-size:12px;color:var(--muted);line-height:1.7;margin-top:12px;}
 .pp-check{display:flex;align-items:flex-start;gap:10px;margin-top:14px;padding:12px 14px;background:var(--paper);border:1px solid var(--border);border-radius:10px;cursor:pointer;}
 .pp-check input{width:20px;height:20px;margin-top:1px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;}
@@ -106,7 +106,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header" style="position:relative;">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260730.20</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260730.21</span></div>
   <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
   <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
     <option value="ja">🌐 日本語</option>
@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function(){
 // ※ GASをデプロイしたURLに変更してください
 const GAS_URL='https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 
-// ver.20260730.20: SIG_COORDS削除（DBのsig_x/y/w/h/pageを使用）
+// ver.20260730.21: SIG_COORDS削除（DBのsig_x/y/w/h/pageを使用）
 
 // ===== 状態 =====
 let requestToken=null,signRequestId=null,caseData=null;
@@ -402,7 +402,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 });
 
 async function loadSignRequest(token){
-  console.log('%c OFUSA upload/sign.html ver.20260730.20 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
+  console.log('%c OFUSA upload/sign.html ver.20260730.21 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
   try{
     const {data,error}=await sb.rpc('sign_get',{ p_token: token });
     if(error||!data){showError('リンクが見つかりません');return;}
@@ -416,7 +416,7 @@ async function loadSignRequest(token){
     document.getElementById('workerName').textContent=data.applicant||'—';
     document.getElementById('companyName').textContent=data.company||'—';
     // docs（N枚）を構築：新方式は data.docs、旧方式は pdf_base64/sig_positions から1件
-    // ver.20260730.20: sig_x/y/w/h/pageをsig_positionsに変換してフォールバック
+    // ver.20260730.21: sig_x/y/w/h/pageをsig_positionsに変換してフォールバック
     var _fallbackPos = (data.sig_x != null)
       ? [{ page: (data.sig_page||1), x: data.sig_x, y: data.sig_y, w: data.sig_w, h: data.sig_h }]
       : null;
@@ -622,7 +622,7 @@ function bytesToB64(bytes){
   return btoa(bin);
 }
 // 1つのPDFバイト列に署名を焼き込む（positions=その書類の枠配列）
-// ver.20260730.20: 署名キャンバスをdeg度回転させたdataURLを返す
+// ver.20260730.21: 署名キャンバスをdeg度回転させたdataURLを返す
 function _sigDataUrlRotated(deg){
   var srcUrl = _sigDataUrl();
   if(!deg || deg === 0) return Promise.resolve(srcUrl);
@@ -653,10 +653,10 @@ async function embedSignatureToOne(srcBytes, positions){
     var p=pos[i];
     const pg=pages[(p.page||1)-1]||pages[pages.length-1];
     var pgSize=pg.getSize();
-    // ver.20260730.20: PDFのRotateに応じて座標変換＋画像回転
+    // ver.20260730.21: PDFのRotateに応じて座標変換＋画像回転
     var rotate=(pg.getRotation && pg.getRotation().angle)||0;
     var px,py,pw,ph,sigDeg;
-    // ver.20260730.20: Rotate変換式修正
+    // ver.20260730.21: Rotate変換式修正
     // naturalVp座標→生mediabox座標
     // Rotate=270(時計回り90度): raw_x=W-pdfY-ph, raw_y=pdfX
     // Rotate=90: px=W-p.y-p.h, py=p.x （W=生mediabox幅, H=生mediabox高さ）
@@ -669,7 +669,7 @@ async function embedSignatureToOne(srcBytes, positions){
     } else {
       px=p.x; py=p.y; pw=p.w; ph=p.h; sigDeg=0;
     }
-    // ver.20260730.20: 署名前セルフチェック。変換後の署名枠(px,py,pw,ph)が生MediaBox範囲に収まるか検査し、
+    // ver.20260730.21: 署名前セルフチェック。変換後の署名枠(px,py,pw,ph)が生MediaBox範囲に収まるか検査し、
     //   はみ出し・NaN・負値・面積異常などがあれば警告を出す（将来の座標式ミスを本番確定前に検知する安全網）。
     (function(){
       var W=pgSize.width, H=pgSize.height;
