@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260729.01';
+const VERSION = 'ver.20260730.03';
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -897,6 +897,79 @@ function buildSampleInline(docKey){
   return wrap;
 }
 
+// ver.20260730.01: 顔写真アップロード前の確認モーダル（在留カード流用防止・6か月以内チェック）
+let mugshotConfirmed = false;
+function showMugshotConfirm(onConfirm) {
+  const T = {
+    ja:{title:'📷 顔写真アップロード前の確認',note:'下の2つを確認してチェックしてください',c1:'今つかっている在留カードと同じ写真は使えません（別の写真を用意しました）',c2:'6か月以内に撮った写真です',ok:'続ける',cancel:'キャンセル'},
+    en:{title:'📷 Check before uploading your photo',note:'Please check both items below',c1:'I will not use the same photo as my current Residence Card (I have prepared a different photo)',c2:'This photo was taken within the last 6 months',ok:'Continue',cancel:'Cancel'},
+    vi:{title:'📷 Xác nhận trước khi tải ảnh lên',note:'Vui lòng xác nhận và tích cả hai mục dưới đây',c1:'Tôi sẽ không dùng ảnh giống ảnh trên Thẻ cư trú hiện tại (đã chuẩn bị ảnh khác)',c2:'Ảnh này được chụp trong vòng 6 tháng gần đây',ok:'Tiếp tục',cancel:'Hủy'},
+    id:{title:'📷 Konfirmasi sebelum mengunggah foto',note:'Mohon centang kedua item di bawah ini',c1:'Saya tidak akan memakai foto yang sama dengan Kartu Izin Tinggal saat ini (sudah menyiapkan foto lain)',c2:'Foto ini diambil dalam 6 bulan terakhir',ok:'Lanjutkan',cancel:'Batal'},
+    ko:{title:'📷 사진 업로드 전 확인',note:'아래 두 항목을 확인하고 체크해 주세요',c1:'현재 사용 중인 재류카드와 같은 사진은 사용할 수 없습니다 (다른 사진을 준비했습니다)',c2:'6개월 이내에 촬영한 사진입니다',ok:'계속',cancel:'취소'},
+    zh:{title:'📷 上传照片前的确认',note:'请确认并勾选以下两项',c1:'不能使用与现在在留卡相同的照片（已准备其他照片）',c2:'这是6个月以内拍摄的照片',ok:'继续',cancel:'取消'}
+  };
+  const t = T[currentLang] || T.en;
+  const overlay = document.createElement('div');
+  overlay.id = 'mugshotConfirmOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:16px;width:100%;max-width:420px;padding:22px 20px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:90vh;overflow-y:auto;';
+  box.innerHTML =
+    '<div style="font-size:16px;font-weight:800;color:#0f2040;text-align:center;margin-bottom:6px;">' + t.title + '</div>' +
+    '<div style="font-size:12px;color:#64748b;text-align:center;margin-bottom:16px;">' + t.note + '</div>' +
+    '<label style="display:flex;gap:10px;align-items:flex-start;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:12px;margin-bottom:10px;cursor:pointer;font-size:13px;color:#7c2d12;line-height:1.5;font-weight:600;">' +
+      '<input type="checkbox" id="mgChk1" style="width:20px;height:20px;flex:0 0 auto;margin-top:1px;cursor:pointer;"><span>' + t.c1 + '</span></label>' +
+    '<label style="display:flex;gap:10px;align-items:flex-start;background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;padding:12px;margin-bottom:16px;cursor:pointer;font-size:13px;color:#1e3a8a;line-height:1.5;font-weight:600;">' +
+      '<input type="checkbox" id="mgChk2" style="width:20px;height:20px;flex:0 0 auto;margin-top:1px;cursor:pointer;"><span>' + t.c2 + '</span></label>' +
+    '<button id="mgOkBtn" disabled style="width:100%;padding:14px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;opacity:.45;transition:opacity .15s;">' + t.ok + '</button>' +
+    '<button id="mgCancelBtn" style="width:100%;padding:11px;margin-top:8px;background:#fff;color:#64748b;border:2px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">' + t.cancel + '</button>';
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  const chk1 = box.querySelector('#mgChk1');
+  const chk2 = box.querySelector('#mgChk2');
+  const okBtn = box.querySelector('#mgOkBtn');
+  const sync = () => { const ok = chk1.checked && chk2.checked; okBtn.disabled = !ok; okBtn.style.opacity = ok ? '1' : '.45'; };
+  chk1.addEventListener('change', sync);
+  chk2.addEventListener('change', sync);
+  const close = () => overlay.remove();
+  okBtn.addEventListener('click', () => { if (chk1.checked && chk2.checked) { close(); onConfirm(); } });
+  box.querySelector('#mgCancelBtn').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+}
+function attachMugshotGate(input) {
+  input.addEventListener('click', function(e) {
+    if (mugshotConfirmed) return;
+    e.preventDefault();
+    showMugshotConfirm(function(){ mugshotConfirmed = true; input.click(); });
+  });
+}
+// 共通ローダ：files配列をfileData[key]へ読み込み、完了後onDoneを呼ぶ
+function loadFilesInto(key, files, onDone) {
+  if (!files.length) return;
+  if (!fileData[key]) fileData[key] = [];
+  let loaded = 0;
+  files.forEach(function(file){
+    const r = new FileReader();
+    r.onload = function(ev){
+      fileData[key].push({dataUrl:ev.target.result,name:file.name,mimeType:file.type,base64:ev.target.result.split(',')[1],isPdf:file.type==='application/pdf'});
+      loaded++;
+      if (loaded === files.length) onDone();
+    };
+    r.readAsDataURL(file);
+  });
+}
+// change経由（クリック選択もドラッグ&ドロップも通る）で顔写真をゲート
+function gatedLoad(key, e, onDone) {
+  const files = Array.from(e.target.files);
+  e.target.value = '';
+  if (!files.length) return;
+  if (key === 'mugshot' && !mugshotConfirmed) {
+    showMugshotConfirm(function(){ mugshotConfirmed = true; loadFilesInto(key, files, onDone); });
+    return;
+  }
+  loadFilesInto(key, files, onDone);
+}
+
 function buildFields() {
   const L = LANGS[currentLang];
   fieldsList.innerHTML = '';
@@ -1013,13 +1086,15 @@ function buildFields() {
       });
       const am = document.createElement('div'); am.className='mini-drop'; am.style.cssText='margin-top:4px;';
       const ai = document.createElement('input'); ai.type='file'; ai.accept='image/*,image/heic,image/heif,application/pdf'; ai.multiple=true;
-      ai.addEventListener('change', e => { const files=Array.from(e.target.files); if(!files.length) return; if(!fileData[key]) fileData[key]=[]; let loaded=0; files.forEach(file => { const r=new FileReader(); r.onload=ev => { fileData[key].push({dataUrl:ev.target.result,name:file.name,mimeType:file.type,base64:ev.target.result.split(',')[1],isPdf:file.type==='application/pdf'}); loaded++; if(loaded===files.length){buildFields();updateSubmitBtn();} }; r.readAsDataURL(file); }); e.target.value=''; });
+      ai.addEventListener('change', e => { gatedLoad(key, e, function(){ buildFields(); updateSubmitBtn(); }); });
+      if (key === 'mugshot') attachMugshotGate(ai);
       const at2 = document.createElement('div'); at2.className='mini-drop-text'; at2.textContent='➕ 追加';
       am.appendChild(ai); am.appendChild(at2); body.appendChild(am);
     } else {
       const mini = document.createElement('div'); mini.className='mini-drop';
       const input = document.createElement('input'); input.type='file'; input.accept='image/*,image/heic,image/heif,application/pdf'; input.multiple=true;
-      input.addEventListener('change', e => { const files=Array.from(e.target.files); if(!files.length) return; if(!fileData[key]) fileData[key]=[]; let loaded=0; files.forEach(file => { const r=new FileReader(); r.onload=ev => { fileData[key].push({dataUrl:ev.target.result,name:file.name,mimeType:file.type,base64:ev.target.result.split(',')[1],isPdf:file.type==='application/pdf'}); loaded++; if(loaded===files.length){ buildFields(); updateSubmitBtn(); const idx=DOC_KEYS.indexOf(key); const nk=DOC_KEYS.slice(idx+1).find(k=>!fileData[k]||!fileData[k].length); if(nk){const nr=fieldsList.querySelector('[data-key="'+nk+'"]');if(nr)nr.classList.add('open');} } }; r.readAsDataURL(file); }); e.target.value=''; });
+      input.addEventListener('change', e => { gatedLoad(key, e, function(){ buildFields(); updateSubmitBtn(); const idx=DOC_KEYS.indexOf(key); const nk=DOC_KEYS.slice(idx+1).find(k=>!fileData[k]||!fileData[k].length); if(nk){const nr=fieldsList.querySelector('[data-key="'+nk+'"]');if(nr)nr.classList.add('open');} }); });
+      if (key === 'mugshot') attachMugshotGate(input);
       const dt = document.createElement('div'); dt.className='mini-drop-text'; dt.textContent=L.tapToAdd;
       const dh = document.createElement('div'); dh.className='mini-drop-hint'; dh.textContent=L.hint;
       mini.appendChild(input); mini.appendChild(dt); mini.appendChild(dh); body.appendChild(mini);
