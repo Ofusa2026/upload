@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260730.03';
+const VERSION = 'ver.20260730.04';
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -1087,14 +1087,14 @@ function buildFields() {
       const am = document.createElement('div'); am.className='mini-drop'; am.style.cssText='margin-top:4px;';
       const ai = document.createElement('input'); ai.type='file'; ai.accept='image/*,image/heic,image/heif,application/pdf'; ai.multiple=true;
       ai.addEventListener('change', e => { gatedLoad(key, e, function(){ buildFields(); updateSubmitBtn(); }); });
-      if (key === 'mugshot') attachMugshotGate(ai);
+      if (key === 'mugshot' || (DOC_LABELS_JA && DOC_LABELS_JA[key] === '顔写真')) attachMugshotGate(ai);
       const at2 = document.createElement('div'); at2.className='mini-drop-text'; at2.textContent='➕ 追加';
       am.appendChild(ai); am.appendChild(at2); body.appendChild(am);
     } else {
       const mini = document.createElement('div'); mini.className='mini-drop';
       const input = document.createElement('input'); input.type='file'; input.accept='image/*,image/heic,image/heif,application/pdf'; input.multiple=true;
       input.addEventListener('change', e => { gatedLoad(key, e, function(){ buildFields(); updateSubmitBtn(); const idx=DOC_KEYS.indexOf(key); const nk=DOC_KEYS.slice(idx+1).find(k=>!fileData[k]||!fileData[k].length); if(nk){const nr=fieldsList.querySelector('[data-key="'+nk+'"]');if(nr)nr.classList.add('open');} }); });
-      if (key === 'mugshot') attachMugshotGate(input);
+      if (key === 'mugshot' || (DOC_LABELS_JA && DOC_LABELS_JA[key] === '顔写真')) attachMugshotGate(input);
       const dt = document.createElement('div'); dt.className='mini-drop-text'; dt.textContent=L.tapToAdd;
       const dh = document.createElement('div'); dh.className='mini-drop-hint'; dh.textContent=L.hint;
       mini.appendChild(input); mini.appendChild(dt); mini.appendChild(dh); body.appendChild(mini);
