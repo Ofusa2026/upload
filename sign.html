@@ -106,7 +106,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header" style="position:relative;">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260730.21</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260803.05</span></div>
   <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
   <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
     <option value="ja">🌐 日本語</option>
@@ -150,6 +150,12 @@ input:focus{border-color:var(--accent);background:white;}
       </div>
     </div>
     <div class="notice" data-i18n="s1_notice"><strong>ご<ruby>本人様<rt>ほんにんさま</rt></ruby>へ：</strong><ruby>書類<rt>しょるい</rt></ruby>の<ruby>内容<rt>ないよう</rt></ruby>を<ruby>確認<rt>かくにん</rt></ruby>し、<ruby>署名<rt>しょめい</rt></ruby>してください。</div>
+    <!-- ver.20260803.05: 企業押印モード用 -->
+    <div id="companyModeNotice" style="display:none;margin:12px 0;padding:14px 16px;background:#eff6ff;border:1.5px solid #93c5fd;border-radius:12px;font-size:13px;color:#1e40af;line-height:1.7;">
+      <div style="font-weight:800;font-size:15px;margin-bottom:6px;">🏢 企業押印のお願い</div>
+      <div>以下の書類について、<strong>代表者または担当者の方</strong>のご署名（電子押印）をお願いします。</div>
+      <div id="targetDocList" style="margin-top:10px;padding:10px 12px;background:white;border-radius:8px;border:1px solid #bfdbfe;font-size:13px;"></div>
+    </div>
     <div class="pp-card">
       <div class="pp-card-title" data-i18n="pp_title">サインは、<strong>パスポートの<ruby>氏名<rt>しめい</rt></ruby>（ローマ<ruby>字<rt>じ</rt></ruby>）と<ruby>同<rt>おな</rt></ruby>じつづり</strong>で<ruby>書<rt>か</rt></ruby>いてください。</div>
       <div class="pp-img-wrap">
@@ -223,15 +229,32 @@ input:focus{border-color:var(--accent);background:white;}
     </div>
     <div class="section">
       <div class="section-label" data-i18n="s3_namelabel"><ruby>氏名<rt>しめい</rt></ruby>を<ruby>入力<rt>にゅうりょく</rt></ruby>してください</div>
-      <div class="verify-section">
-        <div class="input-group">
-          <label class="input-label" data-i18n="lbl_name_roman"><ruby>氏名<rt>しめい</rt></ruby>（ローマ<ruby>字<rt>じ</rt></ruby>）</label>
-          <input type="text" id="inputName" data-i18n-ph="ph_name" placeholder="例：NGUYEN VAN AN" autocomplete="name">
+      <!-- 通常モード（人材サイン）-->
+      <div id="normalSignForm">
+        <div class="verify-section">
+          <div class="input-group">
+            <label class="input-label" data-i18n="lbl_name_roman"><ruby>氏名<rt>しめい</rt></ruby>（ローマ<ruby>字<rt>じ</rt></ruby>）</label>
+            <input type="text" id="inputName" data-i18n-ph="ph_name" placeholder="例：NGUYEN VAN AN" autocomplete="name">
+          </div>
+        </div>
+      </div>
+      <!-- 企業押印モード ver.20260803.05 -->
+      <div id="companySignForm" style="display:none;">
+        <div class="verify-section">
+          <div class="input-group">
+            <label class="input-label">会社名</label>
+            <input type="text" id="inputCompanyName" placeholder="例：株式会社○○建設" autocomplete="organization">
+          </div>
+          <div class="input-group" style="margin-top:10px;">
+            <label class="input-label">署名者（担当者名）</label>
+            <input type="text" id="inputRepName" placeholder="例：山田 太郎" autocomplete="name">
+          </div>
         </div>
       </div>
     </div>
-    <div class="notice" data-i18n="s3_notice"><ruby>氏名<rt>しめい</rt></ruby>は<strong>ローマ<ruby>字<rt>じ</rt></ruby>のフルネーム</strong>（パスポートと<ruby>同<rt>おな</rt></ruby>じつづり）で<ruby>入力<rt>にゅうりょく</rt></ruby>してください。<ruby>署名者<rt>しょめいしゃ</rt></ruby>の<ruby>氏名<rt>しめい</rt></ruby>として<ruby>記録<rt>きろく</rt></ruby>されます。</div>
-    <button class="btn-primary" id="btnSubmit" data-i18n="s3_btn" onclick="submitSign()">✅ <ruby>署名<rt>しょめい</rt></ruby>を<ruby>送信<rt>そうしん</rt></ruby>する</button>
+    <div id="normalSignNotice" class="notice" data-i18n="s3_notice"><ruby>氏名<rt>しめい</rt></ruby>は<strong>ローマ<ruby>字<rt>じ</rt></ruby>のフルネーム</strong>（パスポートと<ruby>同<rt>おな</rt></ruby>じつづり）で<ruby>入力<rt>にゅうりょく</rt></ruby>してください。<ruby>署名者<rt>しょめいしゃ</rt></ruby>の<ruby>氏名<rt>しめい</rt></ruby>として<ruby>記録<rt>きろく</rt></ruby>されます。</div>
+    <div id="companySignNotice" class="notice" style="display:none;">会社名と署名者名を入力して、「電子押印を送信」を押してください。</div>
+    <button class="btn-primary" id="btnSubmit" onclick="isCompany ? submitCompanySign() : submitSign()">✅ <ruby>署名<rt>しょめい</rt></ruby>を<ruby>送信<rt>そうしん</rt></ruby>する</button>
     <div id="submitNote" style="display:none;margin-top:12px;background:#eef4ff;border:1px solid #b9d0ff;border-radius:10px;padding:12px 14px;font-size:13px;color:#1d4ed8;font-weight:700;line-height:1.6;text-align:center;" data-i18n="submit_note">⏳ <ruby>署名<rt>しょめい</rt></ruby>を<ruby>処理<rt>しょり</rt></ruby>しています。30<ruby>秒<rt>びょう</rt></ruby>ほどかかります。<br>そのまま<ruby>画面<rt>がめん</rt></ruby>を<ruby>閉<rt>と</rt></ruby>じずにお<ruby>待<rt>ま</rt></ruby>ちください。</div>
     <button class="btn-back" data-i18n="btn_back" onclick="goStep(2)">← <ruby>戻<rt>もど</rt></ruby>る</button>
   </div>
@@ -352,10 +375,10 @@ document.addEventListener('DOMContentLoaded', function(){
 // ※ GASをデプロイしたURLに変更してください
 const GAS_URL='https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 
-// ver.20260730.21: SIG_COORDS削除（DBのsig_x/y/w/h/pageを使用）
+// ver.20260803.05: SIG_COORDS削除（DBのsig_x/y/w/h/pageを使用）
 
 // ===== 状態 =====
-let requestToken=null,signRequestId=null,caseData=null;
+let requestToken=null,signRequestId=null,caseData=null,isCompany=false;
 let docLang='インドネシア語',pdfBytes=null,signedPdfBytes=null,driveFolderId='';
 let docsArr=[],curDocIdx=0;
 let pdfDoc=null,currentPage=1,totalPages=0;
@@ -397,12 +420,14 @@ function b64ToPdfBytes(b64){
 document.addEventListener('DOMContentLoaded',async()=>{
   const p=new URLSearchParams(location.search);
   requestToken=p.get('token');
+  isCompany = p.get('signer') === 'company';  // ver.20260803.05: 企業押印モード
+  if(isCompany) _applyCompanyMode();
   if(!requestToken){showError('URLが無効です','リンクを確認してください');return;}
   await loadSignRequest(requestToken);
 });
 
 async function loadSignRequest(token){
-  console.log('%c OFUSA upload/sign.html ver.20260730.21 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
+  console.log('%c OFUSA upload/sign.html ver.20260803.05 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
   try{
     const {data,error}=await sb.rpc('sign_get',{ p_token: token });
     if(error||!data){showError('リンクが見つかりません');return;}
@@ -436,12 +461,16 @@ async function loadSignRequest(token){
       ? (docsArr.length+'件の書類') : (data.doc_type||'サイン書類');
     var _docNav=document.getElementById('docNav');
     if(_docNav) _docNav.style.display = (docsArr.length>1)?'flex':'none';
-    try{
-      await loadDocForReview(0);
-    }catch(e){
-      showError('PDFの読み込みに失敗しました。担当者にご連絡ください。',e.message);
-      return;
+    // ver.20260803.05: 企業モードでは PDF ロード不要
+    if(!isCompany){
+      try{
+        await loadDocForReview(0);
+      }catch(e){
+        showError('PDFの読み込みに失敗しました。担当者にご連絡ください。',e.message);
+        return;
+      }
     }
+    if(isCompany) _renderCompanyDocList(data);
     goStep(1);
   }catch(e){console.error(e);showError('読み込みエラー',e.message);}
 }
@@ -749,6 +778,111 @@ async function saveToDriveNow(){
     else{el.className='drive-status pending';el.textContent='⏳ 保存処理中です。数分以内にDriveへ保存されます。';}
   }
 }
+// ver.20260803.05: 企業押印モード — UI切り替え
+function _applyCompanyMode(){
+  // header
+  var hd = document.querySelector('.header-title');
+  if(hd) hd.textContent = '企業押印';
+  // STEP1: パスポートガイド非表示・企業notice表示
+  var ppCard = document.querySelector('.pp-card');
+  if(ppCard) ppCard.style.display = 'none';
+  var ppNotice = document.querySelector('[data-i18n="s1_notice"]');
+  if(ppNotice) ppNotice.style.display = 'none';
+  var cmNotice = document.getElementById('companyModeNotice');
+  if(cmNotice) cmNotice.style.display = '';
+  // STEP1: チェックボックスなしでボタンを有効化
+  var s1Btn = document.getElementById('s1Btn');
+  if(s1Btn){ s1Btn.disabled = false; s1Btn.textContent = '📋 内容を確認して署名へ進む →'; }
+  var ppCheck = document.querySelector('#ppAgree');
+  if(ppCheck){ var pcWrap = ppCheck.closest('label'); if(pcWrap) pcWrap.style.display='none'; }
+  // STEP2: 署名案内テキストを変更
+  var s2rom = document.querySelector('[data-i18n="s2_notice_roman"]');
+  if(s2rom){ s2rom.innerHTML = '<strong>代表者または担当者の方</strong>の電子押印（サイン）をお願いします。'; }
+  var sg = document.getElementById('signGuide');
+  if(sg) sg.textContent = '代表者・担当者のサイン';
+  // STEP2: PDF表示エリア非表示（企業は書類確認不要）
+  var pdfWrap = document.querySelector('.pdf-viewer-wrap');
+  if(pdfWrap) pdfWrap.style.display = 'none';
+  // STEP3: フォーム切り替え
+  var norm = document.getElementById('normalSignForm');
+  var comp = document.getElementById('companySignForm');
+  var normN = document.getElementById('normalSignNotice');
+  var compN = document.getElementById('companySignNotice');
+  if(norm) norm.style.display = 'none';
+  if(comp) comp.style.display = '';
+  if(normN) normN.style.display = 'none';
+  if(compN) compN.style.display = '';
+  var btnSubmit = document.getElementById('btnSubmit');
+  if(btnSubmit) btnSubmit.textContent = '🏢 電子押印を送信する';
+}
+
+// ver.20260803.05: loadSignRequestの直後に企業用目標書類リストを表示
+function _renderCompanyDocList(data){
+  var types = (data && data.target_doc_types) || [];
+  var labels = { '1-5':'参考様式第1-5号（雇用契約書）', '1-6':'参考様式第1-6号（雇用条件書）',
+                 'itaku':'委任状', 'juyo':'重要事項説明書' };
+  var list = document.getElementById('targetDocList');
+  if(!list) return;
+  if(!types.length){ list.textContent = data && data.doc_type ? data.doc_type : '（書類情報なし）'; return; }
+  list.innerHTML = types.map(function(t){
+    return '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;">📄 <span>' + (labels[t]||t) + '</span></div>';
+  }).join('');
+  // 申請人名・会社名も表示
+  var applicant = data.applicant || '';
+  var company   = data.company   || '';
+  if(applicant || company){
+    list.innerHTML += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #bfdbfe;font-size:12px;color:#3b82f6;">' +
+      (applicant ? '申請人：' + applicant + '<br>' : '') +
+      (company   ? '所属機関：' + company : '') + '</div>';
+  }
+}
+
+// ver.20260803.05: 企業押印送信
+async function submitCompanySign(){
+  var companyName = (document.getElementById('inputCompanyName')||{}).value || '';
+  var repName     = (document.getElementById('inputRepName')||{}).value || '';
+  companyName = companyName.trim(); repName = repName.trim();
+  if(!companyName){ alert('会社名を入力してください'); return; }
+  if(!repName)    { alert('署名者（担当者名）を入力してください'); return; }
+  if(!hasDrawn)   { alert('署名してください'); return; }
+  var btn = document.getElementById('btnSubmit');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ 送信中…'; }
+  var sn = document.getElementById('submitNote'); if(sn) sn.style.display='block';
+  var sigDataUrl = _sigDataUrl();
+  var signerLabel = companyName + ' / ' + repName;
+  var signedAt = new Date().toISOString();
+  try{
+    var { error } = await sb.from('sign_requests').update({
+      status: 'signed',
+      signer_name: signerLabel,
+      signature_image: sigDataUrl,
+      signed_at: signedAt,
+      staff_confirmed_at: null   // 担当者未確認にして通知させる
+    }).eq('id', signRequestId);
+    if(error) throw error;
+    // 完了画面
+    document.getElementById('completeName').textContent = signerLabel;
+    try{ document.getElementById('completeDoc').textContent = (caseData && caseData.doc_type) || '企業押印'; }catch(_e){}
+    document.getElementById('completeTime').textContent = new Date(signedAt).toLocaleString('ja-JP');
+    document.getElementById('completeId').textContent = signRequestId.slice(0,8).toUpperCase();
+    document.getElementById('progressFill').style.width = '100%';
+    // 完了画面テキストを企業向けに変更
+    var ctitle = document.querySelector('[data-i18n="c_title"]');
+    if(ctitle) ctitle.textContent = '電子押印完了';
+    var csub   = document.querySelector('[data-i18n="c_sub"]');
+    if(csub)   csub.textContent   = '電子押印が完了しました。担当者に確認の連絡をしてください。';
+    // applicantLinkBox は企業には不要
+    var alPend = document.getElementById('applicantLinkPending'); if(alPend) alPend.style.display='none';
+    var alBox  = document.getElementById('applicantLinkBox');     if(alBox)  alBox.style.display='none';
+    goStep(4);
+  }catch(e){
+    console.error('submitCompanySign error',e);
+    alert('送信エラー: ' + (e.message || JSON.stringify(e)));
+    if(btn){ btn.disabled = false; btn.textContent = '🏢 電子押印を送信する'; }
+    if(sn) sn.style.display='none';
+  }
+}
+
 async function submitSign(){
   const name=document.getElementById('inputName').value.trim();
   const card='';
