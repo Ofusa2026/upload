@@ -127,7 +127,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260730.02';
+const VERSION = 'ver.20260803.04';
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -973,13 +973,54 @@ function gatedLoad(key, e, onDone) {
   loadFilesInto(key, files, onDone);
 }
 
+// ver.20260803.03: 課税・納税証明書の窓口案内カード（更新・変更でtax行が出るとき、その直前に表示）
+// 年度は6月切替で最新の令和年度を自動計算（課税証明書は毎年6月ごろ新年度分が発行）
+function _latestKazeiReiwa() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const greg = (m >= 6) ? y : (y - 1);
+  return greg - 2019; // 課税証明書の年度表記（例: 2026年6月以降 = 令和7年度）
+}
+function _taxNoticeCardHTML() {
+  const r = _latestKazeiReiwa();
+  return '' +
+    '<div class="tax-notice-card" style="margin:0 0 14px;border-radius:12px;overflow:hidden;border:1px solid #d5e3e1;box-shadow:0 1px 3px rgba(0,0,0,.06);">' +
+      '<div style="background:#14807a;color:#fff;font-weight:800;font-size:14px;padding:11px 14px;">窓口でこの画面をお見せください</div>' +
+      '<div style="background:#fff;padding:14px;">' +
+        '<div style="font-size:14px;font-weight:700;color:#111827;line-height:1.9;">' +
+          '・令和' + r + '年度　所得・課税証明書　1通<br>' +
+          '・令和' + r + '年度　納税証明書（市区町村民税）　1通' +
+        '</div>' +
+        '<div style="margin-top:12px;background:#fdf7ec;border:1px solid #f0e2c4;border-radius:8px;padding:9px 11px;font-size:11.5px;color:#8a6d3b;line-height:1.6;">' +
+          '※ 税務署の納税証明書ではありません　／　※ 在留カードをお持ちください　／　※ 手数料 各300円程度' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+function _jaLabelOf(key) {
+  if (USE_NEW_DOCS) return DOC_LABELS_JA[key] || '';
+  return (LANGS.ja && LANGS.ja.docs && LANGS.ja.docs[key]) || key;
+}
+
 function buildFields() {
   const L = LANGS[currentLang];
   fieldsList.innerHTML = '';
   let firstEmptyOpened = false;
   // ver.20260525.01: 新ロジックでは DOC_REQUIRED、旧ロジックでは pattern
   const pattern = (!USE_NEW_DOCS && APP_TYPE) ? getDocPattern() : null;
+  let _taxCardInserted = false;
   DOC_KEYS.forEach(key => {
+    // ver.20260803.03: 課税/納税証明書の行の直前に窓口案内カードを1回だけ挿入
+    if (!_taxCardInserted) {
+      const _jaL = _jaLabelOf(key);
+      if (_jaL && (_jaL.indexOf('課税') >= 0 || _jaL.indexOf('納税') >= 0)) {
+        const _wrap = document.createElement('div');
+        _wrap.innerHTML = _taxNoticeCardHTML();
+        fieldsList.appendChild(_wrap.firstChild);
+        _taxCardInserted = true;
+      }
+    }
     const hasFiles = fileData[key] && fileData[key].length > 0;
     const isRequired = USE_NEW_DOCS ? !!DOC_REQUIRED[key] : (pattern && pattern[key] === 'required');
     const row = document.createElement('div');
