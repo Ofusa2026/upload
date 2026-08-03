@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260730.04';
+const VERSION = 'ver.20260803.13';
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -970,13 +970,95 @@ function gatedLoad(key, e, onDone) {
   loadFilesInto(key, files, onDone);
 }
 
+// ver.20260803.03: 課税・納税証明書の窓口案内カード（更新・変更でtax行が出るとき、その直前に表示）
+// 年度は6月切替で最新の令和年度を自動計算（課税証明書は毎年6月ごろ新年度分が発行）
+function _latestKazeiReiwa() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const greg = (m >= 6) ? y : (y - 1);
+  return greg - 2019; // 課税証明書の年度表記（例: 2026年6月以降 = 令和7年度）
+}
+function _taxNoticeCardHTML() {
+  const r = _latestKazeiReiwa();
+  const refYear = r + 2018; // 令和r年度の賦課期日 = (r+2018)年1月1日（令和7年度→2025年）
+  return '' +
+    '<div class="tax-notice-card" style="margin:0 0 12px;border-radius:12px;overflow:hidden;border:1px solid #d5e3e1;box-shadow:0 1px 3px rgba(0,0,0,.06);">' +
+      '<div style="background:#14807a;color:#fff;font-weight:800;font-size:14px;padding:11px 14px;">役所の窓口でこの画面をお見せください</div>' +
+      '<div style="background:#fff;padding:14px;">' +
+        '<div style="font-size:14px;font-weight:700;color:#111827;line-height:1.9;">' +
+          '・令和' + r + '年度　所得・課税証明書　1通<br>' +
+          '・令和' + r + '年度　納税証明書（市区町村民税）　1通' +
+        '</div>' +
+        '<div style="margin-top:12px;background:#fdf7ec;border:1px solid #f0e2c4;border-radius:8px;padding:9px 11px;font-size:11.5px;color:#8a6d3b;line-height:1.7;">' +
+          '<strong style="color:#7a5a1e;font-size:13.5px;">' + refYear + '年1月1日に住んでいた市区町村の役所で取得</strong><br>' +
+          '※ そこから引っ越した場合は、前の住所の役所へ郵送で取り寄せてください（一部オンライン対応あり）<br>' +
+          '※ もちもの　在留カード<br>' +
+          '※ 手数料 各300円程度<br>' +
+          '※ マイナンバーカードがあればコンビニで発行できる場合もあります' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+// ver.20260803.07: 税証明書グループ先頭の質問（プランA）。「はい/いいえ」で不要3点をグレーアウト
+let taxNeeded = null; // null=未回答（必要扱い）, true=必要, false=不要
+function _setTaxNeeded(v) { taxNeeded = v; buildFields(); updateSubmitBtn(); }
+function _taxQuestionHTML() {
+  const refYear = _latestKazeiReiwa() + 2018;
+  const yesActive = (taxNeeded === true);
+  const noActive  = (taxNeeded === false);
+  const btn = function(active, bg, brd, col){ return 'flex:1;padding:10px 8px;border-radius:9px;border:2px solid ' + (active?brd:'#e2e8f0') + ';background:' + (active?bg:'#fff') + ';color:' + (active?col:'#475569') + ';font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;line-height:1.4;'; };
+  return '' +
+    '<div style="margin:0 0 12px;">' +
+      '<div style="font-size:13.5px;font-weight:800;color:#0f2040;margin-bottom:8px;line-height:1.6;">' + refYear + '年1月1日、日本に住んでいましたか？</div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<button type="button" onclick="_setTaxNeeded(true)" style="' + btn(yesActive,'#ecfdf5','#16a34a','#166534') + '">はい</button>' +
+        '<button type="button" onclick="_setTaxNeeded(false)" style="' + btn(noActive,'#eff6ff','#2563eb','#1e40af') + '">いいえ<br><span style="font-weight:600;font-size:11px;">（' + refYear + '年以降に入国）</span></button>' +
+      '</div>' +
+    '</div>';
+}
+function _taxNotNeededNoteHTML() {
+  const refYear = _latestKazeiReiwa() + 2018;
+  return '' +
+    '<div style="margin:0 0 12px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:12px 14px;font-size:12.5px;color:#334155;line-height:1.7;">' +
+      '<span style="font-weight:800;color:#0f2040;">' + refYear + '年以降に入国された方は不要です。</span><br>' +
+      '課税証明書・納税証明書・源泉徴収票の3点は提出不要です（下の項目はグレーになっています）。' +
+    '</div>';
+}
+function _jaLabelOf(key) {
+  if (USE_NEW_DOCS) return DOC_LABELS_JA[key] || '';
+  return (LANGS.ja && LANGS.ja.docs && LANGS.ja.docs[key]) || key;
+}
+
 function buildFields() {
   const L = LANGS[currentLang];
   fieldsList.innerHTML = '';
   let firstEmptyOpened = false;
   // ver.20260525.01: 新ロジックでは DOC_REQUIRED、旧ロジックでは pattern
   const pattern = (!USE_NEW_DOCS && APP_TYPE) ? getDocPattern() : null;
+  let taxGroupEl = null;
   DOC_KEYS.forEach(key => {
+    // ver.20260803.07: 課税/納税を枠で囲み、枠先頭に質問＋案内。taxNeeded===falseで税3点をグレーアウト
+    const _jaL = _jaLabelOf(key);
+    const _isTax = !!(_jaL && (_jaL.indexOf('課税') >= 0 || _jaL.indexOf('納税') >= 0));
+    const _isWithholding = !!(_jaL && _jaL.indexOf('源泉徴収') >= 0);
+    const _greyNotNeeded = (taxNeeded === false) && (_isTax || _isWithholding);
+    let parentEl = fieldsList;
+    if (_isTax) {
+      if (!taxGroupEl) {
+        taxGroupEl = document.createElement('div');
+        taxGroupEl.className = 'tax-group';
+        taxGroupEl.style.cssText = 'border:2px solid #14807a;border-radius:14px;padding:12px;margin:0 0 14px;background:#f4faf9;';
+        const _q = document.createElement('div');
+        _q.innerHTML = _taxQuestionHTML();
+        taxGroupEl.appendChild(_q.firstChild);
+        const _wrap = document.createElement('div');
+        _wrap.innerHTML = (taxNeeded === false) ? _taxNotNeededNoteHTML() : _taxNoticeCardHTML();
+        taxGroupEl.appendChild(_wrap.firstChild);
+        fieldsList.appendChild(taxGroupEl);
+      }
+      parentEl = taxGroupEl;
+    }
     const hasFiles = fileData[key] && fileData[key].length > 0;
     const isRequired = USE_NEW_DOCS ? !!DOC_REQUIRED[key] : (pattern && pattern[key] === 'required');
     const row = document.createElement('div');
@@ -1100,7 +1182,15 @@ function buildFields() {
       mini.appendChild(input); mini.appendChild(dt); mini.appendChild(dh); body.appendChild(mini);
       if (!firstEmptyOpened) { row.classList.add('open'); firstEmptyOpened=true; }
     }
-    row.appendChild(header); row.appendChild(body); fieldsList.appendChild(row);
+    if (_greyNotNeeded) {
+      row.style.background = '#e2e8f0'; row.style.borderColor = '#94a3b8'; row.style.opacity = '0.6';
+      body.style.pointerEvents = 'none';
+      const _nn = document.createElement('span');
+      _nn.style.cssText = 'color:#64748b;font-size:11px;font-weight:700;margin-left:4px;';
+      _nn.textContent = '不要';
+      label.appendChild(_nn);
+    }
+    row.appendChild(header); row.appendChild(body); parentEl.appendChild(row);
   });
 }
 function updateSubmitBtn() {
