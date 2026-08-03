@@ -127,7 +127,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260803.05';
+const VERSION = 'ver.20260803.06';
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -984,16 +984,17 @@ function _latestKazeiReiwa() {
 }
 function _taxNoticeCardHTML() {
   const r = _latestKazeiReiwa();
+  const refYear = r + 2018; // 令和r年度の賦課期日 = (r+2018)年1月1日（令和7年度→2025年）
   return '' +
     '<div class="tax-notice-card" style="margin:0 0 12px;border-radius:12px;overflow:hidden;border:1px solid #d5e3e1;box-shadow:0 1px 3px rgba(0,0,0,.06);">' +
-      '<div style="background:#14807a;color:#fff;font-weight:800;font-size:14px;padding:11px 14px;">窓口でこの画面をお見せください</div>' +
+      '<div style="background:#14807a;color:#fff;font-weight:800;font-size:14px;padding:11px 14px;">役所の窓口でこの画面をお見せください</div>' +
       '<div style="background:#fff;padding:14px;">' +
         '<div style="font-size:14px;font-weight:700;color:#111827;line-height:1.9;">' +
           '・令和' + r + '年度　所得・課税証明書　1通<br>' +
           '・令和' + r + '年度　納税証明書（市区町村民税）　1通' +
         '</div>' +
         '<div style="margin-top:12px;background:#fdf7ec;border:1px solid #f0e2c4;border-radius:8px;padding:9px 11px;font-size:11.5px;color:#8a6d3b;line-height:1.6;">' +
-          '※ 税務署の納税証明書ではありません　／　※ 在留カードをお持ちください　／　※ 手数料 各300円程度' +
+          '※ ' + refYear + '年1月1日に住んでいた場所の市役所・区役所で発行　／　※ 在留カードをお持ちください　／　※ 手数料 各300円程度' +
         '</div>' +
       '</div>' +
     '</div>';
