@@ -51,6 +51,19 @@ body{background:var(--paper);color:var(--ink);font-family:'Hiragino Sans','Noto 
 canvas#signCanvas{display:block;height:180px;cursor:crosshair;touch-action:none;}
 .sign-guide{position:absolute;bottom:16px;left:0;right:0;text-align:center;font-size:12px;color:var(--border);pointer-events:none;transition:opacity .3s;}
 .sign-guide.hidden{opacity:0;}
+.sign-name-ref{position:absolute;top:50%;left:0;right:0;text-align:center;font-size:26px;font-weight:800;color:rgba(0,0,0,0.07);pointer-events:none;letter-spacing:0.06em;transform:translateY(-50%);transition:opacity .3s;padding:0 12px;font-family:inherit;}
+.sign-name-ref.hidden{opacity:0;}
+/* ver.20260804: 署名AI判定 */
+.sig-check-overlay{position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;}
+.sig-check-box{background:#fff;border-radius:16px;width:100%;max-width:380px;padding:24px 20px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;}
+.sig-check-spinner{font-size:32px;animation:spin 1s linear infinite;display:inline-block;margin-bottom:12px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.sig-warn-icon{font-size:40px;margin-bottom:10px;}
+.sig-warn-title{font-size:16px;font-weight:800;color:#b91c1c;margin-bottom:8px;}
+.sig-warn-body{font-size:13px;color:#334155;line-height:1.7;margin-bottom:18px;}
+.sig-warn-name{font-size:15px;font-weight:800;color:#0f2040;background:#f1f5f9;border-radius:8px;padding:8px 12px;margin:10px 0 16px;letter-spacing:.04em;}
+.sig-btn-redo{width:100%;padding:14px;background:#c0392b;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;margin-bottom:8px;}
+.sig-btn-skip{width:100%;padding:11px;background:#fff;color:#64748b;border:2px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
 .scroll-hint{background:#eef4ff;border:1px solid #b9d0ff;border-radius:8px;padding:9px 12px;font-size:12px;color:#1d4ed8;line-height:1.5;margin-bottom:8px;font-weight:600;}
 .scroll-btns{display:flex;gap:5px;}
 .scroll-btns button{background:#f1eee9;border:1px solid var(--border);color:var(--muted);width:30px;height:26px;border-radius:6px;font-size:12px;cursor:pointer;line-height:1;}
@@ -106,7 +119,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header" style="position:relative;">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260803.05</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260804.01</span></div>
   <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
   <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
     <option value="ja">🌐 日本語</option>
@@ -150,7 +163,7 @@ input:focus{border-color:var(--accent);background:white;}
       </div>
     </div>
     <div class="notice" data-i18n="s1_notice"><strong>ご<ruby>本人様<rt>ほんにんさま</rt></ruby>へ：</strong><ruby>書類<rt>しょるい</rt></ruby>の<ruby>内容<rt>ないよう</rt></ruby>を<ruby>確認<rt>かくにん</rt></ruby>し、<ruby>署名<rt>しょめい</rt></ruby>してください。</div>
-    <!-- ver.20260803.05: 企業押印モード用 -->
+    <!-- ver.20260804.01: 企業押印モード用 -->
     <div id="companyModeNotice" style="display:none;margin:12px 0;padding:14px 16px;background:#eff6ff;border:1.5px solid #93c5fd;border-radius:12px;font-size:13px;color:#1e40af;line-height:1.7;">
       <div style="font-weight:800;font-size:15px;margin-bottom:6px;">🏢 企業押印のお願い</div>
       <div>以下の書類について、<strong>代表者または担当者の方</strong>のご署名（電子押印）をお願いします。</div>
@@ -213,11 +226,12 @@ input:focus{border-color:var(--accent);background:white;}
         <div class="sign-scroll" id="signScroll">
           <canvas id="signCanvas"></canvas>
         </div>
+        <div class="sign-name-ref" id="signNameRef"></div>
         <div class="sign-guide" id="signGuide" data-i18n="sign_guide">ローマ<ruby>字<rt>じ</rt></ruby>フルネームでサイン</div>
       </div>
     </div>
     <div class="notice" data-i18n="s2_notice_save"><strong><ruby>注意<rt>ちゅうい</rt></ruby>：</strong><ruby>署名<rt>しょめい</rt></ruby>は<ruby>書類<rt>しょるい</rt></ruby>の<ruby>署名欄<rt>しょめいらん</rt></ruby>に<ruby>合成<rt>ごうせい</rt></ruby>されてDriveに<ruby>保存<rt>ほぞん</rt></ruby>されます。</div>
-    <button class="btn-primary" id="btnToStep3" data-i18n="s2_btn" onclick="goStep(3)" disabled><ruby>本人<rt>ほんにん</rt></ruby><ruby>確認<rt>かくにん</rt></ruby>へ<ruby>進<rt>すす</rt></ruby>む →</button>
+    <button class="btn-primary" id="btnToStep3" data-i18n="s2_btn" onclick="checkAndGoStep3()" disabled><ruby>本人<rt>ほんにん</rt></ruby><ruby>確認<rt>かくにん</rt></ruby>へ<ruby>進<rt>すす</rt></ruby>む →</button>
     <button class="btn-back" data-i18n="btn_back" onclick="goStep(1)">← <ruby>戻<rt>もど</rt></ruby>る</button>
   </div>
 
@@ -238,7 +252,7 @@ input:focus{border-color:var(--accent);background:white;}
           </div>
         </div>
       </div>
-      <!-- 企業押印モード ver.20260803.05 -->
+      <!-- 企業押印モード ver.20260804.01 -->
       <div id="companySignForm" style="display:none;">
         <div class="verify-section">
           <div class="input-group">
@@ -375,7 +389,7 @@ document.addEventListener('DOMContentLoaded', function(){
 // ※ GASをデプロイしたURLに変更してください
 const GAS_URL='https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
 
-// ver.20260803.05: SIG_COORDS削除（DBのsig_x/y/w/h/pageを使用）
+// ver.20260804.01: SIG_COORDS削除（DBのsig_x/y/w/h/pageを使用）
 
 // ===== 状態 =====
 let requestToken=null,signRequestId=null,caseData=null,isCompany=false;
@@ -420,14 +434,14 @@ function b64ToPdfBytes(b64){
 document.addEventListener('DOMContentLoaded',async()=>{
   const p=new URLSearchParams(location.search);
   requestToken=p.get('token');
-  isCompany = p.get('signer') === 'company';  // ver.20260803.05: 企業押印モード
+  isCompany = p.get('signer') === 'company';  // ver.20260804.01: 企業押印モード
   if(isCompany) _applyCompanyMode();
   if(!requestToken){showError('URLが無効です','リンクを確認してください');return;}
   await loadSignRequest(requestToken);
 });
 
 async function loadSignRequest(token){
-  console.log('%c OFUSA upload/sign.html ver.20260803.05 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
+  console.log('%c OFUSA upload/sign.html ver.20260804.01 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
   try{
     const {data,error}=await sb.rpc('sign_get',{ p_token: token });
     if(error||!data){showError('リンクが見つかりません');return;}
@@ -439,6 +453,7 @@ async function loadSignRequest(token){
     // 署名のみのためcases参照なし
     // casesテーブルから別途取得
     document.getElementById('workerName').textContent=data.applicant||'—';
+    var _snr=document.getElementById('signNameRef'); if(_snr) _snr.textContent=data.applicant||'';
     document.getElementById('companyName').textContent=data.company||'—';
     // docs（N枚）を構築：新方式は data.docs、旧方式は pdf_base64/sig_positions から1件
     // ver.20260730.21: sig_x/y/w/h/pageをsig_positionsに変換してフォールバック
@@ -461,7 +476,7 @@ async function loadSignRequest(token){
       ? (docsArr.length+'件の書類') : (data.doc_type||'サイン書類');
     var _docNav=document.getElementById('docNav');
     if(_docNav) _docNav.style.display = (docsArr.length>1)?'flex':'none';
-    // ver.20260803.05: 企業モードでは PDF ロード不要
+    // ver.20260804.01: 企業モードでは PDF ロード不要
     if(!isCompany){
       try{
         await loadDocForReview(0);
@@ -625,19 +640,19 @@ function _onSignResize(){
   initCanvas(); // 空なら現在の表示サイズで作り直し（くっきり＆座標一致）
 }
 function gp(e){const r=canvas.getBoundingClientRect(),t=e.touches?e.touches[0]:e;const dpr=window.devicePixelRatio||1;return{x:(t.clientX-r.left)*((canvas.width/dpr)/r.width),y:(t.clientY-r.top)*((canvas.height/dpr)/r.height)};}
-function sd(e){isDrawing=true;_strokeDrew=false;const p=gp(e);_trackBounds(p);ctx.beginPath();ctx.moveTo(p.x,p.y);document.getElementById('signGuide').classList.add('hidden');}
+function sd(e){isDrawing=true;_strokeDrew=false;const p=gp(e);_trackBounds(p);ctx.beginPath();ctx.moveTo(p.x,p.y);document.getElementById('signGuide').classList.add('hidden');var _snr=document.getElementById('signNameRef');if(_snr)_snr.classList.add('hidden');}
 function dr(e){if(!isDrawing)return;const p=gp(e);_trackBounds(p);ctx.lineTo(p.x,p.y);ctx.stroke();_strokeDrew=true;hasDrawn=true;document.getElementById('btnToStep3').disabled=false;_autoScroll(e);}
 function ed(){isDrawing=false;ctx.beginPath();if(_strokeDrew){_pushUndoState();_strokeDrew=false;}}
 function onTS(e){e.preventDefault();sd(e);}function onTM(e){e.preventDefault();dr(e);}function onTE(){ed();}
 function onMD(e){sd(e);}function onMM(e){dr(e);}function onMU(){ed();}
-function clearCanvas(){if(!ctx)return;ctx.clearRect(0,0,canvas.width,canvas.height);hasDrawn=false;_sbHas=false;_undoStack=[];_updateUndoBtn();var _w=document.getElementById('signScroll');if(_w)_w.scrollLeft=0;document.getElementById('btnToStep3').disabled=true;document.getElementById('signGuide').classList.remove('hidden');}
+function clearCanvas(){if(!ctx)return;ctx.clearRect(0,0,canvas.width,canvas.height);hasDrawn=false;_sbHas=false;_undoStack=[];_updateUndoBtn();var _w=document.getElementById('signScroll');if(_w)_w.scrollLeft=0;document.getElementById('btnToStep3').disabled=true;document.getElementById('signGuide').classList.remove('hidden');var _snr=document.getElementById('signNameRef');if(_snr)_snr.classList.remove('hidden');}
 function _trackBounds(p){if(!_sbHas){_sbX0=_sbX1=p.x;_sbY0=_sbY1=p.y;_sbHas=true;}else{if(p.x<_sbX0)_sbX0=p.x;if(p.x>_sbX1)_sbX1=p.x;if(p.y<_sbY0)_sbY0=p.y;if(p.y>_sbY1)_sbY1=p.y;}}
 function _autoScroll(e){var w=document.getElementById('signScroll');if(!w)return;var t=e.touches?e.touches[0]:e;var r=w.getBoundingClientRect();var m=55;if(t.clientX>r.right-m){w.scrollLeft+=Math.min(20,t.clientX-(r.right-m));}else if(t.clientX<r.left+m&&w.scrollLeft>0){w.scrollLeft-=Math.min(20,(r.left+m)-t.clientX);}}
 function scrollSign(dir){var w=document.getElementById('signScroll');if(w)w.scrollBy({left:dir*220,behavior:'smooth'});}
 function _sigDataUrl(){if(!_sbHas)return canvas.toDataURL('image/png');var dpr=window.devicePixelRatio||1,pad=14;var x0=Math.max(0,Math.round((_sbX0-pad)*dpr)),y0=Math.max(0,Math.round((_sbY0-pad)*dpr));var x1=Math.min(canvas.width,Math.round((_sbX1+pad)*dpr)),y1=Math.min(canvas.height,Math.round((_sbY1+pad)*dpr));var w=Math.max(1,x1-x0),h=Math.max(1,y1-y0);var tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;tmp.getContext('2d').drawImage(canvas,x0,y0,w,h,0,0,w,h);return tmp.toDataURL('image/png');}
 function _pushUndoState(){try{_undoStack.push({url:canvas.toDataURL('image/png'),has:_sbHas,x0:_sbX0,y0:_sbY0,x1:_sbX1,y1:_sbY1});if(_undoStack.length>40)_undoStack.shift();_updateUndoBtn();}catch(e){}}
 function _restoreSnap(s){var img=new Image();img.onload=function(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);ctx.restore();};img.src=s.url;_sbHas=s.has;_sbX0=s.x0;_sbY0=s.y0;_sbX1=s.x1;_sbY1=s.y1;hasDrawn=true;document.getElementById('btnToStep3').disabled=false;}
-function undoSign(){if(!_undoStack.length)return;_undoStack.pop();if(_undoStack.length){_restoreSnap(_undoStack[_undoStack.length-1]);}else{ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.restore();_sbHas=false;hasDrawn=false;document.getElementById('btnToStep3').disabled=true;document.getElementById('signGuide').classList.remove('hidden');}_updateUndoBtn();}
+function undoSign(){if(!_undoStack.length)return;_undoStack.pop();if(_undoStack.length){_restoreSnap(_undoStack[_undoStack.length-1]);}else{ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.restore();_sbHas=false;hasDrawn=false;document.getElementById('btnToStep3').disabled=true;document.getElementById('signGuide').classList.remove('hidden');var _snr=document.getElementById('signNameRef');if(_snr)_snr.classList.remove('hidden');}_updateUndoBtn();}
 function _updateUndoBtn(){var b=document.getElementById('btnUndo');if(b)b.disabled=_undoStack.length===0;}
 
 // ===== pdf-lib で署名合成（1署名 → N枚に焼き込み）=====
@@ -778,7 +793,7 @@ async function saveToDriveNow(){
     else{el.className='drive-status pending';el.textContent='⏳ 保存処理中です。数分以内にDriveへ保存されます。';}
   }
 }
-// ver.20260803.05: 企業押印モード — UI切り替え
+// ver.20260804.01: 企業押印モード — UI切り替え
 function _applyCompanyMode(){
   // header
   var hd = document.querySelector('.header-title');
@@ -816,7 +831,7 @@ function _applyCompanyMode(){
   if(btnSubmit) btnSubmit.textContent = '🏢 電子押印を送信する';
 }
 
-// ver.20260803.05: loadSignRequestの直後に企業用目標書類リストを表示
+// ver.20260804.01: loadSignRequestの直後に企業用目標書類リストを表示
 function _renderCompanyDocList(data){
   var types = (data && data.target_doc_types) || [];
   var labels = { '1-5':'参考様式第1-5号（雇用契約書）', '1-6':'参考様式第1-6号（雇用条件書）',
@@ -837,7 +852,7 @@ function _renderCompanyDocList(data){
   }
 }
 
-// ver.20260803.05: 企業押印送信
+// ver.20260804.01: 企業押印送信
 async function submitCompanySign(){
   var companyName = (document.getElementById('inputCompanyName')||{}).value || '';
   var repName     = (document.getElementById('inputRepName')||{}).value || '';
@@ -936,6 +951,58 @@ async function submitSign(){
 
 
 // ===== ステップ管理 =====
+// ver.20260804: 署名のローマ字AI判定
+const _EDGE_FN = 'https://ehwlgbwpycglmopiqyty.supabase.co/functions/v1/check-signature';
+async function checkAndGoStep3() {
+  // 署名キャンバスから画像を取得
+  var sigB64 = null;
+  try {
+    var dataUrl = _sigDataUrl(); // 既存の署名抽出関数
+    sigB64 = dataUrl.split(',')[1];
+  } catch(e) {}
+
+  if (!sigB64) { goStep(3); return; } // 取得失敗はスキップ
+
+  // ローディング表示
+  var overlay = document.getElementById('sigCheckOverlay');
+  var loading = document.getElementById('sigCheckLoading');
+  var warn    = document.getElementById('sigCheckWarn');
+  overlay.style.display = 'flex';
+  loading.style.display = '';
+  warn.style.display = 'none';
+
+  var result = 'OK';
+  try {
+    var res = await fetch(_EDGE_FN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_b64: sigB64, mime_type: 'image/png' })
+    });
+    var data = await res.json();
+    result = data.result || 'OK';
+  } catch(e) {
+    result = 'OK'; // 通信エラー時は甘め判定でOK
+  }
+
+  if (result === 'OK') {
+    overlay.style.display = 'none';
+    goStep(3);
+  } else {
+    // 警告モーダル表示
+    loading.style.display = 'none';
+    warn.style.display = '';
+    var nameEl = document.getElementById('sigWarnName');
+    if (nameEl) nameEl.textContent = (caseData && caseData.applicant) || '';
+  }
+}
+function _sigCheckRedo() {
+  document.getElementById('sigCheckOverlay').style.display = 'none';
+  clearCanvas();
+}
+function _sigCheckSkip() {
+  document.getElementById('sigCheckOverlay').style.display = 'none';
+  goStep(3);
+}
 function goStep(n){
   ['loadingScreen','errorScreen','step1','step2','step3','step4'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.classList.remove('active');
@@ -995,5 +1062,27 @@ function copyApplicantLink(){
 }
 function showAlreadySigned(){showError('署名済みです','このリンクはすでに使用済みです。');document.querySelector('.error-icon').textContent='✅';}
 </script>
+<!-- ver.20260804: 署名AI判定モーダル -->
+<div id="sigCheckOverlay" class="sig-check-overlay" style="display:none;">
+  <!-- 判定中 -->
+  <div id="sigCheckLoading" class="sig-check-box">
+    <div class="sig-check-spinner">🔍</div>
+    <div style="font-size:14px;font-weight:700;color:#334155;">署名を確認中…</div>
+    <div style="font-size:12px;color:#94a3b8;margin-top:6px;">Checking your signature...</div>
+  </div>
+  <!-- 警告 -->
+  <div id="sigCheckWarn" class="sig-check-box" style="display:none;">
+    <div class="sig-warn-icon">⚠️</div>
+    <div class="sig-warn-title">ローマ字で署名してください</div>
+    <div class="sig-warn-body">
+      署名がローマ字（アルファベット）に見えませんでした。<br>
+      Please sign in <strong>Roman letters</strong> (alphabet).<br><br>
+      以下のお名前でサインしてください：
+    </div>
+    <div class="sig-warn-name" id="sigWarnName"></div>
+    <button class="sig-btn-redo" onclick="_sigCheckRedo()">✏️ 書き直す / Re-sign</button>
+    <button class="sig-btn-skip" onclick="_sigCheckSkip()">このまま進む / Continue anyway</button>
+  </div>
+</div>
 </body>
 </html>
