@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260803.13';
+const VERSION = 'ver.20260803.14';
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -136,6 +136,8 @@ const APPLICANT_NAME = urlParams.get('name') ? decodeURIComponent(urlParams.get(
 const APP_TYPE = urlParams.get('appType') || '';
 const NATIONALITY = urlParams.get('nationality') || '';
 const IS_RYUGAKU = urlParams.get('ryugaku') === '1';
+// ver.20260821: 推薦票の企業対応（suisen=other）のとき住民票に注記を出す
+const IS_SUISEN_OTHER = urlParams.get('suisen') === 'other';
 // 旧パラメータ（後方互換）
 const SKIP_DOCS_RAW = urlParams.get('skipDocs') || '';
 const SKIP_DOCS = SKIP_DOCS_RAW ? decodeURIComponent(SKIP_DOCS_RAW).split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -1117,6 +1119,28 @@ function buildFields() {
       noteEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:700;margin-top:3px;line-height:1.6;';
       noteEl.innerHTML = (currentLang === 'ja') ? fzExp(_nt) : _escName(_nt);
       label.appendChild(noteEl);
+    }
+    // ver.20260821: 推薦票の企業対応(suisen=other)のとき、住民票に取得方法の注記を出す
+    if (IS_SUISEN_OTHER && String(_jaLbl).indexOf('住民票') >= 0) {
+      const _juminNotes = {
+        ja: '住民票の原本のコピー（※3か月以内に発行したもの）\n→ 国籍・在留資格・在留カード番号・在留期限が記載されているもの\n→ 市役所で取得。マイナンバーカードがあればコンビニでも発行できます',
+        en: 'A copy of the original residence certificate (issued within the last 3 months)\n→ Must show nationality, status of residence, residence card number, and period of stay\n→ Obtain at city hall. Also available at convenience stores if you have a My Number card',
+        vi: 'Bản sao giấy chứng nhận cư trú gốc (cấp trong vòng 3 tháng)\n→ Phải ghi quốc tịch, tư cách lưu trú, số thẻ cư trú và thời hạn lưu trú\n→ Lấy tại tòa thị chính. Nếu có thẻ My Number có thể lấy ở cửa hàng tiện lợi',
+        id: 'Salinan surat keterangan domisili asli (diterbitkan dalam 3 bulan terakhir)\n→ Harus mencantumkan kewarganegaraan, status tinggal, nomor kartu izin tinggal, dan masa tinggal\n→ Diperoleh di kantor kota. Bisa juga di minimarket jika punya kartu My Number',
+        my: 'နေထိုင်ခွင့်လက်မှတ် မူရင်းမိတ္တူ (၃ လအတွင်း ထုတ်ပေးထားသည့်)\n→ နိုင်ငံသား၊ နေထိုင်ခွင့်၊ ကတ်နံပါတ်နှင့် သက်တမ်း ပါဝင်ရမည်\n→ မြို့တော်ခန်းမတွင် ရယူပါ။ My Number ကတ်ရှိပါက convenience store တွင်လည်း ရနိုင်သည်',
+        ko: '주민표 원본 사본 (※3개월 이내 발행)\n→ 국적・재류자격・재류카드번호・재류기간이 기재된 것\n→ 시청에서 발급. 마이넘버카드가 있으면 편의점에서도 발급 가능',
+        ne: 'बसोबास प्रमाणपत्रको मूल प्रतिलिपि (३ महिनाभित्र जारी भएको)\n→ राष्ट्रियता, बसोबास स्थिति, कार्ड नम्बर र अवधि उल्लेख भएको\n→ नगरपालिकामा प्राप्त गर्नुहोस्। My Number कार्ड भए कन्भिनियन्स स्टोरमा पनि',
+        zh: '住民票原件的复印件（※3个月以内签发）\n→ 需记载国籍、在留资格、在留卡号、在留期限\n→ 在市役所办理。有My Number卡也可在便利店打印',
+        th: 'สำเนาทะเบียนบ้านฉบับจริง (ออกภายใน 3 เดือน)\n→ ต้องระบุสัญชาติ สถานะการพำนัก หมายเลขบัตร และระยะเวลาพำนัก\n→ ขอที่ศาลากลาง หากมีบัตร My Number ขอที่ร้านสะดวกซื้อได้',
+        km: 'ច្បាប់ចម្លងលិខិតបញ្ជាក់ទីលំនៅដើម (ចេញក្នុងរយៈពេល ៣ ខែ)\n→ ត្រូវមានសញ្ជាតិ ស្ថានភាពស្នាក់នៅ លេខកាត និងកាលកំណត់\n→ យកនៅសាលាក្រុង។ បើមានកាត My Number អាចយកនៅហាងទំនិញ',
+        mn: 'Оршин суугчийн гэрчилгээний эх хувийн хуулбар (3 сарын дотор олгосон)\n→ Иргэншил, оршин суух эрх, картын дугаар, хугацаа бичигдсэн байх\n→ Хотын захиргаанаас авна. My Number карттай бол дэлгүүрээс ч авч болно',
+        si: 'පදිංචිකරුවා සහතිකයේ මුල් පිටපතක් (මාස 3ක් තුළ නිකුත් කළ)\n→ ජාතිකත්වය, පදිංචි තත්ත්වය, කාඩ් අංකය සහ කාලය සඳහන් විය යුතුය\n→ නගර සභාවෙන් ලබාගන්න. My Number කාඩ්පතක් ඇත්නම් වෙළඳසැලකින්ද'
+      };
+      const _jn = _juminNotes[currentLang] || _juminNotes.en;
+      const jnEl = document.createElement('div');
+      jnEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:700;margin-top:3px;line-height:1.6;white-space:pre-line;';
+      jnEl.innerHTML = (currentLang === 'ja') ? fzExp(_jn) : _escName(_jn);
+      label.appendChild(jnEl);
     }
     if (DOC_DONE && DOC_DONE[key]) {
       row.style.background = '#cbd5e1'; row.style.borderColor = '#94a3b8'; row.style.opacity = '0.7';
