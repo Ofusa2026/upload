@@ -115,11 +115,22 @@ input:focus{border-color:var(--accent);background:white;}
 .pp-check{display:flex;align-items:flex-start;gap:10px;margin-top:14px;padding:12px 14px;background:var(--paper);border:1px solid var(--border);border-radius:10px;cursor:pointer;}
 .pp-check input{width:20px;height:20px;margin-top:1px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;}
 .pp-check span{font-size:13px;font-weight:700;color:var(--ink);line-height:1.6;}
+.rotate-overlay-css{}
+#rotateOverlay{position:fixed;inset:0;z-index:9000;background:#faf9f6;display:flex;align-items:center;justify-content:center;padding:24px;}
+@media (orientation:landscape){ #rotateOverlay{display:none !important;} }
+.ro-card{text-align:center;max-width:340px;}
+.ro-card svg{width:230px;max-width:72vw;height:auto;display:block;margin:0 auto 20px;}
+.ro-title{font-size:20px;font-weight:700;color:#1a1a2e;line-height:1.5;}
+.ro-sub{font-size:13px;color:#7a7570;margin-top:8px;line-height:1.6;}
+.ro-pill{display:inline-block;margin-top:18px;background:#fffbeb;border:1px solid #f0d080;color:#7a6010;border-radius:50px;padding:9px 18px;font-size:13px;font-weight:700;}
+.ro-skip{display:block;margin:16px auto 0;background:none;border:none;color:#a09a90;font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;}
+.sign-ok-bar{display:none;}
+@media (orientation:landscape){ .sign-ok-bar{display:flex;align-items:center;gap:8px;background:#e6f4ed;border:1px solid #b6e0c8;color:#1a7a4a;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;margin-bottom:10px;} }
 </style>
 </head>
 <body>
 <div class="header" style="position:relative;">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260804.01</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260822.01</span></div>
   <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
   <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
     <option value="ja">🌐 日本語</option>
@@ -209,6 +220,30 @@ input:focus{border-color:var(--accent);background:white;}
     </div>
     <div class="section">
       <div class="section-label" data-i18n="s2_signlabel"><ruby>署名<rt>しょめい</rt></ruby>（<ruby>指<rt>ゆび</rt></ruby>でサインしてください）</div>
+      <!-- ver.20260822.01: 縦向き時に全画面で「横向きにしてサイン」案内。横向きで自動的に消える。#step2内なので署名ステップのみ -->
+      <div id="rotateOverlay">
+        <div class="ro-card">
+          <svg viewBox="0 0 240 210" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <g stroke="#d8d4cc" stroke-width="4" fill="none" stroke-linecap="round">
+              <path d="M18 14 h26"/><path d="M18 14 v26"/>
+              <path d="M222 14 h-26"/><path d="M222 14 v26"/>
+              <path d="M18 196 h26"/><path d="M18 196 v-26"/>
+              <path d="M222 196 h-26"/><path d="M222 196 v-26"/>
+            </g>
+            <g fill="none" stroke="#1a1a2e" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+              <g opacity="0.35"><rect x="66" y="66" width="40" height="70" rx="8"/><line x1="78" y1="128" x2="94" y2="128"/></g>
+              <path d="M112 74 a52 52 0 0 1 32 88" stroke="#c8102e" stroke-width="3"/>
+              <path d="M144 162 l-9 -2 M144 162 l2 -9" stroke="#c8102e" stroke-width="3"/>
+              <g><rect x="126" y="104" width="70" height="40" rx="8"/><line x1="188" y1="116" x2="188" y2="132"/><path d="M138 130 q6 -13 11 0 t11 0 t11 -2" stroke="#1a7a4a" stroke-width="2.5"/></g>
+            </g>
+          </svg>
+          <div class="ro-title">スマホを横向きにして<br>サインしてください</div>
+          <div class="ro-sub">横にすると署名欄が大きく使えます<br><span style="font-size:11px;">Please turn your phone sideways to sign.</span></div>
+          <span class="ro-pill">📱 端末を横に回してください</span>
+          <button type="button" class="ro-skip" onclick="document.getElementById('rotateOverlay').style.display='none'">縦のまま署名する</button>
+        </div>
+      </div>
+      <div class="sign-ok-bar">✅ 横向きOK・この向きのままサインしてください</div>
       <div class="notice" style="margin-bottom:10px;" data-i18n="s2_notice_roman">サインは<ruby>必<rt>かなら</rt></ruby>ず<strong>ローマ<ruby>字<rt>じ</rt></ruby>のフルネーム</strong>で<ruby>記入<rt>きにゅう</rt></ruby>してください（パスポートと<ruby>同<rt>おな</rt></ruby>じつづり）。<br>Please sign your <strong>full name in Roman letters</strong>.</div>
       <div class="scroll-hint" data-i18n="s2_scrollhint">↔️ <ruby>署名欄<rt>しょめいらん</rt></ruby>は<strong><ruby>横<rt>よこ</rt></ruby>にスクロール</strong>できます。<ruby>長<rt>なが</rt></ruby>いお<ruby>名前<rt>なまえ</rt></ruby>（30<ruby>文字<rt>もじ</rt></ruby><ruby>程度<rt>ていど</rt></ruby>まで）も<ruby>続<rt>つづ</rt></ruby>けて<ruby>書<rt>か</rt></ruby>けます。<br>You can <strong>scroll sideways</strong> to sign your full name.</div>
       <div class="sign-area">
