@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260803.15';
+const VERSION = 'ver.20260803.16';
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -203,6 +203,18 @@ console.log('📋 USE_NEW_DOCS:', USE_NEW_DOCS, 'DOCS_LIST:', DOCS_LIST, 'SKIP_D
 const DOC_TRANSLATIONS = {
   // ── 人材書類（基本） ──
   '顔写真':                      {ruby:'<ruby>顔写真<rt>かおじゃしん</rt></ruby>',en:'Photo',vi:'Ảnh',id:'Foto',my:'ဓာတ်ပုံ',ko:'사진',ne:'फोटो',zh:'照片',th:'รูปถ่าย',km:'រូបថត',mn:'Зураг',si:'ඡායාරූපය'},
+  // ── 家族滞在 書類（ver.20260824）──
+  '身分関係を証する文書':        {ruby:'<ruby>身分関係<rt>みぶんかんけい</rt></ruby>を<ruby>証<rt>しょう</rt></ruby>する<ruby>文書<rt>ぶんしょ</rt></ruby>',en:'Document proving family relationship',vi:'Giấy tờ chứng minh quan hệ nhân thân',id:'Dokumen bukti hubungan keluarga',my:'ဆွေမျိုးတော်စပ်ကြောင်း အထောက်အထား',ko:'신분관계 증명 서류',ne:'नाता प्रमाणित गर्ने कागजात',zh:'证明身份关系的文件',th:'เอกสารพิสูจน์ความสัมพันธ์',km:'ឯកសារបញ្ជាក់ទំនាក់ទំនងគ្រួសារ',mn:'Гэр бүлийн харилцааг батлах баримт',si:'පවුල් සම්බන්ධතාව සනාථ කරන ලේඛනය'},
+  '扶養者の在留カードまたはパスポート': {ruby:'<ruby>扶養者<rt>ふようしゃ</rt></ruby>の<ruby>在留<rt>ざいりゅう</rt></ruby>カードまたはパスポート',en:"Supporter's Residence Card or Passport",vi:'Thẻ cư trú hoặc hộ chiếu của người bảo lãnh',id:'Kartu Izin Tinggal atau Paspor penanggung',my:'ထောက်ပံ့သူ၏ နေထိုင်ခွင့်ကတ် သို့မဟုတ် နိုင်ငံကူးလက်မှတ်',ko:'부양자의 재류카드 또는 여권',ne:'पालनकर्ताको आवास कार्ड वा राहदानी',zh:'抚养人的居留卡或护照',th:'บัตรถิ่นที่อยู่หรือหนังสือเดินทางของผู้อุปการะ',km:'កាតស្នាក់នៅ ឬលិខិតឆ្លងដែនរបស់អ្នកឧបត្ថម្ភ',mn:'Тэжээгчийн оршин суух карт эсвэл паспорт',si:'පෝෂකයාගේ පදිංචිකාර්ඩ් හෝ ගමන් බලපත්‍රය'},
+  '扶養者の収入証明書類':        {ruby:'<ruby>扶養者<rt>ふようしゃ</rt></ruby>の<ruby>収入証明書類<rt>しゅうにゅうしょうめいしょるい</rt></ruby>',en:"Supporter's Proof of Income",vi:'Giấy chứng minh thu nhập của người bảo lãnh',id:'Bukti penghasilan penanggung',my:'ထောက်ပံ့သူ၏ ဝင်ငွေ အထောက်အထား',ko:'부양자의 수입 증명 서류',ne:'पालनकर्ताको आय प्रमाण',zh:'抚养人的收入证明',th:'หลักฐานรายได้ของผู้อุปการะ',km:'ភស្តុតាងចំណូលរបស់អ្នកឧបត្ថម្ភ',mn:'Тэжээгчийн орлогын гэрчилгээ',si:'පෝෂකයාගේ ආදායම් සාක්ෂිය'},
+  '戸籍謄本':                    {ruby:'<ruby>戸籍謄本<rt>こせきとうほん</rt></ruby>',en:'Family Register (Koseki Tohon)',vi:'Bản sao hộ tịch',id:'Akta Keluarga (Koseki)',my:'အိမ်ထောင်စုမှတ်တမ်း',ko:'호적등본',ne:'पारिवारिक अभिलेख',zh:'户籍谤本',th:'ทะเบียนครอบครัว',km:'បញ្ជីគ្រួសារ',mn:'Ургийн бичиг',si:'පවුල් ලේඛනය'},
+  '出生証明書':                  {ruby:'<ruby>出生証明書<rt>しゅっしょうしょうめいしょ</rt></ruby>',en:'Birth Certificate',vi:'Giấy khai sinh',id:'Akta Kelahiran',my:'မွေးစာရင်း',ko:'출생증명서',ne:'जन्म प्रमाणपत्र',zh:'出生证明书',th:'สูติบัตร',km:'សំបុត្រកំណើត',mn:'Төрсний гэрчилгээ',si:'උපන් සහතිකය'},
+  '親の在留カード表':            {ruby:'<ruby>親<rt>おや</rt></ruby>の<ruby>在留<rt>ざいりゅう</rt></ruby>カード<ruby>表<rt>おもて</rt></ruby>',en:"Parent's Residence Card (Front)",vi:'Thẻ cư trú của cha mẹ (Mặt trước)',id:'Kartu Izin Tinggal orang tua (Depan)',my:'မိဘ၏ နေထိုင်ခွင့်ကတ် (ရှေ့)',ko:'부모의 재류카드 (앞면)',ne:'अभिभावकको आवास कार्ड (अगाडि)',zh:'父母的居留卡（正面）',th:'บัตรถิ่นที่อยู่ของผู้ปกครอง (ด้านหน้า)',km:'កាតស្នាក់នៅរបស់ឪពុកម្តាយ (មុខ)',mn:'Эцэг эхийн оршин суух карт (нүүр)',si:'දෙමාපියන්ගේ පදිංචිකාර්ඩ් (ඉදිරිපස)'},
+  '親の在留カード裏':            {ruby:'<ruby>親<rt>おや</rt></ruby>の<ruby>在留<rt>ざいりゅう</rt></ruby>カード<ruby>裏<rt>うら</rt></ruby>',en:"Parent's Residence Card (Back)",vi:'Thẻ cư trú của cha mẹ (Mặt sau)',id:'Kartu Izin Tinggal orang tua (Belakang)',my:'မိဘ၏ နေထိုင်ခွင့်ကတ် (နောက်)',ko:'부모의 재류카드 (뒷면)',ne:'अभिभावकको आवास कार्ड (पछाडि)',zh:'父母的居留卡（背面）',th:'บัตรถิ่นที่อยู่ของผู้ปกครอง (ด้านหลัง)',km:'កាតស្នាក់នៅរបស់ឪពុកម្តាយ (ក្រោយ)',mn:'Эцэг эхийн оршин суух карт (ар)',si:'දෙමාපියන්ගේ පදිංචිකාර්ඩ් (පිටුපස)'},
+  '親のパスポート':              {ruby:'<ruby>親<rt>おや</rt></ruby>のパスポート',en:"Parent's Passport",vi:'Hộ chiếu của cha mẹ',id:'Paspor orang tua',my:'မိဘ၏ နိုင်ငံကူးလက်မှတ်',ko:'부모의 여권',ne:'अभिभावकको राहदानी',zh:'父母的护照',th:'หนังสือเดินทางของผู้ปกครอง',km:'លិខិតឆ្លងដែនរបស់ឪពុកម្តាយ',mn:'Эцэг эхийн паспорт',si:'දෙමාපියන්ගේ ගමන් බලපත්‍රය'},
+  '親の在職証明書':              {ruby:'<ruby>親<rt>おや</rt></ruby>の<ruby>在職証明書<rt>ざいしょくしょうめいしょ</rt></ruby>',en:"Parent's Certificate of Employment",vi:'Giấy xác nhận công tác của cha mẹ',id:'Surat Keterangan Kerja orang tua',my:'မိဘ၏ အလုပ်လုပ်ကိုင်ကြောင်း လက်မှတ်',ko:'부모의 재직증명서',ne:'अभिभावकको रोजगारी प्रमाणपत्र',zh:'父母的在职证明书',th:'หนังสือรับรองการทำงานของผู้ปกครอง',km:'វិញ្ញាបនបត្រការងាររបស់ឪពុកម្តាយ',mn:'Эцэг эхийн ажлын газрын тодорхойлолт',si:'දෙමාපියන්ගේ සේවා සහතිකය'},
+  '親の課税証明書（直近1年分）':  {ruby:'<ruby>親<rt>おや</rt></ruby>の<ruby>課税証明書<rt>かぜいしょうめいしょ</rt></ruby>（<ruby>直近<rt>ちょっきん</rt></ruby>1<ruby>年分<rt>ねんぶん</rt></ruby>）',en:"Parent's Taxation Certificate (Latest 1 year)",vi:'Giấy chứng nhận thuế của cha mẹ (1 năm gần nhất)',id:'Surat Keterangan Pajak orang tua (1 tahun terakhir)',my:'မိဘ၏ အခွန်သက်သေခံ (နောက်ဆုံး ၁ နှစ်)',ko:'부모의 과세증명서 (최근 1년분)',ne:'अभिभावकको कर प्रमाणपत्र (पछिल्लो १ वर्ष)',zh:'父母的课税证明书（最近1年）',th:'ใบรับรองภาษีของผู้ปกครอง (1 ปีล่าสุด)',km:'វិញ្ញាបនបត្រពន្ធរបស់ឪពុកម្តាយ (១ឆ្នាំចុងក្រោយ)',mn:'Эцэг эхийн татварын гэрчилгээ (сүүлийн 1 жил)',si:'දෙමාපියන්ගේ බදු සහතිකය (පසුගිය වසර 1)'},
+  '親の納税証明書（直近1年分）':  {ruby:'<ruby>親<rt>おや</rt></ruby>の<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（<ruby>直近<rt>ちょっきん</rt></ruby>1<ruby>年分<rt>ねんぶん</rt></ruby>）',en:"Parent's Tax Payment Certificate (Latest 1 year)",vi:'Giấy chứng nhận nộp thuế của cha mẹ (1 năm gần nhất)',id:'Bukti Pembayaran Pajak orang tua (1 tahun terakhir)',my:'မိဘ၏ အခွန်ပေးဆောင်မှုသက်သေခံ (နောက်ဆုံး ၁ နှစ်)',ko:'부모의 납세증명서 (최근 1년분)',ne:'अभिभावकको कर भुक्तानी प्रमाणपत्र (पछिल्लो १ वर्ष)',zh:'父母的纳税证明书（最近1年）',th:'ใบรับรองการชำระภาษีของผู้ปกครอง (1 ปีล่าสุด)',km:'វិញ្ញាបនបត្របង់ពន្ធរបស់ឪពុកម្តាយ (១ឆ្នាំចុងក្រោយ)',mn:'Эцэг эхийн татвар төлсөн гэрчилгээ (сүүлийн 1 жил)',si:'දෙමාපියන්ගේ බදු ගෙවීම් සහතිකය (පසුගිය වසර 1)'},
   'パスポート':                  {ruby:'パスポート',en:'Passport',vi:'Hộ chiếu',id:'Paspor',my:'နိုင်ငံကူးလက်မှတ်',ko:'여권',ne:'राहदानी',zh:'护照',th:'หนังสือเดินทาง',km:'លិខិតឆ្លងដែន',mn:'Паспорт',si:'ගමන් බලපත්‍රය'},
   '在留カード':                  {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード',en:'Residence Card',vi:'Thẻ cư trú',id:'Kartu Izin Tinggal',my:'နေထိုင်ခွင့်ကတ်',ko:'재류카드',ne:'आवास कार्ड',zh:'居留卡',th:'บัตรถิ่นที่อยู่',km:'កាតស្នាក់នៅ',mn:'Оршин суух карт',si:'පදිංචිකාර්ඩ්'},
   '在留カード（表）':             {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード（<ruby>表<rt>おもて</rt></ruby>）',en:'Residence Card (Front)',vi:'Thẻ cư trú (Mặt trước)',id:'Kartu Izin Tinggal (Depan)',my:'နေထိုင်ခွင့်ကတ်(ရှေ့)',ko:'재류카드 (앞면)',ne:'आवास कार्ड (अगाडि)',zh:'居留卡（正面）',th:'บัตรถิ่นที่อยู่ (ด้านหน้า)',km:'កាតស្នាក់នៅ(មុខ)',mn:'Оршин суух карт (нүүр)',si:'පදිංචිකාර්ඩ් (ඉදිරිපස)'},
@@ -247,6 +259,38 @@ const DOC_TRANSLATIONS = {
   '住民票':                      {ruby:'<ruby>住民票<rt>じゅうみんひょう</rt></ruby>',en:'Residence Certificate',vi:'Giấy chứng nhận cư trú',id:'Surat Keterangan Domisili',my:'နေထိုင်ခွင့်လက်မှတ်',ko:'주민표',ne:'बसोबास प्रमाणपत्र',zh:'住民票',th:'ทะเบียนบ้าน',km:'លិខិតបញ្ជាក់ទីលំនៅ',mn:'Оршин суугчийн гэрчилгээ',si:'පදිංචිකරුවා සහතිකය'},
   '技能者ID':                    {ruby:'<ruby>建設<rt>けんせつ</rt></ruby>キャリアアップシステム<ruby>技能者<rt>ぎのうしゃ</rt></ruby>カード',en:'CCUS Technician Card',vi:'Thẻ kỹ năng viên CCUS',id:'Kartu CCUS Teknisi',ko:'CCUS 기능자 카드',zh:'建设职业能力提升系统技能者卡',th:'บัตรช่างเทคนิค CCUS',km:'កាតជ្រើសរើសកម្មករ CCUS'},
   'その他':                      {ruby:'その<ruby>他<rt>た</rt></ruby>',en:'Other',vi:'Khác',id:'Lainnya',my:'အခြား',ko:'기타',ne:'अन्य',zh:'其他',th:'อื่นๆ',km:'ផ្សេងទៀត',mn:'Бусад',si:'වෙනත්'}
+};
+
+// ver.20260824: 家族滞在の書類注記（申請人が何を出せばよいか案内）
+const DOC_KAZOKU_HINTS = {
+  '身分関係を証する文書': {
+    ja: '戸籍謄本／婚姻届受理証明書／結婚証明書写し／出生証明書写し のいずれか1通',
+    en: 'Any one of: Family Register / Marriage Acceptance Certificate / copy of Marriage Certificate / copy of Birth Certificate',
+    vi: 'Một trong các giấy tờ: Bản sao hộ tịch / Giấy chứng nhận đăng ký kết hôn / Bản sao giấy chứng nhận kết hôn / Bản sao giấy khai sinh',
+    id: 'Salah satu dari: Akta Keluarga / Surat Penerimaan Pernikahan / salinan Akta Nikah / salinan Akta Kelahiran',
+    my: 'အောက်ပါတို့မှ တစ်ခု - အိမ်ထောင်စုမှတ်တမ်း / အိမ်ထောင်ရေးမှတ်ပုံတင်လက်မှတ် / လက်ထပ်စာချုပ်မိတ္တူ / မွေးစာရင်းမိတ္တူ',
+    ko: '다음 중 1통: 호적등본 / 혼인신고 수리증명서 / 결혼증명서 사본 / 출생증명서 사본',
+    ne: 'निम्नमध्ये कुनै एक: पारिवारिक अभिलेख / विवाह दर्ता प्रमाणपत्र / विवाह प्रमाणपत्रको प्रतिलिपि / जन्म प्रमाणपत्रको प्रतिलिपि',
+    zh: '以下任选一份：户籍谤本／结婚登记受理证明书／结婚证明书复印件／出生证明书复印件',
+    th: 'อย่างใดอย่างหนึ่ง: ทะเบียนครอบครัว / ใบรับจดทะเบียนสมรส / สำเนาใบสมรส / สำเนาสูติบัตร',
+    km: 'មួយក្នុងចំណោម៖ បញ្ជីគ្រួសារ / វិញ្ញាបនបត្រទទួលចុះបញ្ជីអាពាហ៍ពិពាហ៍ / ច្បាប់ចម្លងវិញ្ញាបនបត្រអាពាហ៍ពិពាហ៍ / ច្បាប់ចម្លងសំបុត្រកំណើត',
+    mn: 'Дараахаас аль нэг: Ургийн бичиг / Гэрлэлт бүртгэсэн гэрчилгээ / Гэрлэлтийн гэрчилгээний хуулбар / Төрсний гэрчилгээний хуулбар',
+    si: 'පහත එකක්: පවුල් ලේඛනය / විවාහ පිළිගැනීමේ සහතිකය / විවාහ සහතිකයේ පිටපත / උපන් සහතිකයේ පිටපත'
+  },
+  '扶養者の収入証明書類': {
+    ja: '就労・事業の場合：在職証明書または営業許可書の写し＋住民税の課税(非課税)証明書・納税証明書\n それ以外：預金残高証明書または奨学金給付証明書',
+    en: 'If employed/self-employed: Certificate of Employment or copy of business license + Municipal Tax (Taxation/Exemption) Certificate & Tax Payment Certificate\nOtherwise: Bank Balance Certificate or Scholarship Award Certificate',
+    vi: 'Nếu đi làm/kinh doanh: Giấy xác nhận công tác hoặc bản sao giấy phép kinh doanh + Giấy chứng nhận thuế cư trú (nộp/miễn) & Giấy nộp thuế\nTrường hợp khác: Giấy chứng nhận số dư ngân hàng hoặc giấy chứng nhận học bổng',
+    id: 'Jika bekerja/wirausaha: Surat Keterangan Kerja atau salinan izin usaha + Surat Keterangan Pajak Daerah (kena/bebas pajak) & Bukti Pembayaran Pajak\nSelain itu: Surat Keterangan Saldo Bank atau Sertifikat Beasiswa',
+    my: 'အလုပ်လုပ်/စီးပွားရေး - အလုပ်လက်မှတ် သို့မဟုတ် လုပ်ငန်းလိုင်စင်မိတ္တူ + နေထိုင်မှုအခွန်သက်သေခံ & အခွန်ပေးဆောင်မှုသက်သေခံ\nအခြား - ဘဏ်လက်ကျန်ငွေသက်သေခံ သို့မဟုတ် ပညာသင်ဆုသက်သေခံ',
+    ko: '취업・사업의 경우: 재직증명서 또는 영업허가서 사본＋주민세 과세(비과세)증명서・납세증명서\n그 외: 예금잔액증명서 또는 장학금 급부증명서',
+    ne: 'रोजगारी/व्यवसायको हकमा: रोजगारी प्रमाणपत्र वा व्यवसाय इजाजतको प्रतिलिपि + बसोबास कर प्रमाणपत्र र कर भुक्तानी प्रमाणपत्र\nअन्यथा: बैंक ब्यालेन्स प्रमाणपत्र वा छात्रवृत्ति प्रमाणपत्र',
+    zh: '就业・经营者：在职证明书或营业许可证复印件＋居民税课税(非课税)证明书・纳税证明书\n其他：存款余额证明书或奖学金给付证明书',
+    th: 'กรณีทำงาน/ธุรกิจ: หนังสือรับรองการทำงานหรือสำเนาใบอนุญาตประกอบธุรกิจ + ใบรับรองภาษีที่อยู่อาศัย & ใบรับรองการชำระภาษี\nกรณีอื่น: ใบรับรองยอดเงินฝากหรือใบรับรองทุนการศึกษา',
+    km: 'ករណីធ្វើការ/អាជីវកម្ម៖ វិញ្ញាបនបត្រការងារ ឬច្បាប់ចម្លងអាជ្ញាប័ណ្ណអាជីវកម្ម + វិញ្ញាបនបត្រពន្ធរស់នៅ និងវិញ្ញាបនបត្របង់ពន្ធ\nផ្សេងទៀត៖ វិញ្ញាបនបត្រសមតុល្យធនាគារ ឬវិញ្ញាបនបត្រអាហារូបករណ៍',
+    mn: 'Ажил/бизнесийн хувьд: Ажлын газрын тодорхойлолт эсвэл бизнесийн зөвшөөрлийн хуулбар + Оршин суугчийн татварын гэрчилгээ, татвар төлсөн гэрчилгээ\nБусад: Банкны үлдэгдлийн гэрчилгээ эсвэл тэтгэлгийн гэрчилгээ',
+    si: 'රැකියාව/ව්‍යාපාරය නම්: සේවා සහතිකය හෝ ව්‍යාපාර බලපත්‍රයේ පිටපත + පදිංචි බදු සහතිකය සහ බදු ගෙවීම් සහතිකය\nඅනෙකුත්: බැංකු ශේෂ සහතිකය හෝ ශිෂ්‍යත්ව සහතිකය'
+  }
 };
 
 // 旧ロジック用（USE_NEW_DOCS=false のときだけ使用）
@@ -1149,6 +1193,15 @@ function buildFields() {
       jnEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:700;margin-top:3px;line-height:1.6;white-space:pre-line;';
       jnEl.innerHTML = (currentLang === 'ja') ? fzExp(_jn) : _escName(_jn);
       label.appendChild(jnEl);
+    }
+    // ver.20260824: 家族滞在の書類注記（身分関係を証する文書・扶養者の収入証明書類）
+    if (typeof DOC_KAZOKU_HINTS !== 'undefined' && DOC_KAZOKU_HINTS[_jaLbl]) {
+      const _kh = DOC_KAZOKU_HINTS[_jaLbl];
+      const _khText = _kh[currentLang] || _kh.ja;
+      const khEl = document.createElement('div');
+      khEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:700;margin-top:3px;line-height:1.6;white-space:pre-line;';
+      khEl.innerHTML = (currentLang === 'ja') ? fzExp(_khText) : _escName(_khText);
+      label.appendChild(khEl);
     }
     if (DOC_DONE && DOC_DONE[key]) {
       row.style.background = '#cbd5e1'; row.style.borderColor = '#94a3b8'; row.style.opacity = '0.7';
