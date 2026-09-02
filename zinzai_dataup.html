@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20260803.16';
+const VERSION = 'ver.20260831.01';
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -1084,6 +1084,46 @@ function _jaLabelOf(key) {
   return (LANGS.ja && LANGS.ja.docs && LANGS.ja.docs[key]) || key;
 }
 
+// ver.20260831: 送信済み書類の「確認中」表示ヘルパー
+//   送信後にリンクを閉じて再度開くと、この画面で選んだファイルはメモリから消え「未選択」に戻る。
+//   案シスの提出済み(DOC_DONE)は担当者確認まで反映されないため、その間の空白を localStorage で埋める。
+function _reviewingLsKey(){ return 'ofusa_upload_submitted_' + (typeof CASE_ID !== 'undefined' ? CASE_ID : ''); }
+function _reviewingMap(){
+  try { return JSON.parse(localStorage.getItem(_reviewingLsKey()) || '{}') || {}; } catch(e){ return {}; }
+}
+function _isReviewingKey(key){
+  // 既に案シスで提出済み確定(DOC_DONE)なら、そちらの「✓提出済み」を優先し確認中は出さない
+  if (typeof DOC_DONE !== 'undefined' && DOC_DONE && DOC_DONE[key]) return false;
+  var m = _reviewingMap();
+  return !!m[key];
+}
+function _reviewingLabel(){
+  var labels = {
+    ja:'⏳ 確認中', en:'⏳ Under review', vi:'⏳ Đang kiểm tra', id:'⏳ Sedang diperiksa',
+    my:'⏳ စစ်ဆေးဆဲ', ko:'⏳ 확인 중', ne:'⏳ जाँच हुँदै', zh:'⏳ 确认中',
+    th:'⏳ กำลังตรวจสอบ', km:'⏳ កំពុងពិនិត្យ', mn:'⏳ Шалгаж байна', si:'⏳ පරීක්ෂා වෙමින්'
+  };
+  return labels[(typeof currentLang!=='undefined'?currentLang:'ja')] || labels.en;
+}
+// 送信直後などに、DOMのステータス表示を「確認中」へ更新する
+function _applyReviewingBadges(){
+  try {
+    var nodes = document.querySelectorAll('.field-status[data-dockey]');
+    nodes.forEach(function(st){
+      var key = st.getAttribute('data-dockey');
+      if (!key) return;
+      // その項目に今ファイルが入っている(=選択済み)なら触らない
+      var hasNow = (typeof fileData !== 'undefined' && fileData[key] && fileData[key].length);
+      if (hasNow) return;
+      if (_isReviewingKey(key)) {
+        st.className = 'field-status reviewing';
+        st.textContent = _reviewingLabel();
+        st.style.color = '#b45309';
+      }
+    });
+  } catch(e){ console.warn('applyReviewingBadges err:', e); }
+}
+
 function buildFields() {
   const L = LANGS[currentLang];
   fieldsList.innerHTML = '';
@@ -1228,6 +1268,13 @@ function buildFields() {
     const status = document.createElement('span');
     status.className = 'field-status' + (hasFiles ? ' ready' : '');
     status.textContent = hasFiles ? L.selected : L.noFile;
+    status.setAttribute('data-dockey', key);
+    // ver.20260831: 既に送信済み(localStorage記録あり)かつ今この画面で未選択なら「確認中」を表示
+    if (!hasFiles && typeof _isReviewingKey === 'function' && _isReviewingKey(key)) {
+      status.className = 'field-status reviewing';
+      status.textContent = (typeof _reviewingLabel === 'function') ? _reviewingLabel() : '⏳ 確認中';
+      status.style.color = '#b45309';
+    }
     const chevron = document.createElement('span');
     chevron.className = 'chevron';
     chevron.textContent = '▼';
@@ -1654,7 +1701,21 @@ submitBtn.addEventListener('click', async () => {
   statusMsg.style.background = '';
   statusMsg.style.color = '';
   statusMsg.style.border = '';
-  
+
+  // ver.20260831: 送信できた書類キーをlocalStorageに記録し、再度開いたとき「確認中」を表示する
+  //   （案シスの提出済み(DOC_DONE)は担当者確認まで反映されないため、その間「未選択」に戻って見える問題の対策）
+  try {
+    var _submittedKeys = {};
+    successKeys.forEach(function(s){ if(s && s.key) _submittedKeys[s.key] = true; });
+    var _lsKey = 'ofusa_upload_submitted_' + (typeof CASE_ID !== 'undefined' ? CASE_ID : '');
+    var _prev = {};
+    try { _prev = JSON.parse(localStorage.getItem(_lsKey) || '{}') || {}; } catch(e){}
+    Object.keys(_submittedKeys).forEach(function(k){ _prev[k] = Date.now(); });
+    localStorage.setItem(_lsKey, JSON.stringify(_prev));
+    // 画面のバッジを即時更新
+    if (typeof _applyReviewingBadges === 'function') _applyReviewingBadges();
+  } catch(e){ console.warn('submitted keys save failed:', e); }
+
   if (failed.length === 0) {
     statusMsg.className = 'status-msg success';
     statusMsg.textContent = L.msgSuccess;
