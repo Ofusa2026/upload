@@ -746,6 +746,22 @@ function renderFileList(key, container) {
 function buildAllFields() {
   // ver.20260525.01: docsパラメータがあれば、それに従って書類リストを構築
   if (USE_NEW_DOCS) {
+    // ver.20260908: 技人国（t:'giji'）の書類は企業カテゴリー(大/中小/個人)のタブに属さないため、
+    //   タブを隠して全書類を1リストで表示する。giji書類は normal バケツに寄せる。
+    var _hasGiji = Array.isArray(DOCS_LIST) && DOCS_LIST.some(function(d){ return d && d.t === 'giji'; });
+    if (_hasGiji) {
+      DOCS_LIST = DOCS_LIST.map(function(d){
+        if (d && d.t === 'giji') { var nd = {}; for (var k in d) nd[k] = d[k]; nd.t = 'normal'; return nd; }
+        return d;
+      });
+      try {
+        var _tw = document.querySelector('.tabs-wrap'); if (_tw) _tw.style.display = 'none';
+        var _nb = document.querySelector('#panelNormal .notice-box'); if (_nb) _nb.style.display = 'none';
+        var _pn = document.getElementById('panelNormal'); if (_pn){ _pn.classList.add('active'); _pn.style.display=''; }
+        var _pl = document.getElementById('panelLarge'); if (_pl) _pl.classList.remove('active');
+        var _pk = document.getElementById('panelKojin'); if (_pk) _pk.classList.remove('active');
+      } catch(e){ console.warn('giji tab hide err:', e); }
+    }
     // 新ロジック: DOCS_LIST = [{l: '書類名', r: 1, t: 'large'|'normal'|'kojin'}, ...]
     // 各書類に安定キー 'd0', 'd1', ... を割り当てて、tでタブ振り分け
     const buckets = { large: [], normal: [], kojin: [] };
