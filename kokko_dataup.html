@@ -7,7 +7,8 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>国交省書類アップロード（所属機関）</title>
-<!-- KOKKO_DATAUP_VERSION 20260623_04 会員証明書をJACまたは全中連に修正 -->
+<!-- KOKKO_DATAUP_VERSION 20260910_01 送信済み書類の「⏳ 確認中」表示を追加（人材ページから移植） -->
+<!-- 旧: 20260623_04 会員証明書をJACまたは全中連に修正 -->
 <!-- 旧: 20260602_08 タブ廃止・1リスト化 -->
 <style>
   :root {
@@ -477,6 +478,20 @@ function switchTab(tab) {
 }
 
 // ─── フィールド行を生成 ───
+// ver.20260910_01: 送信済み書類の「確認中」表示（人材ページ zinzai_dataup から移植）。
+//   送信後にリンクを閉じて再度開くと選択ファイルが消え「未選択」に戻る。案シスの提出済み確定(担当者確認)まで
+//   その空白を localStorage で埋め、アップ済み書類には「⏳ 確認中」を表示する。判定は日本語ラベルで行う。
+function _reviewingLsKey(){ return 'ofusa_upload_submitted_kokko_' + (typeof COMPANY_ID !== 'undefined' ? COMPANY_ID : ''); }
+function _reviewingMap(){ try { return JSON.parse(localStorage.getItem(_reviewingLsKey()) || '{}') || {}; } catch(e){ return {}; } }
+function _isReviewingLabel(label){ if(!label) return false; var m=_reviewingMap(); return !!m[label]; }
+function _reviewingLabel(){ return '⏳ 確認中'; }
+function _recordSubmittedLabels(labels){
+  try {
+    var m = _reviewingMap();
+    (labels||[]).forEach(function(l){ if(l) m[l] = Date.now(); });
+    localStorage.setItem(_reviewingLsKey(), JSON.stringify(m));
+  } catch(e){ console.warn('submitted labels save failed:', e); }
+}
 function buildFieldRow(key, docsMap) {
   const arr = fileData[key] || [];
   const hasFile = arr.length > 0;
@@ -749,6 +764,10 @@ function buildAllFields() {
         }
         labelEl.appendChild(doneEl);
       }
+    } else if (typeof _isReviewingLabel === 'function' && _isReviewingLabel(d.l) && !(fileData[key] && fileData[key].length)) {
+      // ver.20260910_01: 送信済みだが担当未確認の書類は「⏳ 確認中」を表示（提出済み/不要が優先）
+      var _stEl = row.querySelector('.field-status');
+      if (_stEl) { _stEl.className = 'field-status'; _stEl.textContent = _reviewingLabel(); _stEl.style.color = '#b45309'; }
     }
 
     // ★早め収集の注意（ラベル下）
@@ -896,6 +915,12 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
           } });
         }
       } catch (e) { console.warn('URL通知保存失敗:', e); }
+      // ver.20260910_01: 送信できた書類ラベルを記録→再描画で「⏳ 確認中」を表示
+      try {
+        var _subLbls = {};
+        filesPayload.forEach(function(f){ if(f && f.docLabel) _subLbls[f.docLabel] = 1; });
+        _recordSubmittedLabels(Object.keys(_subLbls));
+      } catch(e){ console.warn('record submitted labels err:', e); }
       allKeys.forEach(k => delete fileData[k]);
       buildAllFields();
       updateSubmitBtn();

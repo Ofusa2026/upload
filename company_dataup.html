@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20260805.01 - 複数見本(images配列)対応。社会保険をVer1(納入証明書)/Ver2(回答票)の2枚表示。間取り・協議会・納税証明(その3 法人/個人)・個人住民税の見本を実書類に差し替え -->
+<!-- company_dataup ver.20260910.01 - 送信済み書類の「⏳ 確認中」表示を追加（人材ページから移植）。担当が提出済み確定するまで、アップ済み書類が「未選択」に戻って見える問題の対策 -->
+<!-- 旧: ver.20260805.01 - 複数見本(images配列)対応。社会保険をVer1(納入証明書)/Ver2(回答票)の2枚表示。間取り・協議会・納税証明(その3 法人/個人)・個人住民税の見本を実書類に差し替え -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -667,6 +668,21 @@ function buildCompanySampleInline(label){
   }
   return box;
 }
+// ver.20260910.01: 送信済み書類の「確認中」表示（人材ページ zinzai_dataup から移植）。
+//   送信後にリンクを閉じて再度開くと、この画面で選んだファイルはメモリから消え「未選択」に戻る。
+//   案シスの提出済み確定(担当者確認)まで反映されないため、その間の空白を localStorage で埋める。
+//   キー d0.. は書類構成が変わると別書類を指しうるため、判定は「日本語ラベル」で行う。
+function _reviewingLsKey(){ return 'ofusa_upload_submitted_co_' + (typeof COMPANY_ID !== 'undefined' ? COMPANY_ID : ''); }
+function _reviewingMap(){ try { return JSON.parse(localStorage.getItem(_reviewingLsKey()) || '{}') || {}; } catch(e){ return {}; } }
+function _isReviewingLabel(label){ if(!label) return false; var m=_reviewingMap(); return !!m[label]; }
+function _reviewingLabel(){ return '⏳ 確認中'; }
+function _recordSubmittedLabels(labels){
+  try {
+    var m = _reviewingMap();
+    (labels||[]).forEach(function(l){ if(l) m[l] = Date.now(); });
+    localStorage.setItem(_reviewingLsKey(), JSON.stringify(m));
+  } catch(e){ console.warn('submitted labels save failed:', e); }
+}
 function buildFieldRow(key, docsMap) {
   const arr = fileData[key] || [];
   const hasFile = arr.length > 0;
@@ -808,6 +824,10 @@ function buildAllFields() {
             doneEl.textContent = '✓ 提出済み（再提出が必要な場合のみ）';
             labelEl.appendChild(doneEl);
           }
+        } else if (typeof _isReviewingLabel === 'function' && _isReviewingLabel(it.label) && !(fileData[it.key] && fileData[it.key].length)) {
+          // ver.20260910.01: 送信済みだが担当未確認の書類は「⏳ 確認中」を表示（提出済み確定が優先）
+          var _stEl = row.querySelector('.field-status');
+          if (_stEl) { _stEl.className = 'field-status'; _stEl.textContent = _reviewingLabel(); _stEl.style.color = '#b45309'; }
         }
         if (it.note && labelEl) {
           const noteEl = document.createElement('div');
@@ -1000,6 +1020,12 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
           } });
         }
       } catch (e) { console.warn('URL通知保存失敗:', e); }
+      // ver.20260910.01: 送信できた書類ラベルを記録→再描画で「⏳ 確認中」を表示
+      try {
+        var _subLbls = {};
+        filesPayload.forEach(function(f){ if(f && f.docLabel) _subLbls[f.docLabel] = 1; });
+        _recordSubmittedLabels(Object.keys(_subLbls));
+      } catch(e){ console.warn('record submitted labels err:', e); }
       allKeys.forEach(k => delete fileData[k]);
       buildAllFields();
       updateSubmitBtn();
