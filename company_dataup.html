@@ -753,10 +753,39 @@ function buildFieldRow(key, docsMap) {
     checkWrap.appendChild(mkChk('honseki','本籍の記載が「ある」ことを確認しました'));
     body.appendChild(checkWrap);
   }
+  // ver.20260916: 社会保険料は「健康保険料が0円でない」または「0円だが支払完了書類を添付」のどちらか1つを確認しないとアップロードできない
+  var _isShakaiHoken = String(docsMap[key]||'').indexOf('社会保険料') >= 0;
+  if (_isShakaiHoken) {
+    if (!window._shakaiHokenChecks) window._shakaiHokenChecks = {};
+    var _sc = window._shakaiHokenChecks[key] || { notzero:false, attached:false };
+    window._shakaiHokenChecks[key] = _sc;
+    var scWrap = document.createElement('div');
+    scWrap.style.cssText = 'background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7;';
+    scWrap.innerHTML = '<div style="font-weight:700;color:#b45309;margin-bottom:6px;">アップロード前に確認してください（いずれか1つ）</div>';
+    var mkScChk = function(field, other, text){
+      var lb = document.createElement('label');
+      lb.style.cssText = 'display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:4px;';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = !!_sc[field]; cb.style.cssText='margin-top:3px;flex:none;';
+      cb.onchange = function(){
+        _sc[field] = cb.checked;
+        if (cb.checked) { _sc[other] = false; }  // 片方を選んだらもう片方は外す（排他）
+        buildAllFields();  // 排他反映のため再描画
+        _updateShakaiHokenGate(key, label, input);
+      };
+      var sp = document.createElement('span'); sp.textContent = text;
+      lb.appendChild(cb); lb.appendChild(sp);
+      return lb;
+    };
+    scWrap.appendChild(mkScChk('notzero','attached','健康保険料が「0円」ではないことを確認しました'));
+    scWrap.appendChild(mkScChk('attached','notzero','「0円」だったため、同じ期間の支払いが完了したことを確認できる書類もあわせて添付します'));
+    body.appendChild(scWrap);
+  }
   addWrap.appendChild(label);
   body.appendChild(addWrap);
   // 役員住民票はチェック未完了ならアップロードボタンを無効化
   if (_isYakuinJumin) _updateYakuinJuminGate(key, label, input);
+  if (_isShakaiHoken) _updateShakaiHokenGate(key, label, input);
   const hint = document.createElement('div');
   hint.className = 'hint';
   hint.textContent = 'JPG / PNG / PDF';
@@ -784,6 +813,32 @@ function renderFileList(key, container) {
   });
 }
 
+// ver.20260916: 社会保険料のアップロードゲート（どちらか1つ確認でアップロード可）
+function _updateShakaiHokenGate(key, label, input){
+  try{
+    var chk = (window._shakaiHokenChecks && window._shakaiHokenChecks[key]) || {};
+    var ok = !!chk.notzero || !!chk.attached;
+    if(!label) return;
+    var txt = ok ? '📷 ファイルを追加' : '🔒 上のいずれかを確認するとアップロードできます';
+    var textNode = null;
+    for(var i=0;i<label.childNodes.length;i++){
+      if(label.childNodes[i].nodeType === 3){ textNode = label.childNodes[i]; break; }
+    }
+    if(textNode){ textNode.nodeValue = txt; }
+    else { label.insertBefore(document.createTextNode(txt), label.firstChild); }
+    if(ok){
+      label.style.opacity = '1';
+      label.style.pointerEvents = 'auto';
+      label.style.cursor = 'pointer';
+      if(input) input.disabled = false;
+    } else {
+      label.style.opacity = '0.6';
+      label.style.pointerEvents = 'none';
+      label.style.cursor = 'not-allowed';
+      if(input) input.disabled = true;
+    }
+  }catch(e){ console.warn('shakai hoken gate err:', e); }
+}
 // ver.20260913: 役員住民票のアップロードゲート（マイナンバーなし+本籍あり 両方確認でアップロード可）
 function _updateYakuinJuminGate(key, label, input){
   try{
