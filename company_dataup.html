@@ -730,8 +730,33 @@ function buildFieldRow(key, docsMap) {
     updateSubmitBtn();
   };
   label.appendChild(input);
+  // ver.20260913: 役員の住民票は「マイナンバー記載なし」「本籍記載あり」の両方を確認しないとアップロードできない
+  var _isYakuinJumin = String(docsMap[key]||'').indexOf('役員') >= 0 && String(docsMap[key]||'').indexOf('住民票') >= 0;
+  if (_isYakuinJumin) {
+    if (!window._yakuinJuminChecks) window._yakuinJuminChecks = {};
+    var _chk = window._yakuinJuminChecks[key] || { mynumber:false, honseki:false };
+    window._yakuinJuminChecks[key] = _chk;
+    var checkWrap = document.createElement('div');
+    checkWrap.style.cssText = 'background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7;';
+    checkWrap.innerHTML = '<div style="font-weight:700;color:#b45309;margin-bottom:6px;">アップロード前に確認してください</div>';
+    var mkChk = function(field, text){
+      var lb = document.createElement('label');
+      lb.style.cssText = 'display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:4px;';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = !!_chk[field]; cb.style.cssText='margin-top:3px;flex:none;';
+      cb.onchange = function(){ _chk[field] = cb.checked; _updateYakuinJuminGate(key, label, input); };
+      var sp = document.createElement('span'); sp.textContent = text;
+      lb.appendChild(cb); lb.appendChild(sp);
+      return lb;
+    };
+    checkWrap.appendChild(mkChk('mynumber','マイナンバーの記載が「ない」ことを確認しました'));
+    checkWrap.appendChild(mkChk('honseki','本籍の記載が「ある」ことを確認しました'));
+    body.appendChild(checkWrap);
+  }
   addWrap.appendChild(label);
   body.appendChild(addWrap);
+  // 役員住民票はチェック未完了ならアップロードボタンを無効化
+  if (_isYakuinJumin) _updateYakuinJuminGate(key, label, input);
   const hint = document.createElement('div');
   hint.className = 'hint';
   hint.textContent = 'JPG / PNG / PDF';
@@ -757,6 +782,34 @@ function renderFileList(key, container) {
     };
     container.appendChild(item);
   });
+}
+
+// ver.20260913: 役員住民票のアップロードゲート（マイナンバーなし+本籍あり 両方確認でアップロード可）
+function _updateYakuinJuminGate(key, label, input){
+  try{
+    var chk = (window._yakuinJuminChecks && window._yakuinJuminChecks[key]) || {};
+    var ok = !!chk.mynumber && !!chk.honseki;
+    if(!label) return;
+    // ラベルのテキスト部分だけ差し替える（input要素は残す）
+    var txt = ok ? '📷 ファイルを追加' : '🔒 上の2つを確認するとアップロードできます';
+    var textNode = null;
+    for(var i=0;i<label.childNodes.length;i++){
+      if(label.childNodes[i].nodeType === 3){ textNode = label.childNodes[i]; break; }
+    }
+    if(textNode){ textNode.nodeValue = txt; }
+    else { label.insertBefore(document.createTextNode(txt), label.firstChild); }
+    if(ok){
+      label.style.opacity = '1';
+      label.style.pointerEvents = 'auto';
+      label.style.cursor = 'pointer';
+      if(input) input.disabled = false;
+    } else {
+      label.style.opacity = '0.6';
+      label.style.pointerEvents = 'none';
+      label.style.cursor = 'not-allowed';
+      if(input) input.disabled = true;
+    }
+  }catch(e){ console.warn('yakuin jumin gate err:', e); }
 }
 
 function buildAllFields() {
