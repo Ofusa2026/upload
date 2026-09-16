@@ -573,6 +573,7 @@ var COMPANY_DOC_SAMPLES = {
   shakai_hoken:  { images:[{src:'samples/shakai_hoken_sample.png',label:'Ver.1 社会保険料納入証明書'},{src:'samples/shakai_hoken_sample2.png',label:'Ver.2 社会保険料納入状況照会回答票'}],  note:'年金事務所の「社会保険料納入状況照会回答票」、または「社会保険料納入証明書」「健康保険・厚生年金保険料の領収証書の写し」（申請月の前々月までの24か月分）。いずれかでOK。健康保険料の納入額が「0円」と記載されている場合は、同じ期間の支払いが完了していることを確認できる書類もあわせてご提出ください。', form:{ file:'forms/shakai_hoken_form.pdf', label:'社会保険料納付記録 交付申請書（特定技能・適用事業所用）' } },
   jumin_hyo:     { image:'samples/jumin_hyo_sample.png',     note:'業務執行に関与する役員（代表で1名分）の住民票の写し。マイナンバーの記載がなく、本籍の記載があるものを取得してください。' },
   kessan:        { image:'samples/kessan_sample.png',        note:'直近3期分の決算文書（損益計算書及び貸借対照表）の写し。' },
+  kakutei_shinkoku: { images:[{src:'samples/kakutei_shinkoku_sample1.jpg',label:'損益計算書'},{src:'samples/kakutei_shinkoku_sample2.jpg',label:'貸借対照表'}], note:'個人事業主の方は、直近3年分の確定申告書（青色申告決算書など）の写しをご提出ください。見本は青色申告決算書（不動産所得用）の例です。' },
   shugyo_kisoku: { image:'samples/shugyo_kisoku_sample.png', note:'就業規則。常時10人以上を使用する事業場は労働基準監督署への届出が必要（受付印のある写し）。' },
   chingin_kitei: { image:'samples/chingin_kitei_sample.png', note:'賃金規定。就業規則本体に賃金規定が含まれる場合は、その該当部分でも可。' },
   san_roku:      { image:'samples/san_roku_sample.png',      note:'時間外労働・休日労働に関する協定届（36協定／様式第９号）。労働基準監督署への届出（受付印のある写し）。有効期間が切れていないもの。' },
@@ -606,6 +607,7 @@ function _coSampleKeyByLabel(label){
   if(t.indexOf('社会保険料')>=0) return 'shakai_hoken';
   if(t.indexOf('住民票')>=0) return (t.indexOf('役員')>=0) ? 'jumin_hyo' : 'kojin_jumin';
   if(t.indexOf('決算')>=0) return 'kessan';
+  if(t.indexOf('確定申告')>=0) return 'kakutei_shinkoku';
   if(t.indexOf('就業規則')>=0) return 'shugyo_kisoku';
   if(t.indexOf('賃金')>=0) return 'chingin_kitei';
   if(t.indexOf('36協定')>=0 || t.indexOf('３６協定')>=0 || t.indexOf('時間外労働')>=0) return 'san_roku';
