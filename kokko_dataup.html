@@ -259,6 +259,17 @@
   <div id="kokkoIdpwBox" style="display:none;margin:0 0 14px;padding:14px;border:1px solid #fcd34d;border-radius:12px;background:#fffbeb;">
     <div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:4px;">🖥 外国人就労管理システムのID・パスワード</div>
     <div id="kokkoIdpwNote" style="font-size:11px;color:#78350f;margin-bottom:10px;line-height:1.7;"></div>
+    <!-- ver.20260924.02: 登録方法（受入実績「無」のときだけ表示・他の書類と同じ折りたたみ形式） -->
+    <details id="kokkoIdpwHowto" style="display:none;font-size:11px;margin-bottom:10px;">
+      <summary style="cursor:pointer;color:#2563eb;font-weight:700;">📘 登録方法を見る</summary>
+      <div style="margin-top:6px;padding:10px 12px;background:#fff;border:1px solid #fde68a;border-radius:8px;color:#475569;line-height:1.9;">
+        <div style="margin-bottom:8px;"><b>1.</b> 下記のURLをクリックしてください。<br>
+        <a href="https://gaikokujin-shuro.keg.jp/gjsk_1.0.0/GK1010_0010?systemKbnFlag=1&amp;time=1729152668369" target="_blank" rel="noopener noreferrer"
+          style="color:#2563eb;text-decoration:underline;font-weight:600;word-break:break-all;">https://gaikokujin-shuro.keg.jp/gjsk_1.0.0/GK1010_0010?systemKbnFlag=1&amp;time=1729152668369</a><br>
+        その後「仮利用者登録」より、ログインIDの設定をお願いいたします。</div>
+        <div><b>2.</b> 入力したメールアドレスへ通知がございます。そちらから、パスワードの設定をお願いいたします。<br>手続きは以上となります。</div>
+      </div>
+    </details>
     <label style="display:block;font-size:11.5px;font-weight:700;color:#78350f;margin-bottom:3px;">ログインID</label>
     <input id="kokkoIdInput" type="text" autocomplete="off" placeholder="例: abc12345"
       style="width:100%;padding:10px 12px;border:1.5px solid #fcd34d;border-radius:8px;font-size:16px;box-sizing:border-box;margin-bottom:10px;">
@@ -309,7 +320,10 @@ function _initKokkoIdpw(){
         if(st) st.innerHTML='受入実績のある企業様は、国交省書類のご提出に代えて<br>外国人就労管理システムの ID・パスワード をご提供ください';
         note.innerHTML='受入実績がある企業様のため、書類のご提出は不要です。<br>下記の2点をご入力のうえ「保存する」を押してください。';
       } else {
-        note.innerHTML='お持ちの場合はご入力ください（書類のアップロードとあわせてお願いいたします）。';
+        // ver.20260924.02: 受入実績「無」＝これから登録する企業。登録方法の案内を出す
+        note.innerHTML='まだお持ちでない場合は、下記の手順でご登録のうえ、ID・パスワードをご入力ください。';
+        var how=document.getElementById('kokkoIdpwHowto');
+        if(how) how.style.display='block';
       }
       if(info.has_id || info.has_pw){
         document.getElementById('kokkoIdpwMsg').innerHTML =
