@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- ver.20260925.01: 「11. 経歴書」に経歴書ひな形(Word)のダウンロードボタンを追加。KOKKO_DOC_METAにform{file,label}を追加し、書類説明の下にダウンロードボタンを描画（forms/keirekisho_form.docx）。 -->
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
@@ -715,7 +716,8 @@ const KOKKO_DOC_META = {
     name:'特定技能外国人と同等の技能を有する日本人の職務経歴書',
     sample:'kokko_11_keirekisho.png',
     desc:'特定技能外国人と同等の技能を有する日本人の職務経歴書。\n・賃金台帳と同じ方の経歴書\n・添付の経歴書ひな形より作成をお願いいたします。',
-    place:''
+    place:'',
+    form:{ file:'forms/keirekisho_form.docx', label:'経歴書ひな形' }
   },
   '13. 36協定': {
     name:'36協定届出書',
@@ -878,6 +880,19 @@ function buildAllFields() {
       });
       descEl.innerHTML = _linked;
       labelEl.appendChild(descEl);
+    }
+
+    // 取得用のひな形（Word等）ダウンロードボタン
+    if (meta && meta.form && meta.form.file && labelEl) {
+      const fWrap = document.createElement('div');
+      fWrap.style.cssText = 'margin-top:6px;';
+      const fBtn = document.createElement('a');
+      fBtn.href = KOKKO_SAMPLE_BASE.replace(/samples\/$/, '') + meta.form.file;
+      fBtn.target = '_blank'; fBtn.rel = 'noopener';
+      fBtn.style.cssText = 'display:inline-block;background:#1a56db;color:#fff;font-size:11px;font-weight:800;border-radius:6px;padding:6px 12px;text-decoration:none;line-height:1.4;';
+      fBtn.textContent = '📝 ' + (meta.form.label || '様式') + 'をダウンロード';
+      fWrap.appendChild(fBtn);
+      labelEl.appendChild(fWrap);
     }
 
     // 見本画像（折りたたみ）
