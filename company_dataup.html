@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- company_dataup ver.20261002.02 - 決算文書の事前確認の回答（債務超過／3期未満）を upload_notifications.doc_note にも保存（ファイル名の付記はそのまま） -->
 <!-- company_dataup ver.20261002.01 - 中小企業タブ最上部に「発行後3か月以内」の注意書きを追加。決算文書に事前確認（3期分の有無／純資産マイナス=債務超過）を追加し、回答をファイル名に付記 -->
 <!-- 旧: ver.20260910.01 - 送信済み書類の「⏳ 確認中」表示を追加（人材ページから移植）。担当が提出済み確定するまで、アップ済み書類が「未選択」に戻って見える問題の対策 -->
 <!-- 旧: ver.20260805.01 - 複数見本(images配列)対応。社会保険をVer1(納入証明書)/Ver2(回答票)の2枚表示。間取り・協議会・納税証明(その3 法人/個人)・個人住民税の見本を実書類に差し替え -->
@@ -903,6 +904,15 @@ function _kessanAnswerTag(key, l){
   if(c.ki === 'miman') t += '【3期未満と回答】';
   return t;
 }
+// ver.20261002.02: 回答をDB（upload_notifications.doc_note）にも保存する。ファイル名の付記と同じ内容を、括弧なしで返す
+function _kessanNote(key, l){
+  if(!_isKessanLabel(l)) return '';
+  var c = (window._kessanChecks && window._kessanChecks[key]) || {};
+  var a = [];
+  if(c.junshisan === 'minus') a.push('債務超過と回答');
+  if(c.ki === 'miman') a.push('3期未満と回答');
+  return a.join('・');
+}
 function _updateKessanGate(key, label, input){
   try{
     var chk = (window._kessanChecks && window._kessanChecks[key]) || {};
@@ -1177,6 +1187,7 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
       filesPayload.push({
         name: allDocs[key] + _kessanAnswerTag(key, allDocs[key]) + suffix + '.' + ext,
         docLabel: allDocs[key],
+        docNote: _kessanNote(key, allDocs[key]),   // ver.20261002.02
         mimeType: d.mimeType,
         data: d.base64,
       });
@@ -1213,6 +1224,7 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
             file_names: filesPayload[_fi].name,
             doc_label: filesPayload[_fi].docLabel,
             drive_url: _durl,
+            doc_note: filesPayload[_fi].docNote || '',   // ver.20261002.02: 決算文書の事前確認の回答
             source: 'company_dataup'
           } });
         }
