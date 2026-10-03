@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- company_dataup ver.20261003.02 - 容量アップ：1ファイルずつ送信に変更（合計の上限なし・1ファイル35MBまで）。写真はHEIC→JPEG変換＋自動圧縮。一部失敗時は失敗分だけ残して理由を表示。 -->
 <!-- company_dataup ver.20261003.01 - アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。企業書類は1回でまとめて送るため合計30MB超は事前に分割送信を案内。 -->
 <!-- company_dataup ver.20261002.03 - 決算文書の回答のファイル名への付記をやめた（doc_noteのみ）。個人事業主タブにも「発行後3か月以内」の注意書き。債務超過の案内文を本番の文面に -->
 <!-- company_dataup ver.20261002.02 - 決算文書の事前確認の回答（債務超過／3期未満）を upload_notifications.doc_note にも保存（ファイル名の付記はそのまま） -->
@@ -12,6 +13,9 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<!-- 画像圧縮・HEIC変換ライブラリ（ver.20261003.02: 容量対策） -->
+<script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <title>書類アップロード（所属機関）</title>
 <style>
   :root {
@@ -807,13 +811,14 @@ function buildFieldRow(key, docsMap) {
     // ver.20261003.01: 追加できないファイルは理由を表示して除外
     const _rejected = [];
     for (const file of files) {
-      const _why = _uplCheckFile(file, false);
+      const _why = _uplCheckFile(file, true);
       if (_why) { _rejected.push(_why); continue; }
-      let b64;
-      try { b64 = await toBase64(file); }
+      let b64, _prep;
+      try { _prep = await _coPrepFile(file); b64 = await toBase64(_prep.blob); }
       catch (er) { _rejected.push('「'+file.name+'」を読み込めませんでした（破損している・クラウド上にだけあり端末に保存されていない等）。端末に保存し直すか撮り直してから選んでください。'); continue; }
+      if (_prep.blob.size > UPL_MAX_FILE_MB*1024*1024) { _rejected.push('「'+file.name+'」は '+_uplMB(_prep.blob.size)+' あり大きすぎます（1ファイル'+UPL_MAX_FILE_MB+'MBまで）。PDFはページを分けるか圧縮してからアップロードしてください。'); continue; }
       if (!fileData[key]) fileData[key] = [];
-      fileData[key].push({ name: file.name, mimeType: file.type || 'application/octet-stream', base64: b64 });
+      fileData[key].push({ name: _prep.name, mimeType: _prep.mimeType, base64: b64 });
     }
     input.value = '';
     _uplShowRejected(_rejected);
@@ -1171,6 +1176,27 @@ function updateSubmitBtn() {
   document.getElementById('submitBtn').disabled = !hasAny;
 }
 
+// ver.20261003.02: 1ファイルずつ送るため上限を35MBに（送信時に約1.3倍になるため、送信サーバーの約50MB枠に収まる値）
+UPL_MAX_FILE_MB = 35;
+// ver.20261003.02: 写真はHEIC→JPEG変換・自動圧縮（1〜2MB程度）。PDFはそのまま
+async function _coPrepFile(file){
+  var name = file.name || 'file', mime = file.type || '';
+  var isHeic = /\.(heic|heif)$/i.test(name) || mime === 'image/heic' || mime === 'image/heif';
+  var isImg = /^image\//.test(mime) || isHeic || /\.(jpe?g|png|gif|webp)$/i.test(name);
+  if (!isImg) return { blob: file, name: name, mimeType: mime || 'application/pdf' };
+  var blob = file;
+  if (isHeic && typeof heic2any !== 'undefined') {
+    try { var cv = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 }); blob = Array.isArray(cv) ? cv[0] : cv; name = name.replace(/\.(heic|heif)$/i, '') + '.jpg'; mime = 'image/jpeg'; }
+    catch (e) { console.warn('HEIC変換失敗（そのまま続行）:', name, e); }
+  }
+  if (typeof imageCompression !== 'undefined') {
+    try {
+      blob = await imageCompression(blob, { maxSizeMB: 1.5, maxWidthOrHeight: 2400, useWebWorker: true, fileType: 'image/jpeg', initialQuality: 0.85 });
+      mime = 'image/jpeg'; if (!/\.(jpe?g)$/i.test(name)) name = name.replace(/\.[^.]+$/, '') + '.jpg';
+    } catch (e) { console.warn('圧縮失敗（元ファイルで続行）:', name, e); }
+  }
+  return { blob: blob, name: name, mimeType: mime || 'image/jpeg' };
+}
 function toBase64(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -1255,7 +1281,7 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
   progressWrap.style.display = 'block';
   progressBar.style.width = '10%';
 
-  const timestamp = Date.now();
+  // ver.20261003.02: 1ファイルずつ送信（合計容量の上限なし・失敗したものだけ残して再送可能）
   const filesPayload = [];
   allKeys.forEach(key => {
     const arr = fileData[key] || [];
@@ -1263,6 +1289,7 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
       const ext = d.name.split('.').pop() || 'jpg';
       const suffix = arr.length > 1 ? '_' + (i + 1) : '';
       filesPayload.push({
+        key: key, ref: d,
         name: allDocs[key] + suffix + '.' + ext,   // ver.20261002.03: 回答のファイル名への付記はやめた（回答は doc_note に保存）
         docLabel: allDocs[key],
         docNote: _kessanNote(key, allDocs[key]),   // ver.20261002.02
@@ -1272,74 +1299,71 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
     });
   });
 
-  // ver.20261003.01: 1回でまとめて送る合計が大きすぎると送信サーバーが受け付けないため、事前に理由を表示
-  var _totalBytes = filesPayload.reduce(function(a, p){ return a + Math.floor(String(p.data||'').length*0.75); }, 0);
-  if (_totalBytes > UPL_MAX_TOTAL_MB*1024*1024) {
-    progressWrap.style.display = 'none';
-    statusMsg.className = 'status-msg error'; statusMsg.style.whiteSpace = 'pre-line';
-    statusMsg.textContent = '❌ 送信できません\n選択したファイルの合計が ' + _uplMB(_totalBytes) + ' あり、1回で送れる量（' + UPL_MAX_TOTAL_MB + 'MB）を超えています。\n書類を何回かに分けて送信してください（例：半分ずつ選んで送信）。';
-    statusMsg.style.display = 'block';
-    submitBtn.disabled = false;
-    return;
-  }
-  try {
-    progressBar.style.width = '40%';
-    const res = await _uplFetch(GAS_URL, {
-      method: 'POST',
-      body: JSON.stringify({ files: filesPayload, folderId: FOLDER_ID }),
-    });
-    progressBar.style.width = '90%';
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    let json;
-    const _txt = await res.text();
-    try { json = JSON.parse(_txt); } catch (pe) { throw new Error('BAD_RESPONSE ' + String(_txt).slice(0, 60)); }
-    if (json.success) {
-      progressBar.style.width = '100%';
-      statusMsg.className = 'status-msg success';
-      statusMsg.textContent = '✅ アップロード完了しました！\n担当者に届きました。';
-      statusMsg.style.display = 'block';
-      // 案件管理システムにアップロード通知
-      notifyUploadToSystem(filesPayload.length, COMPANY_ID, COMPANY_NAME);
-      // ver.20260611.02: 書類ごとにドライブURLを保存（応答 json.files[] は filesPayload と同順）
+  const total = filesPayload.length;
+  const failed = [], okList = [];
+  statusMsg.style.display = 'block';
+  statusMsg.className = 'status-msg';
+  for (let i = 0; i < total; i++) {
+    const p = filesPayload[i];
+    statusMsg.textContent = '(' + (i + 1) + '/' + total + ') ' + p.docLabel + ' を送信中…';
+    progressBar.style.width = Math.round((i / total) * 90 + 5) + '%';
+    try {
+      if (Math.floor(String(p.data || '').length * 0.75) > UPL_MAX_FILE_MB * 1024 * 1024) throw new Error('FILE_TOO_LARGE:' + _uplMB(Math.floor(String(p.data || '').length * 0.75)));
+      const res = await _uplFetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ files: [{ name: p.name, mimeType: p.mimeType, data: p.data }], folderId: FOLDER_ID }),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      let json;
+      const _txt = await res.text();
+      try { json = JSON.parse(_txt); } catch (pe) { throw new Error('BAD_RESPONSE ' + String(_txt).slice(0, 60)); }
+      if (!json.success) throw new Error(json.error || 'error');
+      okList.push(p);
+      // ver.20260611.02: 書類ごとにドライブURLを保存
       try {
-        var _resFiles = Array.isArray(json.files) ? json.files : [];
-        for (var _fi = 0; _fi < filesPayload.length; _fi++) {
-          var _rf = _resFiles[_fi] || {};
-          var _durl = _rf.url || _rf.webViewLink || _rf.fileUrl || (_rf.id ? ('https://drive.google.com/file/d/' + _rf.id + '/view') : '');
-          if (!_durl) continue;
-          _uplRpc('upload_notify', { p_payload: {
-            company_id: COMPANY_ID,
-            company_name: COMPANY_NAME,
-            folder_id: FOLDER_ID,
-            file_count: 1,
-            file_names: filesPayload[_fi].name,
-            doc_label: filesPayload[_fi].docLabel,
-            drive_url: _durl,
-            doc_note: filesPayload[_fi].docNote || '',   // ver.20261002.02: 決算文書の事前確認の回答
-            source: 'company_dataup'
-          } });
-        }
+        var _rf = (Array.isArray(json.files) ? json.files[0] : null) || {};
+        var _durl = _rf.url || _rf.webViewLink || _rf.fileUrl || (_rf.id ? ('https://drive.google.com/file/d/' + _rf.id + '/view') : '');
+        if (_durl) _uplRpc('upload_notify', { p_payload: {
+          company_id: COMPANY_ID, company_name: COMPANY_NAME, folder_id: FOLDER_ID, file_count: 1,
+          file_names: p.name, doc_label: p.docLabel, drive_url: _durl,
+          doc_note: p.docNote || '',   // ver.20261002.02: 決算文書の事前確認の回答
+          source: 'company_dataup'
+        } });
       } catch (e) { console.warn('URL通知保存失敗:', e); }
-      // ver.20260910.01: 送信できた書類ラベルを記録→再描画で「⏳ 確認中」を表示
-      try {
-        var _subLbls = {};
-        filesPayload.forEach(function(f){ if(f && f.docLabel) _subLbls[f.docLabel] = 1; });
-        _recordSubmittedLabels(Object.keys(_subLbls));
-      } catch(e){ console.warn('record submitted labels err:', e); }
-      allKeys.forEach(k => delete fileData[k]);
-      buildAllFields();
-      updateSubmitBtn();
-    } else {
-      throw new Error(json.error || 'error');
+    } catch (err) {
+      console.error('アップロード失敗:', p.docLabel, err);
+      failed.push({ docLabel: p.docLabel, reason: _uplErrReason(err) });
     }
-  } catch (err) {
-    console.error('アップロード失敗:', err);
+  }
+  progressBar.style.width = '100%';
+
+  if (okList.length) {
+    notifyUploadToSystem(okList.length, COMPANY_ID, COMPANY_NAME);
+    // ver.20260910.01: 送信できた書類ラベルを記録→再描画で「⏳ 確認中」を表示
+    try {
+      var _subLbls = {};
+      okList.forEach(function(f){ if(f && f.docLabel) _subLbls[f.docLabel] = 1; });
+      _recordSubmittedLabels(Object.keys(_subLbls));
+    } catch(e){ console.warn('record submitted labels err:', e); }
+    // 送信できたファイルだけ選択から外す（失敗分は残して再送できるように）
+    okList.forEach(function(p){
+      var arr = fileData[p.key]; if (!arr) return;
+      var ix = arr.indexOf(p.ref); if (ix >= 0) arr.splice(ix, 1);
+      if (!arr.length) delete fileData[p.key];
+    });
+  }
+  statusMsg.style.whiteSpace = 'pre-line';
+  if (!failed.length) {
+    statusMsg.className = 'status-msg success';
+    statusMsg.textContent = '✅ アップロード完了しました！\n担当者に届きました。';
+  } else {
     statusMsg.className = 'status-msg error';
-    statusMsg.style.whiteSpace = 'pre-line';
-    statusMsg.textContent = '❌ 送信に失敗しました。\n\n【送信できなかった理由】\n' + _uplErrReason(err) + '\n\n選んだファイルは残っています。対処後、もう一度「送信」を押してください。';
-    statusMsg.style.display = 'block';
+    statusMsg.textContent = (okList.length ? '✅ ' + okList.length + '件 送信完了\n' : '') + '❌ ' + failed.length + '件 送信できませんでした\n\n【送信できなかった理由】\n' + _uplFormatFailures(failed) + '\n\n選んだファイルは残っています。対処後、もう一度「送信」を押してください（送信済みの書類は再送されません）。';
     submitBtn.disabled = false;
   }
+  statusMsg.style.display = 'block';
+  buildAllFields();
+  updateSubmitBtn();
 
   setTimeout(() => {
     progressWrap.style.display = 'none';
