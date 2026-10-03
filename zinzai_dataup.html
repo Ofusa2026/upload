@@ -51,7 +51,7 @@
   .progress-bar{height:100%;background:var(--primary);width:0%;transition:width 0.4s;}
   .status-msg{display:none;margin-top:18px;padding:16px;border-radius:12px;font-size:14px;text-align:center;line-height:1.7;white-space:pre-line;}
   .status-msg.success{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border);}
-  .status-msg.error{background:var(--error-bg);color:var(--error);border:1px solid var(--error-border);}
+  .status-msg.error{text-align:left;background:var(--error-bg);color:var(--error);border:1px solid var(--error-border);}
   /* 名前確認モーダル */
   .name-confirm-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;}
   .name-confirm-modal{background:#fff;border-radius:16px;width:100%;max-width:420px;padding:24px 20px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
@@ -124,13 +124,69 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20261002.01';
+const VERSION = 'ver.20261003.01'; // ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
 const urlParams = new URLSearchParams(window.location.search);
 const FOLDER_ID = urlParams.get('folder') || '';
 const FOLDER_ID2 = urlParams.get('folder2') || '';
+// ===== ver.20261003.01: アップロードできない理由の判定・表示 =====
+var UPL_MAX_FILE_MB = 25;   // 1ファイルの上限目安（送信サーバーの受付量）
+var UPL_MAX_TOTAL_MB = 30;  // 1回でまとめて送る合計の上限目安
+var UPL_TIMEOUT_MS = 180000; // 3分で時間切れ
+function _uplMB(bytes){ return (bytes/1024/1024).toFixed(1)+'MB'; }
+// ファイル選択時のチェック（問題なければ ''）
+function _uplCheckFile(file, compressImages){
+  var name = file && file.name || '', t = file && file.type || '';
+  var isImg = /^image\//.test(t) || /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(name);
+  var isPdf = t === 'application/pdf' || /\.pdf$/i.test(name);
+  if (!isImg && !isPdf) return '「'+name+'」は対応していないファイル形式です（JPG・PNG・PDFのみ）。Word・Excel等はPDFに変換するか、写真に撮ってアップロードしてください。';
+  if (!file.size) return '「'+name+'」は中身が空（0バイト）のため読み込めません。撮影・保存し直してから選んでください。';
+  if (file.size > UPL_MAX_FILE_MB*1024*1024 && !(isImg && compressImages)) return '「'+name+'」は '+_uplMB(file.size)+' あり大きすぎます（1ファイル'+UPL_MAX_FILE_MB+'MBまで）。PDFはページを分けるか圧縮して、写真は解像度を下げてからアップロードしてください。';
+  return '';
+}
+// 送信エラーの理由を日本語で返す
+function _uplErrReason(err){
+  var m = String((err && err.message) || err || '');
+  if (m.indexOf('NO_FOLDER') === 0) return 'このアップロード用URLに保存先フォルダが設定されていません。お手数ですが担当者へご連絡ください（URLが途中で切れている可能性もあります）。';
+  if (m.indexOf('FILE_TOO_LARGE') === 0) return 'ファイルが大きすぎます（'+(m.split(':')[1]||'')+'）。1ファイル'+UPL_MAX_FILE_MB+'MBまでです。PDFはページを分けるか圧縮してください。';
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'インターネットにつながっていません（オフライン）。電波の良い場所かWi-Fiにつないでから、もう一度送信してください。';
+  if ((err && err.name === 'AbortError') || /timeout|時間切れ/i.test(m)) return '送信に時間がかかりすぎて途中で止まりました（ファイルが大きい・通信が遅い）。Wi-Fiにつなぐか、枚数を減らして送信してください。';
+  if (/Failed to fetch|NetworkError|Load failed|network connection/i.test(m)) return '通信エラーで送信できませんでした（電波が弱い・途中で回線が切れた・ファイルが大きすぎる等）。通信状況を確認して、もう一度送信してください。';
+  var hs = m.match(/HTTP (\d{3})/);
+  if (hs) {
+    var c = +hs[1];
+    if (c === 413) return 'ファイルが大きすぎて受け付けられませんでした。枚数を減らすか、分けて送信してください。';
+    if (c === 429 || c >= 500) return 'サーバーが混み合っているか一時的なエラーです（HTTP '+c+'）。少し時間をおいて、もう一度送信してください。';
+    return 'サーバーから想定外の応答がありました（HTTP '+c+'）。時間をおいても続く場合は担当者へご連絡ください。';
+  }
+  if (/folder|フォルダ|not found|権限|permission|access denied|Access/i.test(m)) return '保存先フォルダが見つからないか、アクセス権がありません。お手数ですが担当者へご連絡ください（フォルダの移動・削除の可能性があります）。';
+  if (/Read failed|読み込/i.test(m)) return 'ファイルを読み込めませんでした（破損している・クラウド上にだけあり端末に保存されていない等）。端末に保存し直すか撮り直してから選んでください。';
+  if (/Exceeded|limit|上限|too large|Request Entity/i.test(m)) return 'ファイルサイズが上限を超えています。枚数を減らすか、分けて送信してください。';
+  if (/BAD_RESPONSE|JSON|Unexpected token|Unexpected end/i.test(m)) return 'サーバーの応答を読み取れませんでした（ファイルが大きすぎる・一時的な障害の可能性）。枚数を減らして、もう一度送信してください。';
+  return '原因不明のエラーです（'+m.slice(0,80)+'）。もう一度送信しても失敗する場合は、この画面のスクリーンショットを担当者へお送りください。';
+}
+// タイムアウト付き fetch
+function _uplFetch(url, opts){
+  if (typeof AbortController === 'undefined') return fetch(url, opts);
+  var ac = new AbortController();
+  var tm = setTimeout(function(){ ac.abort(); }, UPL_TIMEOUT_MS);
+  opts = Object.assign({}, opts, { signal: ac.signal });
+  return fetch(url, opts).finally(function(){ clearTimeout(tm); });
+}
+// 失敗一覧を「理由ごと」にまとめた文章にする  list=[{docLabel, reason}]
+function _uplFormatFailures(list){
+  var byReason = {}, order = [];
+  list.forEach(function(f){ if(!byReason[f.reason]){ byReason[f.reason]=[]; order.push(f.reason); } if(byReason[f.reason].indexOf(f.docLabel)<0) byReason[f.reason].push(f.docLabel); });
+  return order.map(function(r){ return '■ ' + byReason[r].join('、') + '\n　→ ' + r; }).join('\n');
+}
+// 選択時に弾いたファイルの理由を表示
+function _uplShowRejected(list){
+  if (!list.length) return;
+  alert('次のファイルは追加できませんでした。\n\n' + list.join('\n\n'));
+}
+
 const CASE_ID = urlParams.get('case') || '';
 const APPLICANT_NAME = urlParams.get('name') ? decodeURIComponent(urlParams.get('name')) : '';
 const APP_TYPE = urlParams.get('appType') || '';
@@ -1000,14 +1056,22 @@ function attachMugshotGate(input) {
 // 共通ローダ：files配列をfileData[key]へ読み込み、完了後onDoneを呼ぶ
 function loadFilesInto(key, files, onDone) {
   if (!files.length) return;
+  // ver.20261003.01: 追加できないファイルは理由を表示して除外（以前は無言で読み込み待ちのまま止まることがあった）
+  var rejected = [];
+  files = files.filter(function(file){ var why = _uplCheckFile(file, true); if (why) { rejected.push(why); return false; } return true; });
+  if (!files.length) { _uplShowRejected(rejected); return; }
   if (!fileData[key]) fileData[key] = [];
   let loaded = 0;
+  function _done(){ loaded++; if (loaded === files.length) { _uplShowRejected(rejected); onDone(); } }
   files.forEach(function(file){
     const r = new FileReader();
     r.onload = function(ev){
       fileData[key].push({dataUrl:ev.target.result,name:file.name,mimeType:file.type,base64:ev.target.result.split(',')[1],isPdf:file.type==='application/pdf'});
-      loaded++;
-      if (loaded === files.length) onDone();
+      _done();
+    };
+    r.onerror = function(){
+      rejected.push('「'+file.name+'」を読み込めませんでした（破損している・クラウド上にだけあり端末に保存されていない等）。端末に保存し直すか撮り直してから選んでください。');
+      _done();
     };
     r.readAsDataURL(file);
   });
@@ -1511,7 +1575,7 @@ function dataUrlToBlob(dataUrl, mimeType) {
 // ver.20260625.02: メインGASに合わせてaction/data形式でPOST、成功判定をstatus:'ok'に変更
 // ============================================================
 async function uploadOneFile(payload) {
-  const res = await fetch(GAS_URL, {
+  const res = await _uplFetch(GAS_URL, {
     method: 'POST',
     redirect: 'follow',
     body: JSON.stringify({
@@ -1524,6 +1588,8 @@ async function uploadOneFile(payload) {
       }
     })
   });
+  // ver.20261003.01: HTTPエラーを成功扱いしない
+  if (!res.ok) throw new Error('HTTP ' + res.status);
   let json = { status: 'ok' };
   try {
     const text = await res.text();
@@ -1552,6 +1618,7 @@ submitBtn.addEventListener('click', async () => {
   const L = LANGS[currentLang];
   const keys = Object.keys(fileData).filter(k => fileData[k] && fileData[k].length > 0);
   if (!keys.length) { alert(L.msgNoFile); return; }
+  if (!FOLDER_ID) { statusMsg.style.display='block'; statusMsg.className='status-msg error'; statusMsg.textContent='❌ 送信できません\n'+_uplErrReason(new Error('NO_FOLDER')); return; }
   
   submitBtn.disabled = true;
   progressWrap.style.display = 'block';
@@ -1605,6 +1672,7 @@ submitBtn.addEventListener('click', async () => {
       // dataUrl → Blob → 前処理
       const srcBlob = dataUrlToBlob(f.dataUrl, f.mimeType);
       const processed = await preprocessFile(srcBlob, f.originalName, f.mimeType);
+      if (processed.blob && processed.blob.size > UPL_MAX_FILE_MB*1024*1024) throw new Error('FILE_TOO_LARGE:' + _uplMB(processed.blob.size));
       const base64 = await blobToBase64(processed.blob);
       
       // ファイル名生成（書類名_連番.拡張子）
@@ -1680,7 +1748,7 @@ submitBtn.addEventListener('click', async () => {
       
     } catch (err) {
       console.error('アップロード失敗:', f.docLabel, err);
-      failed.push({ docLabel: f.docLabel, error: err.message || 'error' });
+      failed.push({ docLabel: f.docLabel, error: err.message || 'error', reason: _uplErrReason(err) });
     }
   }
   
@@ -1724,13 +1792,13 @@ submitBtn.addEventListener('click', async () => {
     statusMsg.textContent = L.msgSuccess;
   } else if (failed.length === total) {
     statusMsg.className = 'status-msg error';
-    statusMsg.textContent = L.msgError + '\n失敗：' + failed.map(f => f.docLabel).join('、');
+    statusMsg.textContent = L.msgError + '\n\n【送信できなかった理由】\n' + _uplFormatFailures(failed);
     submitBtn.disabled = false;
   } else {
     // 一部成功
     statusMsg.className = 'status-msg error';
     const successCount = total - failed.length;
-    statusMsg.textContent = '✅ ' + successCount + '件 送信完了\n❌ ' + failed.length + '件 失敗：' + failed.map(f => f.docLabel).join('、') + '\nもう一度「' + L.btnSubmit + '」を押してください。';
+    statusMsg.textContent = '✅ ' + successCount + '件 送信完了\n❌ ' + failed.length + '件 失敗\n\n【送信できなかった理由】\n' + _uplFormatFailures(failed) + '\n\n対処後、もう一度「' + L.btnSubmit + '」を押してください（送信済みの書類は再送されません）。';
     submitBtn.disabled = false;
   }
   
