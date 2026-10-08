@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- company_dataup ver.20261008.01 - 納税証明書（その３）に税目ごと（源泉所得税及び復興特別所得税／法人税／消費税及び地方消費税）の「未納なし」確認チェックを追加。3つすべて確認するとアップロード可。 -->
 <!-- company_dataup ver.20261003.02 - 容量アップ：1ファイルずつ送信に変更（合計の上限なし・1ファイル35MBまで）。写真はHEIC→JPEG変換＋自動圧縮。一部失敗時は失敗分だけ残して理由を表示。 -->
 <!-- company_dataup ver.20261003.01 - アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。企業書類は1回でまとめて送るため合計30MB超は事前に分割送信を案内。 -->
 <!-- company_dataup ver.20261002.03 - 決算文書の回答のファイル名への付記をやめた（doc_noteのみ）。個人事業主タブにも「発行後3か月以内」の注意書き。債務超過の案内文を本番の文面に -->
@@ -877,6 +878,30 @@ function buildFieldRow(key, docsMap) {
     scWrap.appendChild(mkScChk('attached','notzero','「0円」だったため、同じ期間の支払いが完了したことを確認できる書類もあわせて添付します'));
     body.appendChild(scWrap);
   }
+  // ver.20261008.01: 納税証明書（その３）は3つの税目それぞれで「未納がない」ことを確認しないとアップロードできない
+  var _isZeimu3 = String(docsMap[key]||'').indexOf('納税証明書（その３）') >= 0;
+  if (_isZeimu3) {
+    if (!window._zeimu3Checks) window._zeimu3Checks = {};
+    var _zc = window._zeimu3Checks[key] || { genzen:false, houjin:false, shohi:false };
+    window._zeimu3Checks[key] = _zc;
+    var zWrap = document.createElement('div');
+    zWrap.style.cssText = 'background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7;';
+    zWrap.innerHTML = '<div style="font-weight:700;color:#b45309;margin-bottom:6px;">税目ごとに未納がないことを確認してください</div>';
+    var mkZChk = function(field, text){
+      var lb = document.createElement('label');
+      lb.style.cssText = 'display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:4px;';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = !!_zc[field]; cb.style.cssText='margin-top:3px;flex:none;';
+      cb.onchange = function(){ _zc[field] = cb.checked; _updateZeimu3Gate(key, label, input); };
+      var sp = document.createElement('span'); sp.textContent = text;
+      lb.appendChild(cb); lb.appendChild(sp);
+      return lb;
+    };
+    zWrap.appendChild(mkZChk('genzen','源泉所得税及び復興特別所得税：未納がないことを確認しました'));
+    zWrap.appendChild(mkZChk('houjin','法人税：未納がないことを確認しました'));
+    zWrap.appendChild(mkZChk('shohi','消費税及び地方消費税：未納がないことを確認しました'));
+    body.appendChild(zWrap);
+  }
   // ver.20261002.01: 決算文書（損益計算書及び貸借対照表）は「3期分の有無」「純資産がマイナスでないか」に答えないとアップロードできない
   var _isKessan = _isKessanLabel(docsMap[key]);
   if (_isKessan) {
@@ -921,6 +946,7 @@ function buildFieldRow(key, docsMap) {
   // 役員住民票はチェック未完了ならアップロードボタンを無効化
   if (_isYakuinJumin) _updateYakuinJuminGate(key, label, input);
   if (_isShakaiHoken) _updateShakaiHokenGate(key, label, input);
+  if (_isZeimu3) _updateZeimu3Gate(key, label, input);
   const hint = document.createElement('div');
   hint.className = 'hint';
   hint.textContent = 'JPG / PNG / PDF';
@@ -973,6 +999,32 @@ function _updateShakaiHokenGate(key, label, input){
       if(input) input.disabled = true;
     }
   }catch(e){ console.warn('shakai hoken gate err:', e); }
+}
+// ver.20261008.01: 納税証明書（その３）のアップロードゲート（3税目すべて未納なし確認でアップロード可）
+function _updateZeimu3Gate(key, label, input){
+  try{
+    var chk = (window._zeimu3Checks && window._zeimu3Checks[key]) || {};
+    var ok = !!chk.genzen && !!chk.houjin && !!chk.shohi;
+    if(!label) return;
+    var txt = ok ? '📷 ファイルを追加' : '🔒 上の3つを確認するとアップロードできます';
+    var textNode = null;
+    for(var i=0;i<label.childNodes.length;i++){
+      if(label.childNodes[i].nodeType === 3){ textNode = label.childNodes[i]; break; }
+    }
+    if(textNode){ textNode.nodeValue = txt; }
+    else { label.insertBefore(document.createTextNode(txt), label.firstChild); }
+    if(ok){
+      label.style.opacity = '1';
+      label.style.pointerEvents = 'auto';
+      label.style.cursor = 'pointer';
+      if(input) input.disabled = false;
+    } else {
+      label.style.opacity = '0.6';
+      label.style.pointerEvents = 'none';
+      label.style.cursor = 'not-allowed';
+      if(input) input.disabled = true;
+    }
+  }catch(e){ console.warn('zeimu3 gate err:', e); }
 }
 // ver.20261002.01: 決算文書（損益計算書及び貸借対照表）の判定・回答タグ・アップロードゲート
 function _isKessanLabel(l){ l = String(l||''); return l.indexOf('決算') >= 0 && l.indexOf('損益') >= 0; }

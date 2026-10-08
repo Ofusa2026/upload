@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20261007.01'; // ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
+const VERSION = 'ver.20261008.02'; // ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -1007,6 +1007,22 @@ function buildSampleInline(docKey){
   return wrap;
 }
 
+// ver.20261008.02: 合格証（技能）は「合格証である（合格通知書ではない）」ことを確認しないとアップロードできない
+let certSkillConfirmed = false;
+const CERT_SKILL_CONFIRM_LABEL = {
+  ja:'⚠️ ビルクリーニング・宿泊・運送業・自動車整備 の分野は、「合格通知書」ではなく「合格証」が必要です。',
+  en:'⚠️ For Building Cleaning, Accommodation, Transportation, and Automobile Maintenance, a "Certificate (合格証)" is required — NOT a "Notice of Passing (合格通知書)".',
+  vi:'⚠️ Với các lĩnh vực Vệ sinh tòa nhà, Lưu trú, Vận tải, Bảo dưỡng ô tô: cần "Chứng chỉ (合格証)", KHÔNG phải "Giấy báo đỗ (合格通知書)".',
+  id:'⚠️ Untuk bidang Pembersihan Gedung, Akomodasi, Transportasi, dan Perawatan Mobil: diperlukan "Sertifikat (合格証)", BUKAN "Pemberitahuan Kelulusan (合格通知書)".',
+  my:'⚠️ အဆောက်အအုံသန့်ရှင်းရေး၊ တည်းခိုရေး၊ သယ်ယူပို့ဆောင်ရေး၊ ကားပြုပြင်ထိန်းသိမ်းရေး နယ်ပယ်များတွင် "合格通知書" မဟုတ်ဘဲ "合格証" လိုအပ်သည်။',
+  ko:'⚠️ 빌딩 청소·숙박·운송업·자동차 정비 분야는 "합격통지서"가 아니라 "합격증"이 필요합니다.',
+  ne:'⚠️ भवन सरसफाइ, आवास, ढुवानी, अटो मर्मत क्षेत्रमा "合格通知書" होइन "合格証" आवश्यक छ।',
+  zh:'⚠️ 楼宇清洁・住宿・运输业・汽车维修 领域需要「合格证」，而不是「合格通知书」。',
+  th:'⚠️ สาขาทำความสะอาดอาคาร ที่พัก ขนส่ง และซ่อมบำรุงรถยนต์ ต้องใช้ "ใบรับรอง(合格証)" ไม่ใช่ "ใบแจ้งผลสอบผ่าน(合格通知書)"',
+  km:'⚠️ វិស័យសម្អាតអគារ ស្នាក់នៅ ដឹកជញ្ជូន និងថែទាំរថយន្ត ត្រូវការ "合格証" មិនមែន "合格通知書" ទេ។',
+  mn:'⚠️ Барилга цэвэрлэгээ, зочид буудал, тээвэр, автомашины засвар чиглэлд "合格通知書" биш "合格証" шаардлагатай.',
+  si:'⚠️ ගොඩනැගිලි පිරිසිදු කිරීම, නවාතැන්, ප්‍රවාහන, වාහන නඩත්තු ක්ෂේත්‍රවලට "合格通知書" නොව "合格証" අවශ්‍යයි.'
+};
 // ver.20260730.01: 顔写真アップロード前の確認モーダル（在留カード流用防止・6か月以内チェック）
 let mugshotConfirmed = false;
 function showMugshotConfirm(onConfirm) {
@@ -1053,6 +1069,32 @@ function attachMugshotGate(input) {
     showMugshotConfirm(function(){ mugshotConfirmed = true; input.click(); });
   });
 }
+// ver.20261008.02: 合格証（技能）のアップロードゲート（チェック未確認なら選択させない＋チェック欄を強調）
+function attachCertSkillGate(input) {
+  input.addEventListener('click', function(e) {
+    if (certSkillConfirmed) return;
+    e.preventDefault();
+    _flashCertSkillChk();
+  });
+}
+function _flashCertSkillChk() {
+  var cb = document.getElementById('certSkillChk');
+  if (!cb) return;
+  var w = cb.parentNode;
+  try {
+    w.style.boxShadow = '0 0 0 3px #fca5a5';
+    w.scrollIntoView({ behavior:'smooth', block:'center' });
+    setTimeout(function(){ try { w.style.boxShadow = 'none'; } catch(e){} }, 1600);
+  } catch(e){}
+}
+function _applyCertSkillLock(md) {
+  if (!md) return;
+  if (certSkillConfirmed) {
+    md.style.opacity = '1'; md.style.pointerEvents = 'auto'; md.style.filter = 'none';
+  } else {
+    md.style.opacity = '0.5'; md.style.pointerEvents = 'none'; md.style.filter = 'grayscale(1)';
+  }
+}
 // 共通ローダ：files配列をfileData[key]へ読み込み、完了後onDoneを呼ぶ
 function loadFilesInto(key, files, onDone) {
   if (!files.length) return;
@@ -1083,6 +1125,11 @@ function gatedLoad(key, e, onDone) {
   if (!files.length) return;
   if (key === 'mugshot' && !mugshotConfirmed) {
     showMugshotConfirm(function(){ mugshotConfirmed = true; loadFilesInto(key, files, onDone); });
+    return;
+  }
+  // ver.20261008.02: 合格証（技能）はチェック未確認ならドラッグ&ドロップ等も受け付けない
+  if (_sampleKey(key) === 'cert_skill' && !certSkillConfirmed) {
+    _flashCertSkillChk();
     return;
   }
   loadFilesInto(key, files, onDone);
@@ -1352,6 +1399,23 @@ function buildFields() {
       const inlineHelp = buildSampleInline(__sk);
       if (inlineHelp) body.appendChild(inlineHelp);
     }
+    // ver.20261008.02: 合格証（技能）は「合格証である」ことをチェックで確認するまでアップロード不可
+    if (__sk === 'cert_skill') {
+      const _cw = document.createElement('label');
+      _cw.style.cssText = 'display:flex;align-items:flex-start;gap:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:11px 12px;margin-bottom:10px;cursor:pointer;font-size:13px;color:#7c2d12;line-height:1.6;font-weight:600;';
+      const _cb = document.createElement('input');
+      _cb.type = 'checkbox'; _cb.id = 'certSkillChk'; _cb.checked = certSkillConfirmed;
+      _cb.style.cssText = 'width:20px;height:20px;flex:0 0 auto;margin-top:1px;cursor:pointer;';
+      _cb.addEventListener('change', function(){
+        certSkillConfirmed = _cb.checked;
+        const _md = body.querySelector('.mini-drop');
+        if (_md) _applyCertSkillLock(_md);
+      });
+      const _sp = document.createElement('span');
+      _sp.textContent = CERT_SKILL_CONFIRM_LABEL[currentLang] || CERT_SKILL_CONFIRM_LABEL.en;
+      _cw.appendChild(_cb); _cw.appendChild(_sp);
+      body.appendChild(_cw);
+    }
     if (hasFiles) {
       fileData[key].forEach((fd, fi) => {
         const pw = document.createElement('div');
@@ -1366,6 +1430,7 @@ function buildFields() {
       const ai = document.createElement('input'); ai.type='file'; ai.accept='image/*,image/heic,image/heif,application/pdf'; ai.multiple=true;
       ai.addEventListener('change', e => { gatedLoad(key, e, function(){ buildFields(); updateSubmitBtn(); }); });
       if (key === 'mugshot' || (DOC_LABELS_JA && DOC_LABELS_JA[key] === '顔写真')) attachMugshotGate(ai);
+      if (__sk === 'cert_skill') { attachCertSkillGate(ai); _applyCertSkillLock(am); }
       const at2 = document.createElement('div'); at2.className='mini-drop-text'; at2.textContent='➕ 追加';
       am.appendChild(ai); am.appendChild(at2); body.appendChild(am);
     } else {
@@ -1373,9 +1438,11 @@ function buildFields() {
       const input = document.createElement('input'); input.type='file'; input.accept='image/*,image/heic,image/heif,application/pdf'; input.multiple=true;
       input.addEventListener('change', e => { gatedLoad(key, e, function(){ buildFields(); updateSubmitBtn(); const idx=DOC_KEYS.indexOf(key); const nk=DOC_KEYS.slice(idx+1).find(k=>!fileData[k]||!fileData[k].length); if(nk){const nr=fieldsList.querySelector('[data-key="'+nk+'"]');if(nr)nr.classList.add('open');} }); });
       if (key === 'mugshot' || (DOC_LABELS_JA && DOC_LABELS_JA[key] === '顔写真')) attachMugshotGate(input);
+      if (__sk === 'cert_skill') attachCertSkillGate(input);
       const dt = document.createElement('div'); dt.className='mini-drop-text'; dt.textContent=L.tapToAdd;
       const dh = document.createElement('div'); dh.className='mini-drop-hint'; dh.textContent=L.hint;
       mini.appendChild(input); mini.appendChild(dt); mini.appendChild(dh); body.appendChild(mini);
+      if (__sk === 'cert_skill') _applyCertSkillLock(mini);
       if (!firstEmptyOpened) { row.classList.add('open'); firstEmptyOpened=true; }
     }
     if (_greyNotNeeded) {
