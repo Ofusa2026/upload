@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- company_dataup ver.20261016.01 - 個人事業主の住民票にも「アップロード前に確認してください」（マイナンバーの記載なし／本籍の記載あり）を追加。両方チェックするまでアップロードできない -->
 <!-- company_dataup ver.20261008.01 - 納税証明書（その３）に税目ごと（源泉所得税及び復興特別所得税／法人税／消費税及び地方消費税）の「未納なし」確認チェックを追加。3つすべて確認するとアップロード可。 -->
 <!-- company_dataup ver.20261003.02 - 容量アップ：1ファイルずつ送信に変更（合計の上限なし・1ファイル35MBまで）。写真はHEIC→JPEG変換＋自動圧縮。一部失敗時は失敗分だけ残して理由を表示。 -->
 <!-- company_dataup ver.20261003.01 - アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。企業書類は1回でまとめて送るため合計30MB超は事前に分割送信を案内。 -->
@@ -828,7 +829,8 @@ function buildFieldRow(key, docsMap) {
   };
   label.appendChild(input);
   // ver.20260913: 役員の住民票は「マイナンバー記載なし」「本籍記載あり」の両方を確認しないとアップロードできない
-  var _isYakuinJumin = String(docsMap[key]||'').indexOf('役員') >= 0 && String(docsMap[key]||'').indexOf('住民票') >= 0;
+  // ver.20261016.01: 個人事業主の住民票（kojin_jumin）にも同じ確認を出す
+  var _isYakuinJumin = String(docsMap[key]||'').indexOf('住民票') >= 0;
   if (_isYakuinJumin) {
     if (!window._yakuinJuminChecks) window._yakuinJuminChecks = {};
     var _chk = window._yakuinJuminChecks[key] || { mynumber:false, honseki:false };
