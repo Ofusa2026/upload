@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- company_dataup ver.20261016.02 - 個人事業主の「納税証明書その3（5項目）」に5税目（源泉所得税及び復興特別所得税／申告所得税及び復興特別所得税／消費税及び地方消費税／相続税／贈与税）の「未納なし」確認（まとめて1チェック）、「確定申告書（直近3年分）」に3年分の有無の質問を追加（未回答ならアップロード不可、3年未満の回答はdoc_note（担当者向けメモ）に保存）。 -->
 <!-- company_dataup ver.20261016.01 - 個人事業主の住民票にも「アップロード前に確認してください」（マイナンバーの記載なし／本籍の記載あり）を追加。両方チェックするまでアップロードできない -->
 <!-- company_dataup ver.20261008.01 - 納税証明書（その３）に税目ごと（源泉所得税及び復興特別所得税／法人税／消費税及び地方消費税）の「未納なし」確認チェックを追加。3つすべて確認するとアップロード可。 -->
 <!-- company_dataup ver.20261003.02 - 容量アップ：1ファイルずつ送信に変更（合計の上限なし・1ファイル35MBまで）。写真はHEIC→JPEG変換＋自動圧縮。一部失敗時は失敗分だけ残して理由を表示。 -->
@@ -881,14 +882,18 @@ function buildFieldRow(key, docsMap) {
     body.appendChild(scWrap);
   }
   // ver.20261008.01: 納税証明書（その３）は3つの税目それぞれで「未納がない」ことを確認しないとアップロードできない
-  var _isZeimu3 = String(docsMap[key]||'').indexOf('納税証明書（その３）') >= 0;
+  // ver.20261016.02: 個人事業主の納税証明書その3（5項目）も対象にし、税目は法人3項目／個人5項目で出し分ける
+  var _isKojinZeimu3 = _isKojinZeimu3Label(docsMap[key]);
+  var _isZeimu3 = _isKojinZeimu3 || String(docsMap[key]||'').indexOf('納税証明書（その３）') >= 0;
   if (_isZeimu3) {
     if (!window._zeimu3Checks) window._zeimu3Checks = {};
-    var _zc = window._zeimu3Checks[key] || { genzen:false, houjin:false, shohi:false };
+    if (!window._zeimu3Fields) window._zeimu3Fields = {};
+    var _zc = window._zeimu3Checks[key] || {};
     window._zeimu3Checks[key] = _zc;
+    window._zeimu3Fields[key] = _isKojinZeimu3 ? ['kojin5'] : ['genzen','houjin','shohi'];
     var zWrap = document.createElement('div');
     zWrap.style.cssText = 'background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7;';
-    zWrap.innerHTML = '<div style="font-weight:700;color:#b45309;margin-bottom:6px;">税目ごとに未納がないことを確認してください</div>';
+    zWrap.innerHTML = '<div style="font-weight:700;color:#b45309;margin-bottom:6px;">' + (_isKojinZeimu3 ? '未納がないことを確認してください' : '税目ごとに未納がないことを確認してください') + '</div>';
     var mkZChk = function(field, text){
       var lb = document.createElement('label');
       lb.style.cssText = 'display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:4px;';
@@ -899,10 +904,37 @@ function buildFieldRow(key, docsMap) {
       lb.appendChild(cb); lb.appendChild(sp);
       return lb;
     };
-    zWrap.appendChild(mkZChk('genzen','源泉所得税及び復興特別所得税：未納がないことを確認しました'));
-    zWrap.appendChild(mkZChk('houjin','法人税：未納がないことを確認しました'));
-    zWrap.appendChild(mkZChk('shohi','消費税及び地方消費税：未納がないことを確認しました'));
+    var _zLabels = { genzen:'源泉所得税及び復興特別所得税', houjin:'法人税', shotoku:'申告所得税及び復興特別所得税', shohi:'消費税及び地方消費税', sozoku:'相続税', zoyo:'贈与税' };
+    if (_isKojinZeimu3) {
+      // 個人事業主は5税目をまとめて1つのチェックで確認する
+      var k5 = mkZChk('kojin5', '');
+      k5.querySelector('span').innerHTML = '次の5つの税目すべてに未納がないことを確認しました<div style="margin-top:2px;color:#374151;">・源泉所得税及び復興特別所得税<br>・申告所得税及び復興特別所得税<br>・消費税及び地方消費税<br>・相続税<br>・贈与税</div>';
+      zWrap.appendChild(k5);
+    } else {
+      window._zeimu3Fields[key].forEach(function(f){ zWrap.appendChild(mkZChk(f, _zLabels[f] + '：未納がないことを確認しました')); });
+    }
     body.appendChild(zWrap);
+  }
+  // ver.20261016.02: 確定申告書（直近3年分）は「3年分あるか」に答えないとアップロードできない
+  var _isKakutei = _isKakuteiLabel(docsMap[key]);
+  if (_isKakutei) {
+    if (!window._kakuteiChecks) window._kakuteiChecks = {};
+    var _tc = window._kakuteiChecks[key] || { nen:'' };
+    window._kakuteiChecks[key] = _tc;
+    var tWrap = document.createElement('div');
+    tWrap.style.cssText = 'background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7;';
+    tWrap.innerHTML = '<div style="font-weight:700;color:#b45309;margin-bottom:6px;">アップロード前に確認させてください</div><div style="font-weight:700;margin:6px 0 4px;">直近3年分の確定申告書をご用意いただけますか。</div>';
+    [['3nen','はい、3年分を添付します'],['miman','開業から3年未満のため、提出可能な年の分を添付します']].forEach(function(o){
+      var lb = document.createElement('label');
+      lb.style.cssText = 'display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:4px;';
+      var rb = document.createElement('input');
+      rb.type = 'radio'; rb.name = 'kakutei_nen_' + key; rb.checked = (_tc.nen === o[0]); rb.style.cssText='margin-top:3px;flex:none;';
+      rb.onchange = function(){ if (rb.checked) _tc.nen = o[0]; _updateKakuteiGate(key, label, input); };
+      var sp = document.createElement('span'); sp.textContent = o[1];
+      lb.appendChild(rb); lb.appendChild(sp);
+      tWrap.appendChild(lb);
+    });
+    body.appendChild(tWrap);
   }
   // ver.20261002.01: 決算文書（損益計算書及び貸借対照表）は「3期分の有無」「純資産がマイナスでないか」に答えないとアップロードできない
   var _isKessan = _isKessanLabel(docsMap[key]);
@@ -949,6 +981,7 @@ function buildFieldRow(key, docsMap) {
   if (_isYakuinJumin) _updateYakuinJuminGate(key, label, input);
   if (_isShakaiHoken) _updateShakaiHokenGate(key, label, input);
   if (_isZeimu3) _updateZeimu3Gate(key, label, input);
+  if (_isKakutei) _updateKakuteiGate(key, label, input);
   const hint = document.createElement('div');
   hint.className = 'hint';
   hint.textContent = 'JPG / PNG / PDF';
@@ -1006,9 +1039,10 @@ function _updateShakaiHokenGate(key, label, input){
 function _updateZeimu3Gate(key, label, input){
   try{
     var chk = (window._zeimu3Checks && window._zeimu3Checks[key]) || {};
-    var ok = !!chk.genzen && !!chk.houjin && !!chk.shohi;
+    var flds = (window._zeimu3Fields && window._zeimu3Fields[key]) || ['genzen','houjin','shohi'];
+    var ok = flds.every(function(f){ return !!chk[f]; });
     if(!label) return;
-    var txt = ok ? '📷 ファイルを追加' : '🔒 上の3つを確認するとアップロードできます';
+    var txt = ok ? '📷 ファイルを追加' : (flds.length === 1 ? '🔒 上の確認にチェックするとアップロードできます' : ('🔒 上の' + flds.length + 'つを確認するとアップロードできます'));
     var textNode = null;
     for(var i=0;i<label.childNodes.length;i++){
       if(label.childNodes[i].nodeType === 3){ textNode = label.childNodes[i]; break; }
@@ -1031,7 +1065,29 @@ function _updateZeimu3Gate(key, label, input){
 // ver.20261002.01: 決算文書（損益計算書及び貸借対照表）の判定・回答タグ・アップロードゲート
 function _isKessanLabel(l){ l = String(l||''); return l.indexOf('決算') >= 0 && l.indexOf('損益') >= 0; }
 // 回答をファイル名に付記する（拡張子は末尾のまま）。担当者がドライブ・一覧のファイル名で債務超過／3期未満に気づけるようにする
+// ver.20261016.02: 個人事業主の納税証明書その3（5項目）と確定申告書の判定
+function _isKojinZeimu3Label(l){ l = String(l||''); return (l.indexOf('その3') >= 0 || l.indexOf('その３') >= 0) && (l.indexOf('個人事業主') >= 0 || l.indexOf('申告所得税') >= 0); }
+function _isKakuteiLabel(l){ return String(l||'').indexOf('確定申告') >= 0; }
+function _updateKakuteiGate(key, label, input){
+  try{
+    var chk = (window._kakuteiChecks && window._kakuteiChecks[key]) || {};
+    var ok = !!chk.nen;
+    if(!label) return;
+    var txt = ok ? '📷 ファイルを追加' : '🔒 上の質問に答えるとアップロードできます';
+    var textNode = null;
+    for(var i=0;i<label.childNodes.length;i++){
+      if(label.childNodes[i].nodeType === 3){ textNode = label.childNodes[i]; break; }
+    }
+    if(textNode){ textNode.nodeValue = txt; }
+    else { label.insertBefore(document.createTextNode(txt), label.firstChild); }
+    label.style.opacity = ok ? '1' : '0.6';
+    label.style.pointerEvents = ok ? 'auto' : 'none';
+    label.style.cursor = ok ? 'pointer' : 'not-allowed';
+    if(input) input.disabled = !ok;
+  }catch(e){ console.warn('kakutei gate err:', e); }
+}
 function _kessanAnswerTag(key, l){
+  if(_isKakuteiLabel(l)){ var kc = (window._kakuteiChecks && window._kakuteiChecks[key]) || {}; return kc.nen === 'miman' ? '【3年未満と回答】' : ''; }
   if(!_isKessanLabel(l)) return '';
   var c = (window._kessanChecks && window._kessanChecks[key]) || {};
   var t = '';
@@ -1041,6 +1097,7 @@ function _kessanAnswerTag(key, l){
 }
 // ver.20261002.02: 回答をDB（upload_notifications.doc_note）にも保存する。ファイル名の付記と同じ内容を、括弧なしで返す
 function _kessanNote(key, l){
+  if(_isKakuteiLabel(l)){ var kc = (window._kakuteiChecks && window._kakuteiChecks[key]) || {}; return kc.nen === 'miman' ? '3年未満と回答' : ''; }
   if(!_isKessanLabel(l)) return '';
   var c = (window._kessanChecks && window._kessanChecks[key]) || {};
   var a = [];
