@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20261008.02'; // ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
+const VERSION = 'ver.20261020.01'; // ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -722,6 +722,26 @@ const DOC_SAMPLES = {
       zh: '💳 您本人持有的保险证卡。公司社会保险或国民健康保险'
     }
   },
+  // ver.20261020.01: 資格確認書（マイナポータルの資格情報 or 資格確認書）見本2枚を横並び表示
+  shikaku_kakunin: {
+    images: [
+      {src:'samples/shikaku_kakunin_sample1.png', label:{ja:'① マイナポータルの資格情報',en:'① My Number Portal insurance info',vi:'① Thông tin BH trên My Number Portal',id:'① Info asuransi di My Number Portal',ko:'① 마이나포털 자격정보',zh:'① 个人编号门户的资格信息',my:'① My Number Portal အချက်အလက်',km:'① ព័ត៌មានធានារ៉ាប់រងនៅ My Number Portal'}},
+      {src:'samples/shikaku_kakunin_sample2.png', label:{ja:'② 資格確認書（カード型の例）',en:'② Qualification Confirmation (card example)',vi:'② Giấy xác nhận tư cách (mẫu thẻ)',id:'② Surat Konfirmasi (contoh kartu)',ko:'② 자격확인서 (카드형 예)',zh:'② 资格确认书（卡片型示例）',my:'② 資格確認書 (ကတ်ပုံစံ)',km:'② លិខិតបញ្ជាក់សិទ្ធិ (គំរូកាត)'}}
+    ],
+    help: {
+      ja: 'マイナポータルの「医療保険の資格情報」または資格確認書のいずれか1つ',
+      en: 'Either the "Medical Insurance Qualification Info" from My Number Portal, or the Qualification Confirmation Document'
+    },
+    where: {
+      ja: '以下のいずれか1つを提出してください。\n① マイナポータルからダウンロードした「医療保険の資格情報」（PDF）\n② 資格確認書の写し（保険者から届いたカードやはがき）',
+      en: 'Please submit ONE of the following.\n① "Medical Insurance Qualification Info" (PDF) downloaded from My Number Portal\n② A copy of the Qualification Confirmation Document (card or postcard sent by your insurer)',
+      vi: 'Vui lòng nộp MỘT trong các giấy tờ sau.\n① "Thông tin tư cách bảo hiểm y tế" (PDF) tải từ My Number Portal\n② Bản sao Giấy xác nhận tư cách (thẻ hoặc bưu thiếp do bên bảo hiểm gửi)',
+      id: 'Silakan serahkan SALAH SATU dari berikut.\n① "Info Kualifikasi Asuransi Kesehatan" (PDF) yang diunduh dari My Number Portal\n② Salinan Surat Konfirmasi Kualifikasi (kartu atau kartu pos dari penyelenggara asuransi)',
+      ko: '다음 중 하나를 제출해 주세요.\n① 마이나포털에서 다운로드한 「의료보험 자격정보」(PDF)\n② 자격확인서 사본 (보험자로부터 받은 카드 또는 엽서)',
+      zh: '请提交以下任意一项。\n① 从个人编号门户（My Number Portal）下载的「医疗保险资格信息」（PDF）\n② 资格确认书的复印件（保险机构寄来的卡片或明信片）',
+      km: 'សូមដាក់ស្នើឯកសារមួយក្នុងចំណោមខាងក្រោម។\n① "ព័ត៌មានសិទ្ធិធានារ៉ាប់រងសុខភាព" (PDF) ដែលទាញយកពី My Number Portal\n② ច្បាប់ចម្លងលិខិតបញ្ជាក់សិទ្ធិ (កាត ឬកាតប៉ុស្តាល់ដែលក្រុមហ៊ុនធានារ៉ាប់រងផ្ញើមក)'
+    }
+  },
   health_ins_cert: {
     image: 'samples/health_ins_cert_sample.png',
     help: {
@@ -852,6 +872,7 @@ const DOC_NAME2KEY = {
  '納税証明書':'tax_payment',
  '源泉徴収票':'withholding',
  '健康保険証':'health_ins',
+ '資格確認書':'shikaku_kakunin',
  '国民健康保険料納付証明書':'health_ins_cert','国民健康保険料納付証明':'health_ins_cert',
  '卒業証明書':'graduation','成績証明書':'transcript','年金手帳':'nenkin','大使館推薦票':'embassy_rec','住民票':'juminhyo',
  '技能者ID':'ccus_card','建設キャリアアップシステム技能者カード':'ccus_card','キャリアアップシステム技能者カード':'ccus_card','CCUSカード':'ccus_card'
@@ -916,7 +937,7 @@ function showDocSample(docKey) {
   box.innerHTML = 
     '<div style="font-size:15px;font-weight:800;margin-bottom:12px;color:#1f2937;">💡 ' + displayLabel + '</div>' +
     '<div style="background:#f9fafb;border-radius:8px;padding:8px;margin-bottom:12px;text-align:center;">' +
-    '<img src="' + sample.image + '" alt="sample" style="max-width:100%;max-height:50vh;border-radius:4px;" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<div style=&quot;padding:40px;color:#9ca3af;font-size:13px;&quot;>📷 サンプル画像準備中<br>Sample image coming soon</div>\';">' +
+    '<img src="' + (sample.image || (sample.images && sample.images[0] && sample.images[0].src) || '') + '" alt="sample" style="max-width:100%;max-height:50vh;border-radius:4px;" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<div style=&quot;padding:40px;color:#9ca3af;font-size:13px;&quot;>📷 サンプル画像準備中<br>Sample image coming soon</div>\';">' +
     '</div>' +
     (whereText ? '<div style="background:#dbeafe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#1e40af;line-height:1.6;white-space:pre-line;"><div style="font-weight:700;margin-bottom:6px;">' + whereLabel + '</div>' + whereText + '</div>' : '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#92400e;line-height:1.5;">' + helpText + '</div>') +
     '<button id="docSampleCloseBtn" style="width:100%;padding:12px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">OK</button>';
@@ -973,6 +994,14 @@ function fzExp(text){
   return out;
 }
 
+// ver.20261020.01: 見本画像の拡大表示
+function _openSampleZoom(src){
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px;';
+  ov.innerHTML='<img src="'+src+'" style="max-width:100%;max-height:100%;background:#fff;border-radius:6px;">';
+  ov.addEventListener('click',function(){ov.remove();});
+  document.body.appendChild(ov);
+}
 function buildSampleInline(docKey){
   const sample = DOC_SAMPLES[docKey];
   if (!sample) return null;
@@ -995,7 +1024,20 @@ function buildSampleInline(docKey){
   const whereLabel = whereLabels[currentLang] || whereLabels.en;
   const wrap = document.createElement('div');
   wrap.style.cssText = 'margin-bottom:10px;';
-  let html = '<div style="background:#f9fafb;border-radius:8px;padding:6px;margin-bottom:8px;text-align:center;"><img src="' + sample.image + '" alt="sample" loading="lazy" style="max-width:100%;max-height:40vh;border-radius:4px;" onerror="this.parentElement.style.display=\'none\';"></div>';
+  let html = '';
+  if (sample.images && sample.images.length) {
+    // ver.20261020.01: 複数見本を横並び表示（タップで拡大）
+    html += '<div style="display:flex;gap:8px;margin-bottom:4px;">' + sample.images.map(function(im){
+      var lb = im.label ? (im.label[currentLang] || im.label.en || im.label.ja || '') : '';
+      return '<div style="flex:1 1 0;min-width:0;background:#f9fafb;border-radius:8px;padding:6px;text-align:center;">' +
+        (lb ? '<div style="font-size:11px;font-weight:700;color:#1e40af;margin:2px 0 6px;line-height:1.3;">' + lb + '</div>' : '') +
+        '<img src="' + im.src + '" alt="sample" loading="lazy" style="width:100%;height:auto;border-radius:4px;cursor:zoom-in;" onclick="_openSampleZoom(this.src)" onerror="this.parentElement.style.display=\'none\';"></div>';
+    }).join('') + '</div>';
+    var zt = {ja:'画像をタップすると大きく表示されます',en:'Tap an image to enlarge',vi:'Nhấn vào ảnh để phóng to',id:'Ketuk gambar untuk memperbesar',ko:'이미지를 탭하면 크게 표시됩니다',zh:'点击图片可放大',km:'ចុចលើរូបភាពដើម្បីពង្រីក'};
+    html += '<div style="font-size:11px;color:#718096;text-align:center;margin-bottom:8px;">' + (zt[currentLang] || zt.en) + '</div>';
+  } else {
+    html += '<div style="background:#f9fafb;border-radius:8px;padding:6px;margin-bottom:8px;text-align:center;"><img src="' + sample.image + '" alt="sample" loading="lazy" style="max-width:100%;max-height:40vh;border-radius:4px;" onerror="this.parentElement.style.display=\'none\';"></div>';
+  }
   if (whereText) {
     const wt = (currentLang === 'ja') ? fzExp(whereText) : whereText;
     html += '<div style="background:#dbeafe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 12px;font-size:13px;color:#1e40af;line-height:1.9;white-space:pre-line;"><div style="font-weight:700;margin-bottom:6px;">' + whereLabel + '</div>' + wt + '</div>';
