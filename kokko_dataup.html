@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- ver.20261021.01: 書類キャッシュ（upload_docs_cache kind=kokko）が無くても書類が出るようにした。キャッシュが無ければ国交省の標準書類（settings.required_docs_co_kokko → 無ければページ内の15書類）で組み立て、個人事業主は「1. 住民票（代表者）」に置換。提出済み・不要は co_doc_check をライブで読んで反映（キャッシュがあってもライブを優先）。「設定されていません」はすべて失敗したときだけ -->
 <!-- ver.20261003.02: 容量アップ：1ファイルずつ送信に変更（合計の上限なし・1ファイル35MBまで）。写真はHEIC→JPEG変換＋自動圧縮。一部失敗時は失敗分だけ残して理由を表示。 -->
 <!-- ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。国交省書類は1回でまとめて送るため合計30MB超は事前に分割送信を案内。 -->
 <!-- ver.20260925.01: 「11. 経歴書」に経歴書ひな形(Word)のダウンロードボタンを追加。KOKKO_DOC_METAにform{file,label}を追加し、書類説明の下にダウンロードボタンを描画（forms/keirekisho_form.docx）。 -->
@@ -305,10 +306,19 @@ const SB_KEY = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
 //   受入実績「有」の企業は国交省書類16点の提出が不要で、代わりにID・パスワードの提供が必要。
 //   その場合は書類リスト等を隠し、この入力欄だけの画面にする。
 var _KOKKO_EXP = '';
+// ver.20261021.01: 会社情報（受入経験・個人事業主・標準書類リスト）は1回だけ読んで使い回す
+var _KOKKO_INFO_P = null;
+function _getKokkoInfo(){
+  if(!_KOKKO_INFO_P){
+    _KOKKO_INFO_P = COMPANY_ID
+      ? _uplRpc('upload_company_kokko_get', { p_company_id: COMPANY_ID }).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; })
+      : Promise.resolve(null);
+  }
+  return _KOKKO_INFO_P;
+}
 function _initKokkoIdpw(){
   if(!COMPANY_ID) return;
-  _uplRpc('upload_company_kokko_get', { p_company_id: COMPANY_ID })
-    .then(function(r){ return r.ok ? r.json() : null; })
+  _getKokkoInfo()
     .then(function(info){
       if(!info) return;
       _KOKKO_EXP = String(info.kokko_exp||'');
@@ -1028,8 +1038,59 @@ function toBase64(file) {
 }
 
 // ver.20260525.34: DBキャッシュから書類リストを取得してから初期描画
+// ver.20261021.01: キャッシュが無いときの代わり（index.html の _REQUIRED_DOCS_CO_KOKKO_DEFAULT と同じ15書類）
+const KOKKO_DOCS_DEFAULT = [
+  '1. 履歴事項全部証明書','2. 建設業許可','3. 標準報酬決定通知書','4. キャリアアップID','5. 会員証明書',
+  '6. 委任状','7. 求人票','8. 同等の技能を有する日本人と同等額以上の報酬であることの説明書','9. 就業規則および賃金規程',
+  '10. 賃金台帳','11. 経歴書','12. 雇用契約書','13. 36協定','14. 年間カレンダー','15. 重要事項説明書'
+];
+// 弊社で作成する書類は上の KOKKO_OFUSA_DOCS（不要＝skip のときは「弊社作成」と表示）
+function _buildKokkoFallbackDocs(info){
+  var list = (info && Array.isArray(info.required_docs) && info.required_docs.length) ? info.required_docs.slice() : KOKKO_DOCS_DEFAULT.slice();
+  if(info && info.kojin){
+    list = list.map(function(n){ return n === '1. 履歴事項全部証明書' ? '1. 住民票（代表者）' : n; });
+  }
+  return list.map(function(n){ return { l: n, r: 1, t: 'normal', done: false, st: '' }; });
+}
+// 提出済み（staff）・不要（skip）をライブで反映する（キャッシュはURL発行時点のスナップショットなので古くなる）
+function _applyKokkoLiveDone(){
+  return new Promise(function(resolve){
+    if(!COMPANY_ID || !Array.isArray(DOCS_LIST) || !DOCS_LIST.length){ resolve(); return; }
+    _uplRpc('upload_co_doc_check_get', { p_co_id: COMPANY_ID })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(rows){
+      if(!Array.isArray(rows)){ resolve(); return; }
+      var staff = {}, skip = {};
+      rows.forEach(function(row){
+        var dk = String(row.doc_key||''); var i = dk.indexOf('::'); if(i < 0) return;
+        var pre = dk.substring(0, i), name = dk.substring(i+2), v = row.value;
+        var on = (v != null && v !== '' && v !== 'false' && v !== false);
+        if(!on) return;
+        if(pre === 'staff') staff[name] = true; else if(pre === 'skip') skip[name] = true;
+      });
+      DOCS_LIST.forEach(function(d){
+        if(!d || !d.l) return;
+        var isStaff = !!staff[d.l], isSkip = !!skip[d.l];
+        d.done = isStaff || isSkip;
+        d.st = (KOKKO_OFUSA_DOCS.indexOf(d.l) >= 0 && isSkip) ? 'ofusa' : (isStaff ? 'staff' : (isSkip ? 'skip' : ''));
+      });
+      resolve();
+    })
+    .catch(function(e){ console.warn('co_doc_check live err:', e); resolve(); });
+  });
+}
 (async function _initDocsAndBuild(){
   try { await _loadDocsFromCache(); } catch(e){ console.warn('_initDocsAndBuild err:', e); }
+  // ver.20261021.01: キャッシュもURLの書類指定も無ければ、標準の国交省書類で組み立てる
+  if(!(Array.isArray(DOCS_LIST) && DOCS_LIST.length) && COMPANY_ID){
+    try {
+      var _info = await _getKokkoInfo();
+      DOCS_LIST = _buildKokkoFallbackDocs(_info);
+      USE_NEW_DOCS = true;
+      console.log('📋 kokko: キャッシュ無し → 標準書類で表示', DOCS_LIST.length, _info && _info.kojin ? '(個人事業主)' : '');
+    } catch(e){ console.warn('kokko fallback err:', e); }
+  }
+  try { await _applyKokkoLiveDone(); } catch(e){}
   buildAllFields();
 })();
 
