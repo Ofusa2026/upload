@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- ver.20261029.01: ID・パスワード欄に外国人就労管理システムのURL（ログイン確認）と「ログインできることを確認しました」チェック（チェックしないと保存できない）を追加 -->
 <!-- ver.20261021.01: 書類キャッシュ（upload_docs_cache kind=kokko）が無くても書類が出るようにした。キャッシュが無ければ国交省の標準書類（settings.required_docs_co_kokko → 無ければページ内の15書類）で組み立て、個人事業主は「1. 住民票（代表者）」に置換。提出済み・不要は co_doc_check をライブで読んで反映（キャッシュがあってもライブを優先）。「設定されていません」はすべて失敗したときだけ -->
 <!-- ver.20261003.02: 容量アップ：1ファイルずつ送信に変更（合計の上限なし・1ファイル35MBまで）。写真はHEIC→JPEG変換＋自動圧縮。一部失敗時は失敗分だけ残して理由を表示。 -->
 <!-- ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。国交省書類は1回でまとめて送るため合計30MB超は事前に分割送信を案内。 -->
@@ -283,6 +284,14 @@
     <label style="display:block;font-size:11.5px;font-weight:700;color:#78350f;margin-bottom:3px;">パスワード</label>
     <input id="kokkoPwInput" type="text" autocomplete="off" placeholder="パスワードを入力"
       style="width:100%;padding:10px 12px;border:1.5px solid #fcd34d;border-radius:8px;font-size:16px;box-sizing:border-box;margin-bottom:10px;">
+    <!-- ver.20261029.01: 入力したID・パスワードでログインできるか、会社に確認してもらう（確認しましたにチェックしないと保存できない） -->
+    <div style="margin:2px 0 10px;padding:10px 12px;background:#fff;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#475569;line-height:1.8;">
+      🔗 <a href="https://gaikokujin-shuro.keg.jp/gjsk_1.0.0/GK1010_0010?systemKbnFlag=1" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:700;">外国人就労管理システム</a>
+      <div>こちらからログイン確認できます。入力したID・パスワードでログインできるかご確認ください。</div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:6px;font-weight:800;color:#92400e;cursor:pointer;">
+        <input id="kokkoLoginOk" type="checkbox" style="width:18px;height:18px;"> ログインできることを確認しました
+      </label>
+    </div>
     <button id="kokkoIdpwSave" type="button"
       style="width:100%;padding:12px;background:#d97706;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;">保存する</button>
     <div id="kokkoIdpwMsg" style="font-size:12px;font-weight:700;margin-top:8px;text-align:center;"></div>
@@ -352,6 +361,9 @@ function _saveKokkoIdpw(){
   var msg=document.getElementById('kokkoIdpwMsg'), btn=document.getElementById('kokkoIdpwSave');
   var id=(idEl.value||'').trim(), pw=(pwEl.value||'').trim();
   if(!id && !pw){ msg.innerHTML='<span style="color:#b45309;">IDまたはパスワードを入力してください。</span>'; return; }
+  // ver.20261029.01: ログインできることの確認が済んでから保存する
+  var ok=document.getElementById('kokkoLoginOk');
+  if(ok && !ok.checked){ msg.innerHTML='<span style="color:#b45309;">外国人就労管理システムにログインできることを確認し、「ログインできることを確認しました」にチェックしてください。</span>'; return; }
   btn.disabled=true; btn.textContent='保存中…';
   _uplRpc('upload_company_kokko_idpw_set', { p_company_id: COMPANY_ID, p_id: id, p_pw: pw })
     .then(function(r){ return r.ok ? r.json() : null; })
@@ -360,6 +372,7 @@ function _saveKokkoIdpw(){
       if(res && res.ok){
         msg.innerHTML='<span style="color:#15803d;">✅ 保存しました。ありがとうございました。</span>';
         idEl.value=''; pwEl.value='';
+        var _ok=document.getElementById('kokkoLoginOk'); if(_ok) _ok.checked=false;
       } else {
         msg.innerHTML='<span style="color:#dc2626;">保存できませんでした。お手数ですが担当者までご連絡ください。</span>';
       }
