@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20261020.01'; // ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
+const VERSION = 'ver.20261102.01'; // ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -1210,6 +1210,23 @@ function _taxNoticeCardHTML() {
 // ver.20260803.07: 税証明書グループ先頭の質問（プランA）。「はい/いいえ」で不要3点をグレーアウト
 let taxNeeded = null; // null=未回答（必要扱い）, true=必要, false=不要
 function _setTaxNeeded(v) { taxNeeded = v; buildFields(); updateSubmitBtn(); }
+// ver.20261102.01: 「いいえ（○年以降に入国）」の回答だけでも送信できるように。案シスには「不要」の通知（理由つき）で届ける
+function _taxAnsKey() { return 'ofusa_tax_answer_' + (CASE_ID || ''); }
+function _taxAnswerSent() { try { return localStorage.getItem(_taxAnsKey()) === 'no'; } catch(e) { return false; } }
+function _taxAnswerPending() { return taxNeeded === false && !!CASE_ID && !_taxAnswerSent(); }
+async function _sendTaxAnswer() {
+  if (!_taxAnswerPending()) return true;
+  const refYear = _latestKazeiReiwa() + 2018;
+  const r = await _uplRpc('upload_notify', { p_payload: {
+    case_id: CASE_ID, folder_id: FOLDER_ID || '', file_count: 0,
+    file_names: '課税証明書・納税証明書・源泉徴収票は不要（' + refYear + '年以降に入国）',
+    doc_label: '不要', drive_url: null,
+    doc_note: refYear + '年1月1日に日本に住んでいなかった（' + refYear + '年以降に入国）と回答。課税証明書・納税証明書・源泉徴収票の3点は提出不要'
+  } });
+  if (!r || !r.ok) throw new Error('HTTP ' + (r ? r.status : ''));
+  try { localStorage.setItem(_taxAnsKey(), 'no'); } catch(e) {}
+  return true;
+}
 function _taxQuestionHTML() {
   const refYear = _latestKazeiReiwa() + 2018;
   const yesActive = (taxNeeded === true);
@@ -1501,7 +1518,7 @@ function buildFields() {
 function updateSubmitBtn() {
   const L = LANGS[currentLang];
   submitBtn.textContent = L.btnSubmit;
-  submitBtn.disabled = Object.keys(fileData).filter(k=>fileData[k]&&fileData[k].length>0).length===0;
+  submitBtn.disabled = Object.keys(fileData).filter(k=>fileData[k]&&fileData[k].length>0).length===0 && !_taxAnswerPending();   // ver.20261102.01
 }
 function setLang(code) {
   if (!LANGS[code]) return;
@@ -1726,6 +1743,21 @@ function _extractDriveUrl(json) {
 submitBtn.addEventListener('click', async () => {
   const L = LANGS[currentLang];
   const keys = Object.keys(fileData).filter(k => fileData[k] && fileData[k].length > 0);
+  // ver.20261102.01: 書類を選んでいなくても「いいえ（○年以降に入国）」の回答だけは送る
+  if (!keys.length && _taxAnswerPending()) {
+    submitBtn.disabled = true;
+    statusMsg.style.display = 'block'; statusMsg.className = 'status-msg'; statusMsg.textContent = '送信中… / Sending…';
+    try {
+      await _sendTaxAnswer();
+      statusMsg.className = 'status-msg success';
+      statusMsg.textContent = L.msgSuccess + '\n（課税証明書・納税証明書・源泉徴収票は提出不要です）';
+    } catch (e) {
+      statusMsg.className = 'status-msg error';
+      statusMsg.textContent = '❌ 送信できませんでした。通信状況を確認して、もう一度お試しください。\n' + _uplErrReason(e);
+    }
+    updateSubmitBtn();
+    return;
+  }
   if (!keys.length) { alert(L.msgNoFile); return; }
   if (!FOLDER_ID) { statusMsg.style.display='block'; statusMsg.className='status-msg error'; statusMsg.textContent='❌ 送信できません\n'+_uplErrReason(new Error('NO_FOLDER')); return; }
   
@@ -1911,6 +1943,7 @@ submitBtn.addEventListener('click', async () => {
     submitBtn.disabled = false;
   }
   
+  try { await _sendTaxAnswer(); } catch (e) { console.warn('tax answer send failed:', e); }   // ver.20261102.01
   buildFields();
   updateSubmitBtn();
   setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 1500);
