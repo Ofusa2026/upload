@@ -130,7 +130,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header" style="position:relative;">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20260822.01</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20261103.01</span></div>
   <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
   <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
     <option value="ja">🌐 日本語</option>
@@ -476,7 +476,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 });
 
 async function loadSignRequest(token){
-  console.log('%c OFUSA upload/sign.html ver.20260804.01 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
+  console.log('%c OFUSA upload/sign.html ver.20261103.01 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
   try{
     const {data,error}=await sb.rpc('sign_get',{ p_token: token });
     if(error||!data){showError('リンクが見つかりません');return;}
@@ -818,8 +818,8 @@ async function saveToDriveNow(){
     for(var i=0;i<3 && !ok;i++){
       await new Promise(function(res){setTimeout(res,2500);});
       try{
-        var q=await sb.from('sign_requests').select('signed_pdf_url').eq('token',requestToken).single();
-        if(q && q.data && q.data.signed_pdf_url) ok=true;
+        var q=await sb.rpc('sign_page_saved',{p_token:requestToken});   // ver.20261103.01: 受付係で保存確認
+        if(q && q.data===true) ok=true;
       }catch(_e){}
     }
   }
@@ -902,14 +902,10 @@ async function submitCompanySign(){
   var signerLabel = companyName + ' / ' + repName;
   var signedAt = new Date().toISOString();
   try{
-    var { error } = await sb.from('sign_requests').update({
-      status: 'signed',
-      signer_name: signerLabel,
-      signature_image: sigDataUrl,
-      signed_at: signedAt,
-      staff_confirmed_at: null   // 担当者未確認にして通知させる
-    }).eq('id', signRequestId);
-    if(error) throw error;
+    // ver.20261103.01: 受付係（sign_page_company_submit）で保存（これまでは直接更新で、保存されていなかった）。担当者未確認にして通知させる
+    var _sv = await sb.rpc('sign_page_company_submit', { p_token: requestToken, p_signer_label: signerLabel, p_signature_image: sigDataUrl });
+    if(_sv.error) throw _sv.error;
+    if(!_sv.data || !_sv.data.ok) throw new Error((_sv.data && _sv.data.error==='already_signed') ? 'すでに押印済みです' : '保存できませんでした');
     // 完了画面
     document.getElementById('completeName').textContent = signerLabel;
     try{ document.getElementById('completeDoc').textContent = (caseData && caseData.doc_type) || '企業押印'; }catch(_e){}
