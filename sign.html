@@ -130,7 +130,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header" style="position:relative;">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20261105.01</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20261105.02</span></div>
   <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
   <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
     <option value="ja">🌐 日本語</option>
@@ -312,7 +312,7 @@ input:focus{border-color:var(--accent);background:white;}
     <div class="complete-screen">
       <div class="complete-icon">✅</div>
       <div class="complete-title" data-i18n="c_title"><ruby>署名<rt>しょめい</rt></ruby><ruby>完了<rt>かんりょう</rt></ruby></div>
-      <div class="complete-sub" data-i18n="c_sub"><ruby>署名<rt>しょめい</rt></ruby>が<ruby>完了<rt>かんりょう</rt></ruby>しました。<br><ruby>署名済<rt>しょめいず</rt></ruby>みの<ruby>書類<rt>しょるい</rt></ruby>は、<ruby>下<rt>した</rt></ruby>の<strong><ruby>申請<rt>しんせい</rt></ruby>ページの「サイン<ruby>書類<rt>しょるい</rt></ruby>」</strong>からいつでも<ruby>確認<rt>かくにん</rt></ruby>できます。</div>
+      <div class="complete-sub" data-i18n="c_sub"><ruby>署名<rt>しょめい</rt></ruby>が<ruby>完了<rt>かんりょう</rt></ruby>しました。<br>わからないことがあれば、<ruby>担当者<rt>たんとうしゃ</rt></ruby>に<ruby>連絡<rt>れんらく</rt></ruby>してください。</div>
       <div class="complete-card">
         <div class="complete-card-title" data-i18n="c_cardtitle"><ruby>受理<rt>じゅり</rt></ruby><ruby>情報<rt>じょうほう</rt></ruby></div>
         <div class="complete-card-row"><span class="complete-card-key" data-i18n="k_doc"><ruby>書類<rt>しょるい</rt></ruby></span><span class="complete-card-val" id="completeDoc">サイン書類</span></div>
@@ -376,7 +376,7 @@ var I18N = {
   s3_btn:{en:'✅ Submit signature',id:'✅ Kirim tanda tangan',vi:'✅ Gửi chữ ký',zh:'✅ 提交签名',km:'✅ ដាក់ស្នើហត្ថលេខា',my:'✅ လက်မှတ်ပို့ရန်',th:'✅ ส่งลายเซ็น'},
   submit_note:{en:'⏳ Processing your signature. This takes about 30 seconds.<br>Please keep this screen open.',id:'⏳ Memproses tanda tangan. Sekitar 30 detik.<br>Jangan tutup layar ini.',vi:'⏳ Đang xử lý chữ ký. Mất khoảng 30 giây.<br>Vui lòng không đóng màn hình.',zh:'⏳ 正在处理签名，约需30秒。<br>请勿关闭此页面。',km:'⏳ កំពុងដំណើរការហត្ថលេខា។ ប្រហែល៣០វិនាទី។<br>សូមកុំបិទអេក្រង់នេះ។',my:'⏳ လက်မှတ်ကို လုပ်ဆောင်နေသည်။ ~၃၀စက္ကန့်ခန့်။<br>ဤစခရင်ကို မပိတ်ပါနှင့်။',th:'⏳ กำลังประมวลผลลายเซ็น ใช้เวลาประมาณ 30 วินาที<br>กรุณาอย่าปิดหน้าจอนี้'},
   c_title:{en:'Signing complete',id:'Tanda tangan selesai',vi:'Đã ký xong',zh:'签名完成',km:'ការចុះហត្ថលេខាបានបញ្ចប់',my:'လက်မှတ်ထိုးပြီးပါပြီ',th:'ลงนามเสร็จสิ้น'},
-  c_sub:{en:'Your signature is complete.<br>You can view the signed document anytime from the <strong>"Sign" section of the application page</strong> below.',id:'Tanda tangan selesai.<br>Dokumen yang sudah ditandatangani bisa dilihat kapan saja dari <strong>"Tanda tangan" pada halaman aplikasi</strong> di bawah.',vi:'Đã ký xong.<br>Bạn có thể xem tài liệu đã ký bất cứ lúc nào tại mục <strong>"Tài liệu ký" trên trang hồ sơ</strong> bên dưới.',zh:'签名已完成。<br>已签名的文件可随时在下方<strong>申请页面的"签名文件"</strong>中查看。',km:'ការចុះហត្ថលេខាបានបញ្ចប់។<br>អ្នកអាចមើលឯកសារដែលបានចុះហត្ថលេខានៅផ្នែក <strong>"ឯកសារហត្ថលេខា" នៃទំព័រពាក្យសុំ</strong> ខាងក្រោម។',my:'လက်မှတ်ထိုးပြီးပါပြီ။<br>လက်မှတ်ထိုးပြီးစာရွက်ကို အောက်ပါ <strong>လျှောက်လွှာစာမျက်နှာ၏ "လက်မှတ်စာရွက်"</strong> တွင် အချိန်မရွေးကြည့်နိုင်သည်။',th:'ลงนามเสร็จแล้ว<br>คุณดูเอกสารที่ลงนามแล้วได้ทุกเมื่อจาก<strong>ส่วน "เอกสารลงนาม" ของหน้าคำขอ</strong>ด้านล่าง'},
+  c_sub:{en:'Your signature is complete.<br>If you have any questions, please contact the person in charge.',id:'Tanda tangan selesai.<br>Jika ada pertanyaan, silakan hubungi penanggung jawab.',vi:'Đã ký xong.<br>Nếu có thắc mắc, vui lòng liên hệ người phụ trách.',zh:'签名已完成。<br>如有疑问，请联系负责人。',km:'ការចុះហត្ថលេខាបានបញ្ចប់។<br>ប្រសិនបើមានសំណួរ សូមទាក់ទងអ្នកទទួលបន្ទុក។',my:'လက်မှတ်ထိုးပြီးပါပြီ။<br>မေးစရာရှိပါက တာဝန်ခံထံ ဆက်သွယ်ပါ။',th:'ลงนามเสร็จแล้ว<br>หากมีข้อสงสัย กรุณาติดต่อผู้รับผิดชอบ'},
   c_cardtitle:{en:'Receipt info',id:'Info penerimaan',vi:'Thông tin tiếp nhận',zh:'受理信息',km:'ព័ត៌មានទទួល',my:'လက်ခံအချက်အလက်',th:'ข้อมูลการรับ'},
   c_k_signer:{en:'Signer',id:'Penanda tangan',vi:'Người ký',zh:'签名人',km:'អ្នកចុះហត្ថលេខា',my:'လက်မှတ်ထိုးသူ',th:'ผู้ลงนาม'},
   c_k_time:{en:'Date',id:'Tanggal & waktu',vi:'Thời gian',zh:'日期时间',km:'កាលបរិច្ឆេទ',my:'ရက်စွဲ',th:'วันเวลา'},
@@ -476,7 +476,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 });
 
 async function loadSignRequest(token){
-  console.log('%c OFUSA upload/sign.html ver.20261105.01 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
+  console.log('%c OFUSA upload/sign.html ver.20261105.02 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
   try{
     const {data,error}=await sb.rpc('sign_get',{ p_token: token });
     if(error||!data){showError('リンクが見つかりません');return;}
@@ -1053,6 +1053,7 @@ function showError(t,m){
 }
 var APPLICANT_VIEW_BASE='https://ofusa2026.github.io/org-view/applicant.html';
 async function ensureApplicantLink(){
+  // ver.20261105.02: 完了画面の「下の申請ページの『サイン書類』から確認できます」の文も削除（8言語）。
   // ver.20261105.01: 署名完了画面で人材マイページ（applicant.html）のURLを出さない（登録支援機関の許可なく人材にマイページが渡っていたため）。
   //   マイページのURLは案シスから担当者が送る。DB の applicant_view_ensure も停止済み。
   return;
