@@ -130,7 +130,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header" style="position:relative;">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20261103.01</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20261105.01</span></div>
   <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
   <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
     <option value="ja">🌐 日本語</option>
@@ -320,7 +320,7 @@ input:focus{border-color:var(--accent);background:white;}
         <div class="complete-card-row"><span class="complete-card-key" data-i18n="c_k_time"><ruby>日時<rt>にちじ</rt></ruby></span><span class="complete-card-val" id="completeTime">—</span></div>
         <div class="complete-card-row"><span class="complete-card-key" data-i18n="c_k_id"><ruby>受理<rt>じゅり</rt></ruby><ruby>番号<rt>ばんごう</rt></ruby></span><span class="complete-card-val" id="completeId">—</span></div>
       </div>
-      <div id="applicantLinkPending" style="margin-top:16px;font-size:12px;color:#64748b;text-align:center;" data-i18n="applink_pending"><ruby>申請<rt>しんせい</rt></ruby>ページのリンクを<ruby>準備<rt>じゅんび</rt></ruby>しています…</div>
+      <div id="applicantLinkPending" style="display:none;margin-top:16px;font-size:12px;color:#64748b;text-align:center;" data-i18n="applink_pending"><ruby>申請<rt>しんせい</rt></ruby>ページのリンクを<ruby>準備<rt>じゅんび</rt></ruby>しています…</div>
       <div id="applicantLinkBox" style="display:none;margin-top:16px;background:#eef4ff;border:1px solid #b9d0ff;border-radius:10px;padding:14px;font-size:13px;color:#1d4ed8;line-height:1.7;">
         <span data-i18n="applink_title">📄 <strong><ruby>署名済<rt>しょめいず</rt></ruby>み<ruby>書類<rt>しょるい</rt></ruby>の<ruby>確認<rt>かくにん</rt></ruby>ページ</strong></span><br>
         <span data-i18n="applink_desc"><ruby>下<rt>した</rt></ruby>のリンクを<ruby>開<rt>ひら</rt></ruby>き、<strong>「サイン<ruby>書類<rt>しょるい</rt></ruby>」タブ</strong>からご<ruby>確認<rt>かくにん</rt></ruby>ください。</span>
@@ -476,7 +476,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 });
 
 async function loadSignRequest(token){
-  console.log('%c OFUSA upload/sign.html ver.20261103.01 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
+  console.log('%c OFUSA upload/sign.html ver.20261105.01 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
   try{
     const {data,error}=await sb.rpc('sign_get',{ p_token: token });
     if(error||!data){showError('リンクが見つかりません');return;}
@@ -1053,6 +1053,9 @@ function showError(t,m){
 }
 var APPLICANT_VIEW_BASE='https://ofusa2026.github.io/org-view/applicant.html';
 async function ensureApplicantLink(){
+  // ver.20261105.01: 署名完了画面で人材マイページ（applicant.html）のURLを出さない（登録支援機関の許可なく人材にマイページが渡っていたため）。
+  //   マイページのURLは案シスから担当者が送る。DB の applicant_view_ensure も停止済み。
+  return;
   var pend=document.getElementById('applicantLinkPending');
   var box=document.getElementById('applicantLinkBox');
   try{
