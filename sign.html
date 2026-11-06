@@ -86,6 +86,13 @@ input:focus{border-color:var(--accent);background:white;}
 .drive-status.saving{background:#eef4ff;color:#1d4ed8;border:1px solid #b9d0ff;}
 .drive-status.ok{background:var(--success-light);color:var(--success);border:1px solid #a7e0c2;}
 .drive-status.pending{background:#fffbf0;color:#7a6010;border:1px solid #f0d080;}
+/* ver.20261106.01: 署名済みの書類を見返す画面（署名欄・ボタンは出さない） */
+body.signed-view #step2 .step-indicator,body.signed-view #step2 .sign-sec,body.signed-view #step2 [data-i18n="s2_notice_save"],
+body.signed-view #step2 [data-i18n="s2_doclabel"],body.signed-view #btnToStep3,body.signed-view #step2 .btn-back{display:none !important;}
+.signed-banner{margin:0 0 12px;padding:12px 14px;background:var(--success-light);border:1px solid #a7e0c2;border-radius:10px;color:var(--success);font-size:13px;font-weight:700;line-height:1.6;}
+.doc-note{margin:0 0 8px;padding:8px 12px;background:#fffbf0;border:1px solid #f0d080;border-radius:8px;color:#7a6010;font-size:12px;line-height:1.6;}
+.btn-reload-doc{margin-top:10px;padding:10px 18px;border:none;border-radius:50px;background:#1a1a2e;color:#fff;font-size:14px;font-weight:700;cursor:pointer;}
+.btn-view-signed{width:100%;margin-top:14px;padding:13px;border:none;border-radius:50px;background:#1a1a2e;color:#fff;font-size:14px;font-weight:700;cursor:pointer;}
 .complete-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-top:24px;text-align:left;}
 .complete-card-title{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--muted);margin-bottom:8px;}
 .complete-card-row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--paper);}
@@ -130,7 +137,7 @@ input:focus{border-color:var(--accent);background:white;}
 </head>
 <body>
 <div class="header" style="position:relative;">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20261105.02</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20261106.01</span></div>
   <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
   <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
     <option value="ja">🌐 日本語</option>
@@ -197,6 +204,7 @@ input:focus{border-color:var(--accent);background:white;}
   </div>
 
   <div id="step2" class="step">
+    <div id="signedBanner" class="signed-banner" style="display:none;"></div>
     <div class="step-indicator">
       <div class="step-dot done"></div><div class="step-dot active"></div>
       <div class="step-dot"></div><div class="step-dot"></div>
@@ -215,10 +223,11 @@ input:focus{border-color:var(--accent);background:white;}
           <span id="pageInfo">読み込み中...</span>
           <button id="btnNext" data-i18n="page_next" onclick="changePage(1)"><ruby>次<rt>つぎ</rt></ruby> ▶</button>
         </div>
+        <div id="docNote" class="doc-note" style="display:none;"></div>
         <div id="pdfContainer"><div class="pdf-loading">📄 PDFを読み込み中...</div></div>
       </div>
     </div>
-    <div class="section">
+    <div class="section sign-sec">
       <div class="section-label" data-i18n="s2_signlabel"><ruby>署名<rt>しょめい</rt></ruby>（<ruby>指<rt>ゆび</rt></ruby>でサインしてください）</div>
       <!-- ver.20260822.01: 縦向き時に全画面で「横向きにしてサイン」案内。横向きで自動的に消える。#step2内なので署名ステップのみ -->
       <div id="rotateOverlay">
@@ -320,6 +329,8 @@ input:focus{border-color:var(--accent);background:white;}
         <div class="complete-card-row"><span class="complete-card-key" data-i18n="c_k_time"><ruby>日時<rt>にちじ</rt></ruby></span><span class="complete-card-val" id="completeTime">—</span></div>
         <div class="complete-card-row"><span class="complete-card-key" data-i18n="c_k_id"><ruby>受理<rt>じゅり</rt></ruby><ruby>番号<rt>ばんごう</rt></ruby></span><span class="complete-card-val" id="completeId">—</span></div>
       </div>
+      <div id="composeStatus" class="drive-status" style="display:none;"></div>
+      <button type="button" id="btnViewSigned" class="btn-view-signed" style="display:none;" onclick="location.reload()"></button>
       <div id="applicantLinkPending" style="display:none;margin-top:16px;font-size:12px;color:#64748b;text-align:center;" data-i18n="applink_pending"><ruby>申請<rt>しんせい</rt></ruby>ページのリンクを<ruby>準備<rt>じゅんび</rt></ruby>しています…</div>
       <div id="applicantLinkBox" style="display:none;margin-top:16px;background:#eef4ff;border:1px solid #b9d0ff;border-radius:10px;padding:14px;font-size:13px;color:#1d4ed8;line-height:1.7;">
         <span data-i18n="applink_title">📄 <strong><ruby>署名済<rt>しょめいず</rt></ruby>み<ruby>書類<rt>しょるい</rt></ruby>の<ruby>確認<rt>かくにん</rt></ruby>ページ</strong></span><br>
@@ -430,6 +441,7 @@ const GAS_URL='https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf
 let requestToken=null,signRequestId=null,caseData=null,isCompany=false;
 let docLang='インドネシア語',pdfBytes=null,signedPdfBytes=null,driveFolderId='';
 let docsArr=[],curDocIdx=0;
+let _light=false,_signedMode=false;   // ver.20261106.01: _light＝新しい仕組み（1件ずつ読む・署名だけ送る）で動いている
 let pdfDoc=null,currentPage=1,totalPages=0;
 let canvas,ctx,isDrawing=false,hasDrawn=false;let _sbHas=false,_sbX0=0,_sbY0=0,_sbX1=0,_sbY1=0;let _undoStack=[],_strokeDrew=false;
 
@@ -476,30 +488,44 @@ document.addEventListener('DOMContentLoaded',async()=>{
 });
 
 async function loadSignRequest(token){
-  console.log('%c OFUSA upload/sign.html ver.20261105.02 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
+  console.log('%c OFUSA upload/sign.html ver.20261106.01 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
   try{
-    const {data,error}=await sb.rpc('sign_get',{ p_token: token });
-    if(error||!data){showError('リンクが見つかりません');return;}
+    // ver.20261106.01: まず書類の一覧だけを読む（中身は見ている書類だけ1件ずつ読む＝開くときに15MBを待たない）。
+    //   新しい仕組み（sign_get_meta）が無いときは、これまでどおり全部まとめて読む
+    var data=null;
+    try{
+      var r1=await _rpcRetry('sign_get_meta',{ p_token: token }, 3, 30000);
+      if(r1 && !r1.error && r1.data && r1.data.light){ data=r1.data; _light=true; }
+    }catch(_e){}
+    if(!_light){
+      const r0=await sb.rpc('sign_get',{ p_token: token });
+      if(r0.error||!r0.data){showError('リンクが見つかりません');return;}
+      data=r0.data;
+    }
+    if(!data){showError('リンクが見つかりません');return;}
     if(data.expires_at&&new Date(data.expires_at)<new Date()){showError('リンクの有効期限が切れています');return;}
-    if(data.status==='signed'){showAlreadySigned();return;}
     signRequestId=data.id;caseData=data;
     docLang=data.doc_lang||'インドネシア語';
     driveFolderId=data.drive_folder_id||'';
-    // 署名のみのためcases参照なし
-    // casesテーブルから別途取得
     document.getElementById('workerName').textContent=data.applicant||'—';
     var _snr=document.getElementById('signNameRef'); if(_snr) _snr.textContent=data.applicant||'';
     document.getElementById('companyName').textContent=data.company||'—';
-    // docs（N枚）を構築：新方式は data.docs、旧方式は pdf_base64/sig_positions から1件
+    if(data.status==='signed'){
+      // ver.20261106.01: 署名が終わったあとは、同じリンクで署名済みの書類を見返せる
+      if(_light && !isCompany){ await showSignedReview(data); } else { showAlreadySigned(); }
+      return;
+    }
+    // ver.20261106.01: 署名を受け付けて書類に入れている途中（数秒〜数分）＝受付済みの画面を出す
+    if(_light && !isCompany && (data.compose_state==='pending'||data.compose_state==='composing')){ _showSubmitted(data); return; }
     // ver.20260730.21: sig_x/y/w/h/pageをsig_positionsに変換してフォールバック
     var _fallbackPos = (data.sig_x != null)
       ? [{ page: (data.sig_page||1), x: data.sig_x, y: data.sig_y, w: data.sig_w, h: data.sig_h }]
       : null;
     // ver.20260724.20: Saysayで作成したHTML(docs[].html)も受け付ける。
-    //   PDFを介さずSaysayの書類をそのまま表示し、％座標の位置に署名を重ねる方式。
     docsArr = (Array.isArray(data.docs) && data.docs.length)
-      ? data.docs.filter(function(d){ return d && (d.pdf_base64 || d.html); }).map(function(d){
-          return { idx:d.idx, code:d.code||'', pdf_base64:d.pdf_base64||null, html:d.html||null,
+      ? data.docs.filter(function(d){ return d && (_light ? (d.has_pdf || d.has_html) : (d.pdf_base64 || d.html)); }).map(function(d){
+          return { idx:d.idx, code:d.code||'', name:d.name||'', size:d.size||0, hasHtml:!!(d.has_html||d.html),
+                   pdf_base64:d.pdf_base64||null, html:d.html||null,
                    sig_positions:(d.sig_positions||_fallbackPos) };
         })
       : (data.pdf_base64 ? [{ idx:0, pdf_base64:data.pdf_base64, sig_positions:(data.sig_positions||_fallbackPos) }] : []);
@@ -513,11 +539,12 @@ async function loadSignRequest(token){
     if(_docNav) _docNav.style.display = (docsArr.length>1)?'flex':'none';
     // ver.20260804.01: 企業モードでは PDF ロード不要
     if(!isCompany){
-      try{
-        await loadDocForReview(0);
-      }catch(e){
-        showError('PDFの読み込みに失敗しました。担当者にご連絡ください。',e.message);
-        return;
+      if(_light){
+        // ver.20261106.01: 1件目の読み込みを待たずに進む（読めなかったときは書類の欄に［もう一度読み込む］を出す）
+        loadDocForReview(0).catch(function(e){ console.warn('[sign] doc0', e); });
+      }else{
+        try{ await loadDocForReview(0); }
+        catch(e){ showError('PDFの読み込みに失敗しました。担当者にご連絡ください。',e.message); return; }
       }
     }
     if(isCompany) _renderCompanyDocList(data);
@@ -588,6 +615,23 @@ async function loadDocForReview(i){
   if(i<0||i>=docsArr.length)return;
   curDocIdx=i;
   var d=docsArr[i];
+  _setDocNav(i);
+  var _dn=document.getElementById('docNote'); if(_dn) _dn.style.display='none';
+  if(_light && !d.pdf_base64 && !d.html){
+    // ver.20261106.01: 見ている書類だけを読み込む（電波が弱くても1件ずつなので途中で止まりにくい）
+    var cont=document.getElementById('pdfContainer');
+    var mb=(d.size||0)*0.75/1048576;
+    cont.innerHTML='<div class="pdf-loading">'+_t('doc_loading')+(mb>=0.3?(' <span style="opacity:.6;">('+mb.toFixed(1)+'MB)</span>'):'')+'</div>';
+    try{ await _ensureDoc(i); }
+    catch(e){
+      if(curDocIdx!==i) return;
+      cont.innerHTML='<div class="pdf-loading" style="color:#b45309;line-height:1.7;">'+_t('doc_load_fail')
+        +'<br><button type="button" class="btn-reload-doc" onclick="loadDocForReview('+i+')">'+_t('btn_reload_doc')+'</button></div>';
+      return;
+    }
+    if(curDocIdx!==i) return;   // 読み込み中にほかの書類へ移った
+  }
+  if(_signedMode && !d.signedView && _dn){ _dn.innerHTML=_t('signed_pending_doc'); _dn.style.display='block'; }
   if(d.html){
     // ver.20260724.20: Saysay方式。HTMLをiframeで表示する（ページ送りは不要）
     var cont=document.getElementById('pdfContainer');
@@ -607,6 +651,7 @@ async function loadDocForReview(i){
   }
   pdfBytes=b64ToPdfBytes(d.pdf_base64);
   await renderPdf(pdfBytes);
+  _prefetchDoc(i+1);   // ver.20261106.01: 次の書類を先に読んでおく
   var di=document.getElementById('docInfo');
   if(di) di.textContent='書類 '+(i+1)+'/'+docsArr.length+(d.name?('：'+d.name):'');
   var dp=document.getElementById('btnDocPrev'); if(dp) dp.disabled=(i<=0);
@@ -666,6 +711,7 @@ function initCanvas(){
     window.addEventListener('resize',_onSignResize);
     window.addEventListener('orientationchange',function(){setTimeout(_onSignResize,250);});
   }
+  _restoreSignDraft();   // ver.20261106.01: 前に書いた署名が残っていれば戻す
 }
 function _onSignResize(){
   if(!canvas)return;
@@ -677,17 +723,17 @@ function _onSignResize(){
 function gp(e){const r=canvas.getBoundingClientRect(),t=e.touches?e.touches[0]:e;const dpr=window.devicePixelRatio||1;return{x:(t.clientX-r.left)*((canvas.width/dpr)/r.width),y:(t.clientY-r.top)*((canvas.height/dpr)/r.height)};}
 function sd(e){isDrawing=true;_strokeDrew=false;const p=gp(e);_trackBounds(p);ctx.beginPath();ctx.moveTo(p.x,p.y);document.getElementById('signGuide').classList.add('hidden');var _snr=document.getElementById('signNameRef');if(_snr)_snr.classList.add('hidden');}
 function dr(e){if(!isDrawing)return;const p=gp(e);_trackBounds(p);ctx.lineTo(p.x,p.y);ctx.stroke();_strokeDrew=true;hasDrawn=true;document.getElementById('btnToStep3').disabled=false;_autoScroll(e);}
-function ed(){isDrawing=false;ctx.beginPath();if(_strokeDrew){_pushUndoState();_strokeDrew=false;}}
+function ed(){isDrawing=false;ctx.beginPath();if(_strokeDrew){_pushUndoState();_strokeDrew=false;_saveSignDraft();}}
 function onTS(e){e.preventDefault();sd(e);}function onTM(e){e.preventDefault();dr(e);}function onTE(){ed();}
 function onMD(e){sd(e);}function onMM(e){dr(e);}function onMU(){ed();}
-function clearCanvas(){if(!ctx)return;ctx.clearRect(0,0,canvas.width,canvas.height);hasDrawn=false;_sbHas=false;_undoStack=[];_updateUndoBtn();var _w=document.getElementById('signScroll');if(_w)_w.scrollLeft=0;document.getElementById('btnToStep3').disabled=true;document.getElementById('signGuide').classList.remove('hidden');var _snr=document.getElementById('signNameRef');if(_snr)_snr.classList.remove('hidden');}
+function clearCanvas(){if(!ctx)return;ctx.clearRect(0,0,canvas.width,canvas.height);hasDrawn=false;_sbHas=false;_undoStack=[];_updateUndoBtn();var _w=document.getElementById('signScroll');if(_w)_w.scrollLeft=0;document.getElementById('btnToStep3').disabled=true;document.getElementById('signGuide').classList.remove('hidden');var _snr=document.getElementById('signNameRef');if(_snr)_snr.classList.remove('hidden');_clearSignDraft();}
 function _trackBounds(p){if(!_sbHas){_sbX0=_sbX1=p.x;_sbY0=_sbY1=p.y;_sbHas=true;}else{if(p.x<_sbX0)_sbX0=p.x;if(p.x>_sbX1)_sbX1=p.x;if(p.y<_sbY0)_sbY0=p.y;if(p.y>_sbY1)_sbY1=p.y;}}
 function _autoScroll(e){var w=document.getElementById('signScroll');if(!w)return;var t=e.touches?e.touches[0]:e;var r=w.getBoundingClientRect();var m=55;if(t.clientX>r.right-m){w.scrollLeft+=Math.min(20,t.clientX-(r.right-m));}else if(t.clientX<r.left+m&&w.scrollLeft>0){w.scrollLeft-=Math.min(20,(r.left+m)-t.clientX);}}
 function scrollSign(dir){var w=document.getElementById('signScroll');if(w)w.scrollBy({left:dir*220,behavior:'smooth'});}
 function _sigDataUrl(){if(!_sbHas)return canvas.toDataURL('image/png');var dpr=window.devicePixelRatio||1,pad=14;var x0=Math.max(0,Math.round((_sbX0-pad)*dpr)),y0=Math.max(0,Math.round((_sbY0-pad)*dpr));var x1=Math.min(canvas.width,Math.round((_sbX1+pad)*dpr)),y1=Math.min(canvas.height,Math.round((_sbY1+pad)*dpr));var w=Math.max(1,x1-x0),h=Math.max(1,y1-y0);var tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;tmp.getContext('2d').drawImage(canvas,x0,y0,w,h,0,0,w,h);return tmp.toDataURL('image/png');}
 function _pushUndoState(){try{_undoStack.push({url:canvas.toDataURL('image/png'),has:_sbHas,x0:_sbX0,y0:_sbY0,x1:_sbX1,y1:_sbY1});if(_undoStack.length>40)_undoStack.shift();_updateUndoBtn();}catch(e){}}
 function _restoreSnap(s){var img=new Image();img.onload=function(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);ctx.restore();};img.src=s.url;_sbHas=s.has;_sbX0=s.x0;_sbY0=s.y0;_sbX1=s.x1;_sbY1=s.y1;hasDrawn=true;document.getElementById('btnToStep3').disabled=false;}
-function undoSign(){if(!_undoStack.length)return;_undoStack.pop();if(_undoStack.length){_restoreSnap(_undoStack[_undoStack.length-1]);}else{ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.restore();_sbHas=false;hasDrawn=false;document.getElementById('btnToStep3').disabled=true;document.getElementById('signGuide').classList.remove('hidden');var _snr=document.getElementById('signNameRef');if(_snr)_snr.classList.remove('hidden');}_updateUndoBtn();}
+function undoSign(){if(!_undoStack.length)return;_undoStack.pop();if(_undoStack.length){_restoreSnap(_undoStack[_undoStack.length-1]);}else{ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.restore();_sbHas=false;hasDrawn=false;document.getElementById('btnToStep3').disabled=true;document.getElementById('signGuide').classList.remove('hidden');var _snr=document.getElementById('signNameRef');if(_snr)_snr.classList.remove('hidden');}_updateUndoBtn();setTimeout(_saveSignDraft,400);}
 function _updateUndoBtn(){var b=document.getElementById('btnUndo');if(b)b.disabled=_undoStack.length===0;}
 
 // ===== pdf-lib で署名合成（1署名 → N枚に焼き込み）=====
@@ -938,11 +984,12 @@ async function submitSign(){
   btn.disabled=true;btn.innerHTML='<span>⏳ 処理中…</span>';
   // ver.20260724.20: Saysay方式(html)の保存経路は未完成。
   //   sign_submit_multi が署名済みPDFを前提としているため、誤って「完了」にせず中断する。
-  if(docsArr.some(function(d){ return d && d.html; })){
+  if(docsArr.some(function(d){ return d && (d.html || d.hasHtml); })){
     alert('この書類はまだ送信に対応していません。\n\nお手数ですが、担当者にご連絡ください。');
     btn.disabled=false; btn.innerHTML='<span>送信する</span>';
     return;
   }
+  if(_light){ await _submitSignLight(name, card, btn); return; }   // ver.20261106.01
   var _sn=document.getElementById('submitNote'); if(_sn)_sn.style.display='block';
   const signedAt=new Date().toISOString();
   const sigDataUrl=_sigDataUrl();
@@ -967,6 +1014,7 @@ async function submitSign(){
     document.getElementById('completeId').textContent=signRequestId.slice(0,8).toUpperCase();
     document.getElementById('progressFill').style.width='100%';
     goStep(4);
+    _clearSignDraft();
     // ★ Drive保存（署名済みPDFをDriveへ。applicant.htmlの「サイン書類」表示に必要）
     saveToDriveNow();
     // ★ 申請ページ（applicant.html）の本人リンクを用意して表示
@@ -1096,6 +1144,187 @@ function copyApplicantLink(){
   }else{_fallbackCopy(u);done();}
 }
 function showAlreadySigned(){showError('署名済みです','このリンクはすでに使用済みです。');document.querySelector('.error-icon').textContent='✅';}
+
+// ===== ver.20261106.01: 新しい仕組み（1件ずつ読む・署名だけ送る・自動でやり直す・署名済みを見返す） =====
+var _TJA = {
+  doc_loading:'📄 書類を読み込み中…',
+  doc_load_fail:'書類を読み込めませんでした。電波のよい場所で、もう一度お試しください。',
+  btn_reload_doc:'🔄 もう一度読み込む',
+  send_wait:'⏳ 送信しています。このままお待ちください。',
+  send_retry:'⏳ 通信が切れたため、もう一度送っています。このままお待ちください。',
+  send_fail:'送信できませんでした。電波のよい場所で、もう一度「署名を送信する」を押してください。署名を書き直す必要はありません。',
+  send_fail_server:'送信できませんでした。お手数ですが担当者にご連絡ください。',
+  compose_wait:'📄 署名を書類に入れています…（このページは閉じても大丈夫です）',
+  compose_done:'✅ 署名を書類に入れました。',
+  compose_later:'✅ 署名は受け付けました。書類への反映は数分以内に自動で終わります。このページは閉じても大丈夫です。',
+  view_signed_btn:'📄 署名した書類を見る',
+  signed_banner:'✅ 署名済みです。署名した書類を見返すことができます（もう一度署名することはできません）。',
+  signed_at:'署名日時',
+  signed_pending_doc:'※ この書類は署名を反映中です。数分後にもう一度開くと、署名入りで表示されます。'
+};
+Object.assign(I18N, {
+  doc_loading:{en:'📄 Loading the document…',id:'📄 Memuat dokumen…',vi:'📄 Đang tải tài liệu…',zh:'📄 正在加载文件…',km:'📄 កំពុងផ្ទុកឯកសារ…',my:'📄 စာရွက်စာတမ်းကို ဖွင့်နေသည်…',th:'📄 กำลังโหลดเอกสาร…'},
+  doc_load_fail:{en:'Could not load the document. Please try again where the signal is good.',id:'Dokumen tidak dapat dimuat. Silakan coba lagi di tempat dengan sinyal yang baik.',vi:'Không tải được tài liệu. Vui lòng thử lại ở nơi có sóng tốt.',zh:'无法加载文件。请在信号良好的地方重试。',km:'មិនអាចផ្ទុកឯកសារបានទេ។ សូមព្យាយាមម្តងទៀតនៅកន្លែងដែលមានសេវាល្អ។',my:'စာရွက်စာတမ်းကို ဖွင့်၍မရပါ။ လိုင်းကောင်းသောနေရာတွင် ထပ်မံကြိုးစားပါ။',th:'ไม่สามารถโหลดเอกสารได้ กรุณาลองใหม่ในที่ที่สัญญาณดี'},
+  btn_reload_doc:{en:'🔄 Try again',id:'🔄 Coba lagi',vi:'🔄 Thử lại',zh:'🔄 重新加载',km:'🔄 ព្យាយាមម្តងទៀត',my:'🔄 ထပ်မံကြိုးစားရန်',th:'🔄 ลองอีกครั้ง'},
+  send_wait:{en:'⏳ Sending. Please wait.',id:'⏳ Sedang mengirim. Mohon tunggu.',vi:'⏳ Đang gửi. Vui lòng chờ.',zh:'⏳ 正在发送，请稍候。',km:'⏳ កំពុងផ្ញើ។ សូមរង់ចាំ។',my:'⏳ ပို့နေသည်။ ခဏစောင့်ပါ။',th:'⏳ กำลังส่ง กรุณารอสักครู่'},
+  send_retry:{en:'⏳ The connection was lost. Sending again — please wait.',id:'⏳ Koneksi terputus. Mengirim ulang — mohon tunggu.',vi:'⏳ Mất kết nối. Đang gửi lại — vui lòng chờ.',zh:'⏳ 连接中断，正在重新发送，请稍候。',km:'⏳ ការតភ្ជាប់ត្រូវបានផ្តាច់។ កំពុងផ្ញើម្តងទៀត — សូមរង់ចាំ។',my:'⏳ ချိတ်ဆက်မှု ပြတ်သွားသည်။ ထပ်ပို့နေသည် — ခဏစောင့်ပါ။',th:'⏳ การเชื่อมต่อขาดหาย กำลังส่งอีกครั้ง — กรุณารอสักครู่'},
+  send_fail:{en:'Could not send. Please move to a place with a good signal and press "Submit signature" again. You do not need to sign again.',id:'Gagal mengirim. Pindah ke tempat dengan sinyal baik lalu tekan "Kirim tanda tangan" lagi. Anda tidak perlu tanda tangan ulang.',vi:'Không gửi được. Vui lòng đến nơi có sóng tốt và nhấn "Gửi chữ ký" lại. Bạn không cần ký lại.',zh:'发送失败。请到信号良好的地方，再按一次"提交签名"。不需要重新签名。',km:'មិនអាចផ្ញើបានទេ។ សូមទៅកន្លែងដែលមានសេវាល្អ ហើយចុច "ដាក់ស្នើហត្ថលេខា" ម្តងទៀត។ មិនចាំបាច់ចុះហត្ថលេខាម្តងទៀតទេ។',my:'ပို့၍မရပါ။ လိုင်းကောင်းသောနေရာသို့ ရွှေ့ပြီး "လက်မှတ်ပို့ရန်" ကို ထပ်နှိပ်ပါ။ လက်မှတ် ပြန်ထိုးရန် မလိုပါ။',th:'ส่งไม่สำเร็จ กรุณาไปที่ที่สัญญาณดีแล้วกด "ส่งลายเซ็น" อีกครั้ง ไม่ต้องเซ็นใหม่'},
+  send_fail_server:{en:'Could not submit. Please contact the person in charge.',id:'Gagal mengirim. Mohon hubungi penanggung jawab.',vi:'Không gửi được. Vui lòng liên hệ người phụ trách.',zh:'提交失败。请联系负责人。',km:'មិនអាចដាក់ស្នើបានទេ។ សូមទាក់ទងអ្នកទទួលខុសត្រូវ។',my:'ပို့၍မရပါ။ တာဝန်ခံကို ဆက်သွယ်ပါ။',th:'ส่งไม่สำเร็จ กรุณาติดต่อผู้รับผิดชอบ'},
+  compose_wait:{en:'📄 Adding your signature to the documents… (You may close this page.)',id:'📄 Tanda tangan sedang dimasukkan ke dokumen… (Halaman ini boleh ditutup.)',vi:'📄 Đang đưa chữ ký vào tài liệu… (Bạn có thể đóng trang này.)',zh:'📄 正在把签名加入文件…（可以关闭此页面）',km:'📄 កំពុងបញ្ចូលហត្ថលេខាទៅក្នុងឯកសារ… (អាចបិទទំព័រនេះបាន)',my:'📄 လက်မှတ်ကို စာရွက်စာတမ်းထဲ ထည့်နေသည်… (ဤစာမျက်နှာကို ပိတ်နိုင်ပါသည်)',th:'📄 กำลังใส่ลายเซ็นลงในเอกสาร… (ปิดหน้านี้ได้)'},
+  compose_done:{en:'✅ Your signature has been added to the documents.',id:'✅ Tanda tangan sudah dimasukkan ke dokumen.',vi:'✅ Đã đưa chữ ký vào tài liệu.',zh:'✅ 签名已加入文件。',km:'✅ ហត្ថលេខាត្រូវបានបញ្ចូលទៅក្នុងឯកសារហើយ។',my:'✅ လက်မှတ်ကို စာရွက်စာတမ်းထဲ ထည့်ပြီးပါပြီ။',th:'✅ ใส่ลายเซ็นลงในเอกสารแล้ว'},
+  compose_later:{en:'✅ Your signature has been received. It will be added to the documents automatically within a few minutes. You may close this page.',id:'✅ Tanda tangan sudah diterima. Akan dimasukkan ke dokumen secara otomatis dalam beberapa menit. Halaman ini boleh ditutup.',vi:'✅ Đã nhận chữ ký. Chữ ký sẽ được tự động đưa vào tài liệu trong vài phút. Bạn có thể đóng trang này.',zh:'✅ 已收到签名。几分钟内会自动加入文件。可以关闭此页面。',km:'✅ បានទទួលហត្ថលេខារបស់អ្នកហើយ។ វានឹងត្រូវបញ្ចូលទៅក្នុងឯកសារដោយស្វ័យប្រវត្តិក្នុងរយៈពេលពីរបីនាទី។ អាចបិទទំព័រនេះបាន។',my:'✅ လက်မှတ်ကို လက်ခံရရှိပါပြီ။ မိနစ်အနည်းငယ်အတွင်း စာရွက်စာတမ်းထဲ အလိုအလျောက် ထည့်ပါမည်။ ဤစာမျက်နှာကို ပိတ်နိုင်ပါသည်။',th:'✅ ได้รับลายเซ็นแล้ว จะใส่ลงในเอกสารโดยอัตโนมัติภายในไม่กี่นาที ปิดหน้านี้ได้'},
+  view_signed_btn:{en:'📄 View signed documents',id:'📄 Lihat dokumen yang sudah ditandatangani',vi:'📄 Xem tài liệu đã ký',zh:'📄 查看已签名的文件',km:'📄 មើលឯកសារដែលបានចុះហត្ថលេខា',my:'📄 လက်မှတ်ထိုးပြီး စာရွက်စာတမ်းများကို ကြည့်ရန်',th:'📄 ดูเอกสารที่ลงนามแล้ว'},
+  signed_banner:{en:'✅ Already signed. You can review the signed documents here (you cannot sign again).',id:'✅ Sudah ditandatangani. Anda dapat melihat kembali dokumen yang sudah ditandatangani (tidak bisa tanda tangan lagi).',vi:'✅ Đã ký. Bạn có thể xem lại tài liệu đã ký (không thể ký lại).',zh:'✅ 已签名。可以在这里查看已签名的文件（不能再签名）。',km:'✅ បានចុះហត្ថលេខារួចហើយ។ អ្នកអាចមើលឯកសារដែលបានចុះហត្ថលេខាឡើងវិញ (មិនអាចចុះហត្ថលេខាម្តងទៀតបានទេ)។',my:'✅ လက်မှတ်ထိုးပြီးပါပြီ။ လက်မှတ်ထိုးပြီး စာရွက်စာတမ်းများကို ပြန်ကြည့်နိုင်ပါသည် (ထပ်မံလက်မှတ်ထိုး၍ မရပါ)။',th:'✅ ลงนามแล้ว สามารถดูเอกสารที่ลงนามแล้วได้ที่นี่ (ลงนามซ้ำไม่ได้)'},
+  signed_at:{en:'Signed at',id:'Waktu tanda tangan',vi:'Thời gian ký',zh:'签名时间',km:'ពេលវេលាចុះហត្ថលេខា',my:'လက်မှတ်ထိုးသည့်အချိန်',th:'เวลาที่ลงนาม'},
+  signed_pending_doc:{en:'* Your signature is still being added to this document. Open it again in a few minutes to see it with the signature.',id:'* Tanda tangan masih sedang dimasukkan ke dokumen ini. Buka lagi beberapa menit kemudian.',vi:'* Chữ ký đang được đưa vào tài liệu này. Vui lòng mở lại sau vài phút.',zh:'* 签名正在加入此文件。请几分钟后再打开查看。',km:'* ហត្ថលេខាកំពុងត្រូវបញ្ចូលទៅក្នុងឯកសារនេះ។ សូមបើកម្តងទៀតក្នុងរយៈពេលពីរបីនាទី។',my:'* ဤစာရွက်စာတမ်းထဲသို့ လက်မှတ် ထည့်နေဆဲဖြစ်သည်။ မိနစ်အနည်းငယ်ကြာမှ ပြန်ဖွင့်ပါ။',th:'* กำลังใส่ลายเซ็นลงในเอกสารนี้ กรุณาเปิดอีกครั้งในอีกไม่กี่นาที'}
+});
+function _t(k){ var L=window._lang||'ja'; if(L!=='ja' && I18N[k] && I18N[k][L]) return I18N[k][L]; return _TJA[k]||''; }
+function _sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+function _withTimeout(p, ms){ return Promise.race([p, new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('timeout')); }, ms); })]); }
+// 通信エラーのときだけやり直す。関数が無い（PGRST202 など）はすぐ返す＝これまでの流れに切り替える
+async function _rpcRetry(name, args, tries, timeoutMs){
+  var last=null;
+  for(var t=0;t<(tries||3);t++){
+    try{
+      var r=await _withTimeout(sb.rpc(name, args), timeoutMs||30000);
+      if(r && !r.error) return r;
+      last=r;
+      if(r && r.error && r.error.code && /^(PGRST|42)/.test(String(r.error.code))) return r;
+    }catch(e){ last={ error:e }; }
+    if(t<(tries||3)-1) await _sleep(1200*(t+1));
+  }
+  return last;
+}
+function _setDocNav(i){
+  var d=docsArr[i]||{};
+  var di=document.getElementById('docInfo');
+  if(di) di.textContent='書類 '+(i+1)+'/'+docsArr.length+(d.name?('：'+d.name):(d.code?('：'+d.code):''));
+  var dp=document.getElementById('btnDocPrev'); if(dp) dp.disabled=(i<=0);
+  var dn=document.getElementById('btnDocNext'); if(dn) dn.disabled=(i>=docsArr.length-1);
+}
+// 書類を1件だけ読む（4回までやり直す。大きい書類は時間がかかるので待ち時間を長めに）
+async function _ensureDoc(i){
+  var d=docsArr[i]; if(!d) return null;
+  if(d.pdf_base64 || d.html) return d;
+  if(d._loading) return await d._loading;
+  d._loading=(async function(){
+    var r=await _rpcRetry('sign_get_doc', { p_token: requestToken, p_idx: d.idx }, 4, 180000);
+    if(!r || r.error || !r.data) throw (r && r.error) || new Error('load failed');
+    d.pdf_base64=r.data.pdf_base64||null; d.html=r.data.html||null; d.signedView=!!r.data.signed;
+    if(!d.pdf_base64 && !d.html) throw new Error('empty');
+    return d;
+  })();
+  try{ return await d._loading; } finally{ d._loading=null; }
+}
+function _prefetchDoc(j){
+  if(!_light || j<0 || j>=docsArr.length) return;
+  var d=docsArr[j]; if(!d || d.pdf_base64 || d.html || d._loading) return;
+  _ensureDoc(j).catch(function(){});
+}
+// 署名の下書き（この端末だけ・1日まで）。ページを閉じてしまっても書き直さなくてよい
+function _draftKey(){ return 'ofusa_sign_draft_'+(requestToken||''); }
+function _saveSignDraft(){
+  try{
+    if(!canvas || !requestToken || _signedMode) return;
+    if(!hasDrawn){ localStorage.removeItem(_draftKey()); return; }
+    localStorage.setItem(_draftKey(), JSON.stringify({ u:canvas.toDataURL('image/png'), w:canvas.width, h:canvas.height,
+      b:[_sbX0,_sbY0,_sbX1,_sbY1], s:_sbHas, at:Date.now() }));
+  }catch(e){}
+}
+function _clearSignDraft(){ try{ localStorage.removeItem(_draftKey()); }catch(e){} }
+function _restoreSignDraft(){
+  try{
+    if(!canvas || hasDrawn || !requestToken || _signedMode) return;
+    var j=JSON.parse(localStorage.getItem(_draftKey())||'null'); if(!j || !j.u) return;
+    if(Date.now()-(j.at||0) > 86400000){ _clearSignDraft(); return; }
+    if(j.w!==canvas.width || j.h!==canvas.height) return;   // 画面の大きさが変わったときは使わない（位置がずれるため）
+    var img=new Image();
+    img.onload=function(){
+      if(hasDrawn) return;
+      ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); ctx.restore();
+      _sbHas=!!j.s; _sbX0=j.b[0]; _sbY0=j.b[1]; _sbX1=j.b[2]; _sbY1=j.b[3]; hasDrawn=true;
+      document.getElementById('btnToStep3').disabled=false;
+      document.getElementById('signGuide').classList.add('hidden');
+      var _snr=document.getElementById('signNameRef'); if(_snr) _snr.classList.add('hidden');
+      _pushUndoState();
+    };
+    img.src=j.u;
+  }catch(e){}
+}
+// 送るのは氏名と署名の画像だけ。通信が切れたら自動でやり直す（同じものを何度送っても1回分になる）
+async function _submitSignLight(name, card, btn){
+  var _sn=document.getElementById('submitNote');
+  if(_sn){ _sn.style.display='block'; _sn.innerHTML=_t('send_wait'); }
+  var sigDataUrl=_sigDataUrl(); window._lastSigDataUrl=sigDataUrl;
+  var res=null;
+  for(var t=0;t<5;t++){
+    try{
+      var r=await _withTimeout(sb.rpc('sign_submit_light', { p_token:requestToken, p_signer_name:name,
+        p_signer_card_last4:card, p_signature_image:sigDataUrl }), 30000);
+      if(r && !r.error && r.data){ res=r.data; break; }
+    }catch(e){}
+    if(t<4){ if(_sn) _sn.innerHTML=_t('send_retry'); await _sleep(2000*Math.pow(2,t)); }
+  }
+  if(!res || res.error){
+    if(_sn) _sn.style.display='none';
+    btn.disabled=false; btn.innerHTML='✅ 署名を送信する';
+    if(res && res.error==='expired'){ alert('リンクの有効期限が切れています。'); return; }
+    alert(res ? (_t('send_fail_server')+'（'+res.error+'）') : _t('send_fail'));
+    return;
+  }
+  _clearSignDraft();
+  document.getElementById('completeName').textContent=name;
+  try{ document.getElementById('completeDoc').textContent=(caseData&&caseData.doc_type)||'サイン書類'; }catch(_e){}
+  document.getElementById('completeTime').textContent=new Date().toLocaleString('ja-JP');
+  document.getElementById('completeId').textContent=String(signRequestId||'').slice(0,8).toUpperCase();
+  goStep(4);
+  _watchCompose();
+}
+// 署名を書類に入れ終わるまで見守る（サーバーが作るので、ページを閉じても止まらない）
+async function _watchCompose(){
+  var el=document.getElementById('composeStatus');
+  if(el){ el.style.display='block'; el.className='drive-status saving'; el.innerHTML=_t('compose_wait'); }
+  var t0=Date.now(), st=null;
+  while(Date.now()-t0<150000){
+    await _sleep(3000);
+    try{ var r=await _withTimeout(sb.rpc('sign_compose_status', { p_token:requestToken }), 20000); st=r && r.data; }catch(e){ st=null; }
+    if(st && (st.state==='done' || st.status==='signed')) break;
+    if(st && st.state==='error') break;
+  }
+  var ok=!!(st && (st.state==='done' || st.status==='signed'));
+  if(el){ el.className='drive-status '+(ok?'ok':'pending'); el.innerHTML= ok ? _t('compose_done') : _t('compose_later'); }
+  if(ok){
+    var b=document.getElementById('btnViewSigned'); if(b){ b.textContent=_t('view_signed_btn'); b.style.display='block'; }
+    try{ saveToDriveNow(); }catch(e){}
+  }
+}
+// 署名を受け付けて書類に入れている途中に開いたとき
+function _showSubmitted(data){
+  document.getElementById('completeName').textContent=data.signer_name||'—';
+  try{ document.getElementById('completeDoc').textContent=data.doc_type||'サイン書類'; }catch(_e){}
+  document.getElementById('completeTime').textContent=data.submitted_at?new Date(data.submitted_at).toLocaleString('ja-JP'):'—';
+  document.getElementById('completeId').textContent=String(data.id||'').slice(0,8).toUpperCase();
+  goStep(4);
+  _watchCompose();
+}
+// 署名が終わったあとに同じリンクを開いたとき：署名済みの書類を見返す（署名欄・ボタンは出さない）
+async function showSignedReview(data){
+  _signedMode=true;
+  document.body.classList.add('signed-view');
+  docsArr=(Array.isArray(data.docs)?data.docs:[]).filter(function(d){ return d && (d.has_pdf || d.has_signed); }).map(function(d){
+    return { idx:d.idx, code:d.code||'', name:d.name||'', size:d.size||0, pdf_base64:null, html:null, hasHtml:false, sig_positions:null };
+  });
+  if(!docsArr.length){ showAlreadySigned(); return; }
+  var bn=document.getElementById('signedBanner');
+  if(bn){
+    bn.innerHTML=_t('signed_banner')+(data.signed_at?('<div style="font-weight:600;font-size:12px;margin-top:4px;">'+_t('signed_at')+'：'+new Date(data.signed_at).toLocaleString('ja-JP')+'</div>'):'');
+    bn.style.display='block';
+  }
+  var _docNav=document.getElementById('docNav'); if(_docNav) _docNav.style.display=(docsArr.length>1)?'flex':'none';
+  goStep(2);
+  document.getElementById('progressFill').style.width='100%';
+  await loadDocForReview(0);
+}
 </script>
 <!-- ver.20260804: 署名AI判定モーダル -->
 <div id="sigCheckOverlay" class="sig-check-overlay" style="display:none;">
