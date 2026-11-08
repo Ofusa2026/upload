@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- ver.20261109.02: 経歴書フォームに「📎 履歴書を選ぶ」を追加。AI（edge function keireki-ocr）で氏名・生年月日・住所・最終学歴・職歴を読み取り、空欄だけ埋める（黄色＝確認してください）。前の会社は建設っぽいものにチェック→同業他社経験に合算。履歴書は保存しない
+     URLに keireki=1 を付けると「11. 経歴書」の入力画面がすぐ開く（案シスから経歴書の入力URLとして送れる） -->
 <!-- ver.20261109.01: 「11. 経歴書」を入力して作れるようにした（質問に答える→その場で見た目→PDFを作って添付。押印なし。賃金台帳と同じ方・経験3〜15年の注意つき）。Wordのひな形も残す -->
 <!-- ver.20261029.01: ID・パスワード欄に外国人就労管理システムのURL（ログイン確認）と「ログインできることを確認しました」チェック（チェックしないと保存できない）を追加 -->
 <!-- ver.20261021.01: 書類キャッシュ（upload_docs_cache kind=kokko）が無くても書類が出るようにした。キャッシュが無ければ国交省の標準書類（settings.required_docs_co_kokko → 無ければページ内の15書類）で組み立て、個人事業主は「1. 住民票（代表者）」に置換。提出済み・不要は co_doc_check をライブで読んで反映（キャッシュがあってもライブを優先）。「設定されていません」はすべて失敗したときだけ -->
@@ -1118,6 +1120,13 @@ function _applyKokkoLiveDone(){
   }
   try { await _applyKokkoLiveDone(); } catch(e){}
   buildAllFields();
+  // ver.20261109.02: URLに keireki=1 があれば「11. 経歴書」の入力画面をすぐ開く（案シスから経歴書の入力URLとして送る）
+  try {
+    if (urlParams.get('keireki') === '1' && window._docLabelMap) {
+      var _kk = Object.keys(window._docLabelMap).find(function(k){ return window._docLabelMap[k] === '11. 経歴書'; });
+      if (_kk) setTimeout(function(){ openKeirekiForm(_kk); }, 300);
+    }
+  } catch(e){ console.warn('keireki auto open', e); }
 })();
 
 document.getElementById('submitBtn').addEventListener('click', async () => {
@@ -1292,12 +1301,19 @@ function openKeirekiForm(key){
   var old = document.getElementById('krModal'); if(old) old.remove();
   var ov = document.createElement('div'); ov.id = 'krModal';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:10px;';
-  var inp = function(k, lab, type, ph, note){ return '<label style="display:block;margin-bottom:10px;"><span style="display:block;font-size:12px;font-weight:800;color:#1e293b;margin-bottom:3px;">'+lab+'</span><input type="'+(type||'text')+'" value="'+_krEsc(KR.d[k]||'')+'" placeholder="'+_krEsc(ph||'')+'" oninput="_krSet(\''+k+'\',this.value)" '+(type==='text'||!type?'list="'+(k==='gyoshu'?'krGyoshuList':'')+'"':'')+' style="width:100%;box-sizing:border-box;font-size:14px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;">'+(note?'<span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">'+note+'</span>':'')+'</label>'; };
+  var _ai = KR.d._ai || {};
+  var inp = function(k, lab, type, ph, note){ var a=_ai[k]; return '<label style="display:block;margin-bottom:10px;"><span style="display:block;font-size:12px;font-weight:800;color:#1e293b;margin-bottom:3px;">'+lab+(a?' <span style="font-size:10px;font-weight:800;color:#a16207;background:#fef3c7;border-radius:4px;padding:0 5px;">🤖 履歴書から入れました・確認してください</span>':'')+'</span><input type="'+(type||'text')+'" value="'+_krEsc(KR.d[k]||'')+'" placeholder="'+_krEsc(ph||'')+'" oninput="_krSet(\''+k+'\',this.value)" '+(type==='text'||!type?'list="'+(k==='gyoshu'?'krGyoshuList':'')+'"':'')+' style="width:100%;box-sizing:border-box;font-size:14px;padding:8px 10px;border:1px solid '+(a?'#facc15':'#cbd5e1')+';background:'+(a?'#fefce8':'#fff')+';border-radius:8px;">'+(note?'<span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">'+note+'</span>':'')+'</label>'; };
   ov.innerHTML = '<div style="background:#fff;border-radius:12px;width:100%;max-width:1180px;max-height:96vh;display:flex;flex-direction:column;overflow:hidden;">'
     + '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#eff6ff;border-bottom:1px solid #bfdbfe;"><b style="font-size:14px;color:#1e3a5f;">✍ 経歴書を入力して作る</b><span style="flex:1"></span><button onclick="document.getElementById(\'krModal\').remove()" style="font-size:12px;font-weight:700;padding:5px 12px;border:1px solid #cbd5e1;background:#fff;border-radius:7px;cursor:pointer;">✕ 閉じる</button></div>'
     + '<div style="flex:1;overflow:auto;display:flex;flex-wrap:wrap;gap:14px;padding:12px 14px;">'
     + '<div style="flex:1 1 340px;min-width:280px;">'
     + '<div style="font-size:11.5px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.7;">📌 <b>「10. 賃金台帳」を出していただく方と同じ方</b>の経歴書にしてください。<br>📌 建設の<b>経験が3年以上15年以下</b>の日本人の方を選んでください（特定技能外国人と同等の技能の方）。</div>'
+    + '<div style="border:1.5px dashed #93c5fd;background:#f8fbff;border-radius:9px;padding:9px 11px;margin-bottom:12px;">'
+    + '<div style="font-size:12.5px;font-weight:800;color:#1d4ed8;margin-bottom:4px;">📎 履歴書があれば、選ぶだけで読み取って入れます</div>'
+    + '<div style="font-size:11px;color:#475569;margin-bottom:6px;">写真（スマホで撮ったものでOK）かPDFを選んでください。読み取れたところだけ入ります。入ったところは必ず確認してください。履歴書は保存しません。</div>'
+    + '<label style="display:inline-block;background:#1d4ed8;color:#fff;font-size:12px;font-weight:800;border-radius:7px;padding:7px 13px;cursor:pointer;">📷 履歴書を選ぶ<input type="file" accept="image/*,application/pdf" style="display:none;" onchange="_krOcr(this.files&&this.files[0]);this.value=\'\'"></label>'
+    + '<span id="krOcrSt" style="font-size:11.5px;font-weight:700;margin-left:8px;color:#475569;"></span>'
+    + '</div>'
     + inp('name','氏名','text','例：国土 太郎')
     + inp('birth','生年月日','date')
     + inp('addr','現住所','text','例：東京都千代田区霞が関２－１－３')
@@ -1305,6 +1321,7 @@ function openKeirekiForm(key){
     + inp('nyusha','入社日（貴社に入った日）','date','','今日までの自社での経験を自動で計算します')
     + inp('gyoshu','経験業種名','text','例：とび・土工、鉄筋、型枠施工、建設機械施工','外国人の方と同じ仕事の名前を入れてください')
     + '<div style="display:flex;gap:8px;"><label style="flex:1;"><span style="display:block;font-size:12px;font-weight:800;color:#1e293b;margin-bottom:3px;">同業他社での経験（年）</span><input type="number" min="0" max="50" value="'+_krEsc(KR.d.othY||'')+'" placeholder="0" oninput="_krSet(\'othY\',this.value)" style="width:100%;box-sizing:border-box;font-size:14px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;"></label><label style="flex:1;"><span style="display:block;font-size:12px;font-weight:800;color:#1e293b;margin-bottom:3px;">（か月）</span><input type="number" min="0" max="11" value="'+_krEsc(KR.d.othM||'')+'" placeholder="0" oninput="_krSet(\'othM\',this.value)" style="width:100%;box-sizing:border-box;font-size:14px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;"></label></div>'
+    + _krJobsHtml()
     + '<div id="krExp" style="font-size:12px;font-weight:800;color:#1d4ed8;margin:6px 0 10px;"></div>'
     + '<div id="krWarn" style="display:none;font-size:11.5px;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.7;"></div>'
     + inp('coName','証明者（会社名）','text')
@@ -1319,6 +1336,53 @@ function openKeirekiForm(key){
   document.body.appendChild(ov);
   var fit = function(){ var w = document.getElementById('krPreviewWrap'); if(!w) return; var pw = w.parentNode.clientWidth - 16, sc = Math.min(1, pw/794); w.style.transform = 'scale('+sc+')'; w.parentNode.style.height = (1123*sc+16)+'px'; };
   _krPaint(); setTimeout(fit, 0); window.addEventListener('resize', fit);
+}
+// ver.20261109.02: 履歴書の読み取り（keireki-ocr）
+function _krNorm(s){ return String(s||'').normalize('NFKC').replace(/\s|株式会社|有限会社|合同会社|\(株\)|\(有\)/g,''); }
+function _krMonths(from, to){
+  var a = String(from||'').match(/^(\d{4})-(\d{2})/); if(!a) return 0;
+  var b = String(to||'').match(/^(\d{4})-(\d{2})/) || _krToday().match(/^(\d{4})-(\d{2})/);
+  return Math.max(0, (+b[1]-(+a[1]))*12 + (+b[2]-(+a[2])));
+}
+var KR_KENSETSU_RE = /工事|建設|土木|建築|とび|鳶|鉄筋|型枠|施工|配管|塗装|内装|左官|大工|電気|設備|解体|舗装|足場|重機|現場/;
+function _krJobsHtml(){
+  var jobs = (KR.d._jobs||[]).filter(function(j){ return !j.own; }); if(!jobs.length) return '';
+  var h = '<div style="border:1px solid #e2e8f0;border-radius:8px;padding:7px 9px;margin:4px 0 6px;background:#f8fafc;"><div style="font-size:11.5px;font-weight:800;color:#334155;margin-bottom:3px;">🤖 履歴書にあった前の会社（同業＝建設の経験だけチェック）</div>';
+  (KR.d._jobs||[]).forEach(function(j, i){ if(j.own) return;
+    h += '<label style="display:flex;gap:6px;align-items:flex-start;font-size:11.5px;color:#334155;margin:3px 0;"><input type="checkbox" '+(j.on?'checked':'')+' onchange="KR.d._jobs['+i+'].on=this.checked;_krJobsSum();openKeirekiForm(KR.key)"><span><b>'+_krEsc(j.company||'')+'</b>　'+_krEsc(j.from||'')+' 〜 '+_krEsc(j.to||'')+'（'+_krYM(_krMonths(j.from,j.to))+'）'+(j.work?'<br><span style="color:#64748b;">'+_krEsc(j.work)+'</span>':'')+'</span></label>';
+  });
+  return h + '</div>';
+}
+function _krJobsSum(){
+  var m = 0; (KR.d._jobs||[]).forEach(function(j){ if(!j.own && j.on) m += _krMonths(j.from, j.to); });
+  KR.d.othY = String(Math.floor(m/12)); KR.d.othM = String(m%12); _krSave();
+}
+async function _krOcr(file){
+  var st = document.getElementById('krOcrSt'); if(!file) return;
+  var say = function(t, c){ if(st){ st.textContent = t; st.style.color = c||'#475569'; } };
+  try{
+    say('⏳ 読み取っています…（30秒ほどかかります）');
+    var prep = await _coPrepFile(file), b64 = await toBase64(prep.blob);
+    var mt = /pdf/i.test(prep.mimeType) ? 'application/pdf' : (prep.mimeType || 'image/jpeg');
+    var r = await fetch(SB_URL + '/functions/v1/keireki-ocr', { method:'POST', headers:{ 'Content-Type':'application/json', 'apikey':SB_KEY }, body: JSON.stringify({ company_id:COMPANY_ID, folder_id:FOLDER_ID, data:b64, media_type:mt }) });
+    var j = await r.json().catch(function(){ return {}; });
+    if(!j.ok){ say('⚠️ ' + (j.error || '読み取れませんでした'), '#b91c1c'); return; }
+    var x = j.result || {}, ai = KR.d._ai || {};
+    var put = function(k, v){ if(v && !String(KR.d[k]||'').trim()){ KR.d[k] = String(v); ai[k] = 1; } };
+    put('name', x.name); put('birth', /^\d{4}-\d{2}-\d{2}$/.test(x.birth||'') ? x.birth : ''); put('addr', x.addr); put('school', x.school);
+    var jobs = Array.isArray(x.jobs) ? x.jobs : [], me = _krNorm(KR.d.coName || COMPANY_NAME);
+    jobs.forEach(function(jb){
+      jb.own = !!(me && _krNorm(jb.company) && (_krNorm(jb.company).indexOf(me)>=0 || me.indexOf(_krNorm(jb.company))>=0));
+      jb.on = !jb.own && KR_KENSETSU_RE.test(String(jb.company||'')+String(jb.work||''));
+      if(jb.own && jb.from) put('nyusha', /^\d{4}-\d{2}-\d{2}$/.test(jb.from) ? jb.from : '');
+      if(jb.own && jb.work) put('gyoshu', String(jb.work).slice(0,30));
+    });
+    KR.d._jobs = jobs; KR.d._ai = ai;
+    if(jobs.some(function(jb){ return !jb.own; }) && !String(KR.d.othY||'').trim() && !String(KR.d.othM||'').trim()){ _krJobsSum(); ai.othY = 1; }
+    _krSave();
+    openKeirekiForm(KR.key);
+    var st2 = document.getElementById('krOcrSt'); if(st2){ st2.textContent = '✅ 読み取りました。黄色の欄を確認してください（すでに入っていた欄はそのままです）'; st2.style.color = '#047857'; }
+  }catch(e){ console.error(e); say('⚠️ 読み取りでエラーになりました。手で入力してください', '#b91c1c'); }
 }
 async function _krMakePdf(){
   var d = KR.d, miss = [];
