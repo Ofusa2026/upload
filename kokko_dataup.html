@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- ver.20261109.03: 履歴書の読み取り（📎 履歴書を選ぶ）をやめた（入力画面から外した） -->
 <!-- ver.20261109.02: 経歴書フォームに「📎 履歴書を選ぶ」を追加。AI（edge function keireki-ocr）で氏名・生年月日・住所・最終学歴・職歴を読み取り、空欄だけ埋める（黄色＝確認してください）。前の会社は建設っぽいものにチェック→同業他社経験に合算。履歴書は保存しない
      URLに keireki=1 を付けると「11. 経歴書」の入力画面がすぐ開く（案シスから経歴書の入力URLとして送れる） -->
 <!-- ver.20261109.01: 「11. 経歴書」を入力して作れるようにした（質問に答える→その場で見た目→PDFを作って添付。押印なし。賃金台帳と同じ方・経験3〜15年の注意つき）。Wordのひな形も残す -->
@@ -1308,12 +1309,6 @@ function openKeirekiForm(key){
     + '<div style="flex:1;overflow:auto;display:flex;flex-wrap:wrap;gap:14px;padding:12px 14px;">'
     + '<div style="flex:1 1 340px;min-width:280px;">'
     + '<div style="font-size:11.5px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.7;">📌 <b>「10. 賃金台帳」を出していただく方と同じ方</b>の経歴書にしてください。<br>📌 建設の<b>経験が3年以上15年以下</b>の日本人の方を選んでください（特定技能外国人と同等の技能の方）。</div>'
-    + '<div style="border:1.5px dashed #93c5fd;background:#f8fbff;border-radius:9px;padding:9px 11px;margin-bottom:12px;">'
-    + '<div style="font-size:12.5px;font-weight:800;color:#1d4ed8;margin-bottom:4px;">📎 履歴書があれば、選ぶだけで読み取って入れます</div>'
-    + '<div style="font-size:11px;color:#475569;margin-bottom:6px;">写真（スマホで撮ったものでOK）かPDFを選んでください。読み取れたところだけ入ります。入ったところは必ず確認してください。履歴書は保存しません。</div>'
-    + '<label style="display:inline-block;background:#1d4ed8;color:#fff;font-size:12px;font-weight:800;border-radius:7px;padding:7px 13px;cursor:pointer;">📷 履歴書を選ぶ<input type="file" accept="image/*,application/pdf" style="display:none;" onchange="_krOcr(this.files&&this.files[0]);this.value=\'\'"></label>'
-    + '<span id="krOcrSt" style="font-size:11.5px;font-weight:700;margin-left:8px;color:#475569;"></span>'
-    + '</div>'
     + inp('name','氏名','text','例：国土 太郎')
     + inp('birth','生年月日','date')
     + inp('addr','現住所','text','例：東京都千代田区霞が関２－１－３')
@@ -1321,7 +1316,6 @@ function openKeirekiForm(key){
     + inp('nyusha','入社日（貴社に入った日）','date','','今日までの自社での経験を自動で計算します')
     + inp('gyoshu','経験業種名','text','例：とび・土工、鉄筋、型枠施工、建設機械施工','外国人の方と同じ仕事の名前を入れてください')
     + '<div style="display:flex;gap:8px;"><label style="flex:1;"><span style="display:block;font-size:12px;font-weight:800;color:#1e293b;margin-bottom:3px;">同業他社での経験（年）</span><input type="number" min="0" max="50" value="'+_krEsc(KR.d.othY||'')+'" placeholder="0" oninput="_krSet(\'othY\',this.value)" style="width:100%;box-sizing:border-box;font-size:14px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;"></label><label style="flex:1;"><span style="display:block;font-size:12px;font-weight:800;color:#1e293b;margin-bottom:3px;">（か月）</span><input type="number" min="0" max="11" value="'+_krEsc(KR.d.othM||'')+'" placeholder="0" oninput="_krSet(\'othM\',this.value)" style="width:100%;box-sizing:border-box;font-size:14px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;"></label></div>'
-    + _krJobsHtml()
     + '<div id="krExp" style="font-size:12px;font-weight:800;color:#1d4ed8;margin:6px 0 10px;"></div>'
     + '<div id="krWarn" style="display:none;font-size:11.5px;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.7;"></div>'
     + inp('coName','証明者（会社名）','text')
