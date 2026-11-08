@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- ver.20261109.01: 「11. 経歴書」を入力して作れるようにした（質問に答える→その場で見た目→PDFを作って添付。押印なし。賃金台帳と同じ方・経験3〜15年の注意つき）。Wordのひな形も残す -->
 <!-- ver.20261029.01: ID・パスワード欄に外国人就労管理システムのURL（ログイン確認）と「ログインできることを確認しました」チェック（チェックしないと保存できない）を追加 -->
 <!-- ver.20261021.01: 書類キャッシュ（upload_docs_cache kind=kokko）が無くても書類が出るようにした。キャッシュが無ければ国交省の標準書類（settings.required_docs_co_kokko → 無ければページ内の15書類）で組み立て、個人事業主は「1. 住民票（代表者）」に置換。提出済み・不要は co_doc_check をライブで読んで反映（キャッシュがあってもライブを優先）。「設定されていません」はすべて失敗したときだけ -->
 <!-- ver.20261003.02: 容量アップ：1ファイルずつ送信に変更（合計の上限なし・1ファイル35MBまで）。写真はHEIC→JPEG変換＋自動圧縮。一部失敗時は失敗分だけ残して理由を表示。 -->
@@ -14,6 +15,9 @@
 <!-- 画像圧縮・HEIC変換ライブラリ（ver.20261003.02: 容量対策） -->
 <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+<!-- ver.20261109.01: 経歴書をPDFにする -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <title>国交省書類アップロード（所属機関）</title>
 <!-- KOKKO_DATAUP_VERSION 20260910_01 送信済み書類の「⏳ 確認中」表示を追加（人材ページから移植） -->
 <!-- 旧: 20260623_04 会員証明書をJACまたは全中連に修正 -->
@@ -807,7 +811,7 @@ const KOKKO_DOC_META = {
   '11. 経歴書': {
     name:'特定技能外国人と同等の技能を有する日本人の職務経歴書',
     sample:'kokko_11_keirekisho.png',
-    desc:'特定技能外国人と同等の技能を有する日本人の職務経歴書。\n・賃金台帳と同じ方の経歴書\n・添付の経歴書ひな形より作成をお願いいたします。',
+    desc:'特定技能外国人と同等の技能を有する日本人の職務経歴書。\n・「10. 賃金台帳」と同じ方の経歴書\n・建設の経験が3年以上15年以下の方\n・下の「✍ 入力して経歴書を作る」で質問に答えると、経歴書（PDF）ができてそのまま添付できます（押印不要）。Wordのひな形でも作れます。',
     place:'',
     form:{ file:'forms/keirekisho_form.docx', label:'経歴書ひな形' }
   },
@@ -978,6 +982,15 @@ function buildAllFields() {
     if (meta && meta.form && meta.form.file && labelEl) {
       const fWrap = document.createElement('div');
       fWrap.style.cssText = 'margin-top:6px;';
+      // ver.20261109.01: 経歴書は入力して作れる（おすすめ）
+      if (d.l === '11. 経歴書') {
+        const kBtn = document.createElement('button');
+        kBtn.type = 'button';
+        kBtn.style.cssText = 'display:inline-block;background:#059669;color:#fff;font-size:12px;font-weight:800;border:none;border-radius:6px;padding:7px 13px;margin:0 6px 6px 0;cursor:pointer;line-height:1.4;';
+        kBtn.textContent = '✍ 入力して経歴書を作る（おすすめ）';
+        kBtn.onclick = function(ev){ ev.preventDefault(); ev.stopPropagation(); openKeirekiForm(key); };
+        fWrap.appendChild(kBtn);
+      }
       const fBtn = document.createElement('a');
       fBtn.href = KOKKO_SAMPLE_BASE.replace(/samples\/$/, '') + meta.form.file;
       fBtn.target = '_blank'; fBtn.rel = 'noopener';
@@ -1211,6 +1224,130 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
     progressBar.style.width = '0%';
   }, 1200);
 });
+// ===== ver.20261109.01: 「11. 経歴書」を入力して作る（質問に答える → その場でPDFの見た目 → PDFを添付） =====
+//   様式は forms/keirekisho_form.docx と同じ項目（氏名・生年月日・現住所・最終学歴・入社日・経験年数・証明者）。押印なし。
+//   注意：賃金台帳と同じ方／経験3〜15年（止めずに注意を出す）
+var KR = { key:null, d:{} };
+function _krLsKey(){ return 'kokko_keireki_' + (COMPANY_ID || 'x'); }
+function _krLoad(){ try{ var v = localStorage.getItem(_krLsKey()); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+function _krSave(){ try{ localStorage.setItem(_krLsKey(), JSON.stringify(KR.d)); }catch(e){} }
+function _krZen(s){ return String(s).replace(/[0-9]/g, function(c){ return String.fromCharCode(c.charCodeAt(0)+0xFEE0); }); }
+function _krWareki(ymd){
+  var m = String(ymd||'').match(/^(\d{4})-(\d{2})-(\d{2})$/); if(!m) return '';
+  var y=+m[1], mo=+m[2], d=+m[3], v=y*10000+mo*100+d, era, ey;
+  if(v>=20190501){ era='令和'; ey=y-2018; } else if(v>=19890108){ era='平成'; ey=y-1988; } else if(v>=19261225){ era='昭和'; ey=y-1925; } else { era=''; ey=y; }
+  return era + _krZen(ey===1 && era ? '元' : ey).replace('元','元') + '年' + _krZen(mo) + '月' + _krZen(d) + '日';
+}
+function _krToday(){ var t=new Date(Date.now()+9*3600e3); return t.toISOString().slice(0,10); }
+// 入社日から今日まで（年・か月）
+function _krSpan(from){
+  var m = String(from||'').match(/^(\d{4})-(\d{2})-(\d{2})$/); if(!m) return null;
+  var t = _krToday().split('-').map(Number), mm = (t[0]-(+m[1]))*12 + (t[1]-(+m[2])) - (t[2] < +m[3] ? 1 : 0);
+  if(mm < 0) return null; return { y:Math.floor(mm/12), m:mm%12, total:mm };
+}
+function _krYM(totalM){ var y=Math.floor(totalM/12), m=totalM%12; return _krZen(y)+'年'+(m?_krZen(m)+'か月':''); }
+function _krEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _krCalc(){
+  var d = KR.d, sp = _krSpan(d.nyusha), own = sp ? sp.total : 0;
+  var oth = (parseInt(d.othY||0,10)||0)*12 + (parseInt(d.othM||0,10)||0);
+  return { own:own, oth:oth, total:own+oth, ok:!!sp };
+}
+// 経歴書の見た目（A4・様式どおり）
+function _krSheetHtml(){
+  var d = KR.d, c = _krCalc();
+  var line = function(lab, val){ return '<div style="display:flex;gap:0;margin:0 0 18px;"><span style="width:110px;flex:none;">'+lab+'：</span><span style="flex:1;">'+(val||'<span style="color:#cbd5e1;">（未入力）</span>')+'</span></div>'; };
+  return '<div id="krSheet" style="width:794px;height:1123px;box-sizing:border-box;padding:110px 100px;background:#fff;color:#000;font-family:\'Hiragino Mincho ProN\',\'Yu Mincho\',\'MS Mincho\',serif;font-size:17px;line-height:1.7;">'
+    + '<div style="font-size:16px;">（別紙）</div>'
+    + '<div style="text-align:center;font-size:26px;letter-spacing:12px;margin:26px 0 54px;">経歴書</div>'
+    + line('氏　　名', _krEsc(d.name))
+    + line('生年月日', _krWareki(d.birth))
+    + line('現 住 所', _krEsc(d.addr))
+    + line('最終学歴', _krEsc(d.school))
+    + '<div style="display:flex;margin:0 0 4px;"><span style="width:110px;flex:none;">入 社 日：</span><span>'+(_krWareki(d.nyusha)||'<span style="color:#cbd5e1;">（未入力）</span>')+'</span></div>'
+    + '<div style="margin:0 0 18px 110px;">現在に至る</div>'
+    + '<div style="display:flex;margin:0 0 4px;"><span style="width:110px;flex:none;">経験年数：</span><span>'+(d.gyoshu?_krEsc(d.gyoshu)+'　':'')+(c.ok?_krYM(c.total):'')+'</span></div>'
+    + '<div style="margin:0 0 50px 110px;">'+(c.ok?'自社経験'+_krYM(c.own)+'、同業他社経験'+_krYM(c.oth)+'、合計'+_krYM(c.total):'')+'</div>'
+    + '<div style="margin:0 0 40px;">上記の通り相違ありません。</div>'
+    + '<div style="margin:0 0 50px;">'+_krWareki(d.date||_krToday())+'</div>'
+    + '<div style="display:flex;"><span style="width:110px;flex:none;">証明者：</span><span>'+_krEsc(d.coName)+'</span></div>'
+    + '<div style="margin:6px 0 0 110px;text-align:right;">'+_krEsc(d.rep)+'</div>'
+    + '</div>';
+}
+function _krWarn(){
+  var c = _krCalc(), w = [];
+  if(c.ok && (c.total < 36 || c.total > 180)) w.push('経験年数が'+(c.total<36?'3年より短い':'15年より長い')+'方です。国交省の申請では、経験3〜15年の方の経歴書が必要です。別の方にできないか、ご確認ください。');
+  return w;
+}
+function _krPaint(){
+  var pv = document.getElementById('krPreview'); if(pv){ pv.innerHTML = _krSheetHtml(); }
+  var w = document.getElementById('krWarn'); if(w){ var a=_krWarn(); w.innerHTML = a.map(function(t){ return '⚠️ '+_krEsc(t); }).join('<br>'); w.style.display = a.length?'':'none'; }
+  var c = _krCalc(), e = document.getElementById('krExp'); if(e) e.textContent = c.ok ? ('自社 '+_krYM(c.own)+' ＋ 他社 '+_krYM(c.oth)+' ＝ 合計 '+_krYM(c.total)) : '入社日を入れると自動で計算します';
+}
+function _krSet(k, v){ KR.d[k] = v; _krSave(); _krPaint(); }
+function openKeirekiForm(key){
+  KR.key = key;
+  KR.d = _krLoad() || {};
+  if(!KR.d.coName) KR.d.coName = COMPANY_NAME || '';
+  if(!KR.d.date) KR.d.date = _krToday();
+  var old = document.getElementById('krModal'); if(old) old.remove();
+  var ov = document.createElement('div'); ov.id = 'krModal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:10px;';
+  var inp = function(k, lab, type, ph, note){ return '<label style="display:block;margin-bottom:10px;"><span style="display:block;font-size:12px;font-weight:800;color:#1e293b;margin-bottom:3px;">'+lab+'</span><input type="'+(type||'text')+'" value="'+_krEsc(KR.d[k]||'')+'" placeholder="'+_krEsc(ph||'')+'" oninput="_krSet(\''+k+'\',this.value)" '+(type==='text'||!type?'list="'+(k==='gyoshu'?'krGyoshuList':'')+'"':'')+' style="width:100%;box-sizing:border-box;font-size:14px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;">'+(note?'<span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">'+note+'</span>':'')+'</label>'; };
+  ov.innerHTML = '<div style="background:#fff;border-radius:12px;width:100%;max-width:1180px;max-height:96vh;display:flex;flex-direction:column;overflow:hidden;">'
+    + '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#eff6ff;border-bottom:1px solid #bfdbfe;"><b style="font-size:14px;color:#1e3a5f;">✍ 経歴書を入力して作る</b><span style="flex:1"></span><button onclick="document.getElementById(\'krModal\').remove()" style="font-size:12px;font-weight:700;padding:5px 12px;border:1px solid #cbd5e1;background:#fff;border-radius:7px;cursor:pointer;">✕ 閉じる</button></div>'
+    + '<div style="flex:1;overflow:auto;display:flex;flex-wrap:wrap;gap:14px;padding:12px 14px;">'
+    + '<div style="flex:1 1 340px;min-width:280px;">'
+    + '<div style="font-size:11.5px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.7;">📌 <b>「10. 賃金台帳」を出していただく方と同じ方</b>の経歴書にしてください。<br>📌 建設の<b>経験が3年以上15年以下</b>の日本人の方を選んでください（特定技能外国人と同等の技能の方）。</div>'
+    + inp('name','氏名','text','例：国土 太郎')
+    + inp('birth','生年月日','date')
+    + inp('addr','現住所','text','例：東京都千代田区霞が関２－１－３')
+    + inp('school','最終学歴','text','例：○○高等学校卒業')
+    + inp('nyusha','入社日（貴社に入った日）','date','','今日までの自社での経験を自動で計算します')
+    + inp('gyoshu','経験業種名','text','例：とび・土工、鉄筋、型枠施工、建設機械施工','外国人の方と同じ仕事の名前を入れてください')
+    + '<div style="display:flex;gap:8px;"><label style="flex:1;"><span style="display:block;font-size:12px;font-weight:800;color:#1e293b;margin-bottom:3px;">同業他社での経験（年）</span><input type="number" min="0" max="50" value="'+_krEsc(KR.d.othY||'')+'" placeholder="0" oninput="_krSet(\'othY\',this.value)" style="width:100%;box-sizing:border-box;font-size:14px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;"></label><label style="flex:1;"><span style="display:block;font-size:12px;font-weight:800;color:#1e293b;margin-bottom:3px;">（か月）</span><input type="number" min="0" max="11" value="'+_krEsc(KR.d.othM||'')+'" placeholder="0" oninput="_krSet(\'othM\',this.value)" style="width:100%;box-sizing:border-box;font-size:14px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;"></label></div>'
+    + '<div id="krExp" style="font-size:12px;font-weight:800;color:#1d4ed8;margin:6px 0 10px;"></div>'
+    + '<div id="krWarn" style="display:none;font-size:11.5px;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.7;"></div>'
+    + inp('coName','証明者（会社名）','text')
+    + inp('rep','代表者の役職・氏名','text','例：代表取締役　国土　交通')
+    + inp('date','証明する日','date')
+    + '<datalist id="krGyoshuList"><option value="とび・土工"><option value="鉄筋施工"><option value="型枠施工"><option value="建設機械施工"><option value="内装仕上げ"><option value="左官"><option value="塗装"><option value="配管"><option value="電気通信"><option value="屋根ふき"><option value="建築大工"><option value="土木"><option value="建築"><option value="ライフライン・設備"></datalist>'
+    + '<button id="krMake" onclick="_krMakePdf()" style="width:100%;font-size:14px;font-weight:800;padding:11px;border:none;border-radius:9px;background:#1a56db;color:#fff;cursor:pointer;margin-top:4px;">📄 この内容でPDFを作って添付する</button>'
+    + '<div style="font-size:11px;color:#64748b;margin-top:6px;line-height:1.6;">押印は不要です。添付したら、ページ下の「送信」を押してください。入力した内容はこの端末に残るので、途中でやめても続きから書けます。</div>'
+    + '</div>'
+    + '<div style="flex:1 1 420px;min-width:300px;"><div style="font-size:11.5px;font-weight:800;color:#475569;margin-bottom:5px;">できあがりの見た目（入力するとすぐ変わります）</div><div style="border:1px solid #e2e8f0;border-radius:8px;background:#f1f5f9;padding:8px;overflow:hidden;"><div id="krPreviewWrap" style="transform-origin:top left;"><div id="krPreview"></div></div></div></div>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  var fit = function(){ var w = document.getElementById('krPreviewWrap'); if(!w) return; var pw = w.parentNode.clientWidth - 16, sc = Math.min(1, pw/794); w.style.transform = 'scale('+sc+')'; w.parentNode.style.height = (1123*sc+16)+'px'; };
+  _krPaint(); setTimeout(fit, 0); window.addEventListener('resize', fit);
+}
+async function _krMakePdf(){
+  var d = KR.d, miss = [];
+  [['name','氏名'],['birth','生年月日'],['addr','現住所'],['school','最終学歴'],['nyusha','入社日'],['gyoshu','経験業種名'],['coName','証明者（会社名）'],['rep','代表者の役職・氏名']].forEach(function(x){ if(!String(d[x[0]]||'').trim()) miss.push(x[1]); });
+  if(miss.length){ alert('まだ入っていない項目があります：\n・' + miss.join('\n・')); return; }
+  var w = _krWarn();
+  if(w.length && !confirm(w.join('\n') + '\n\nこのまま作りますか？')) return;
+  if(typeof html2canvas === 'undefined' || !window.jspdf){ alert('PDFを作る部品を読み込めませんでした。通信状態を確かめて、ページを開き直してください。'); return; }
+  var btn = document.getElementById('krMake'); if(btn){ btn.disabled = true; btn.textContent = '⏳ PDFを作っています…'; }
+  try{
+    var host = document.createElement('div'); host.style.cssText = 'position:fixed;left:-10000px;top:0;'; host.innerHTML = _krSheetHtml(); document.body.appendChild(host);
+    var canvas = await html2canvas(host.firstChild, { scale:2, backgroundColor:'#ffffff' });
+    host.remove();
+    var pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4' });
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
+    var b64 = pdf.output('datauristring').split(',')[1];
+    var fname = '経歴書_' + String(d.name).replace(/[\\\/:*?"<>|\s　]+/g,'') + '.pdf';
+    if(!fileData[KR.key]) fileData[KR.key] = [];
+    fileData[KR.key] = fileData[KR.key].filter(function(f){ return !/^経歴書_/.test(f.name); });
+    fileData[KR.key].push({ name:fname, mimeType:'application/pdf', base64:b64 });
+    var m = document.getElementById('krModal'); if(m) m.remove();
+    buildAllFields(); updateSubmitBtn();
+    alert('経歴書（PDF）を添付しました。\nページ下の「送信」を押すと提出されます。');
+  }catch(e){
+    console.error(e); alert('PDFを作れませんでした。もう一度お試しください。');
+    if(btn){ btn.disabled = false; btn.textContent = '📄 この内容でPDFを作って添付する'; }
+  }
+}
+
 </script>
 </body>
 </html>
