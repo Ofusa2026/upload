@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- company_dataup ver.20261109.01 - 納税証明書（その３）・社会保険料・労働保険の「✍ 入力して申請書を作る」：答えると forms/ の様式に会社名・住所・代表者・法人番号・事業所整理記号・労働保険番号などを入れた印刷用PDFができる（印刷→押印→郵送）。入力内容は端末にだけ残す。 -->
 <!-- company_dataup ver.20261016.02 - 個人事業主の「納税証明書その3（5項目）」に5税目（源泉所得税及び復興特別所得税／申告所得税及び復興特別所得税／消費税及び地方消費税／相続税／贈与税）の「未納なし」確認（まとめて1チェック）、「確定申告書（直近3年分）」に3年分の有無の質問を追加（未回答ならアップロード不可、3年未満の回答はdoc_note（担当者向けメモ）に保存）。 -->
 <!-- company_dataup ver.20261016.01 - 個人事業主の住民票にも「アップロード前に確認してください」（マイナンバーの記載なし／本籍の記載あり）を追加。両方チェックするまでアップロードできない -->
 <!-- company_dataup ver.20261008.01 - 納税証明書（その３）に税目ごと（源泉所得税及び復興特別所得税／法人税／消費税及び地方消費税）の「未納なし」確認チェックを追加。3つすべて確認するとアップロード可。 -->
@@ -658,8 +659,8 @@ var COMPANY_DOC_SAMPLES = {
   tokibo:        { image:'samples/tokibo_sample.png',        note:'法務局またはオンライン（登記・供託オンライン申請システム）で取得。「履歴事項全部証明書」を取得してください（現在事項証明書は不可の場合あり）。発行から3か月以内のもの。' },
   zeimu_3:       { image:'samples/zeimu_3_sample.png',       note:'税務署発行の「納税証明書（その３）」。税目＝源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税。未納がないことの証明。', form:{ file:'forms/zeimu_3_form.pdf', label:'納税証明書交付請求書（税務署）' } },
   zeimu_shimin:  { image:'samples/zeimu_shimin_sample.png',  note:'市区町村発行の法人住民税の納税証明書（直近2年度分）。' },
-  rodo_hoken:    { image:'samples/rodo_hoken_sample.png',    note:'労働保険料等の未納なし証明。入管申請の際は、添付のフォーマットでの提出が必要となります。添付フォーマットの黄色箇所をご記入のうえ、返信用封筒を同封し、管轄の労働局へご送付いただきますようお願いいたします。押印済みの書類が返送されますので、返送された書類をご提出ください。', form:{ file:'forms/rodo_hoken_form.pdf', label:'労働保険料等納付証明書（特定技能外国人関係申請用）' } },
-  shakai_hoken:  { images:[{src:'samples/shakai_hoken_sample.png',label:'Ver.1 社会保険料納入証明書'},{src:'samples/shakai_hoken_sample2.png',label:'Ver.2 社会保険料納入状況照会回答票'}],  note:'年金事務所の「社会保険料納入状況照会回答票」、または「社会保険料納入証明書」「健康保険・厚生年金保険料の領収証書の写し」（申請月の前々月までの24か月分）。いずれかでOK。健康保険料の納入額が「0円」と記載されている場合は、同じ期間の支払いが完了していることを確認できる書類もあわせてご提出ください。', form:{ file:'forms/shakai_hoken_form.pdf', label:'社会保険料納付記録 交付申請書（特定技能・適用事業所用）' } },
+  rodo_hoken:    { form:{ file:'forms/rodo_hoken_form.pdf', label:'労働保険料等納付証明書' }, image:'samples/rodo_hoken_sample.png',    note:'労働保険料等の未納なし証明。入管申請の際は、添付のフォーマットでの提出が必要となります。添付フォーマットの黄色箇所をご記入のうえ、返信用封筒を同封し、管轄の労働局へご送付いただきますようお願いいたします。押印済みの書類が返送されますので、返送された書類をご提出ください。', form:{ file:'forms/rodo_hoken_form.pdf', label:'労働保険料等納付証明書（特定技能外国人関係申請用）' } },
+  shakai_hoken:  { form:{ file:'forms/shakai_hoken_form.pdf', label:'社会保険料納付記録交付申請書' }, images:[{src:'samples/shakai_hoken_sample.png',label:'Ver.1 社会保険料納入証明書'},{src:'samples/shakai_hoken_sample2.png',label:'Ver.2 社会保険料納入状況照会回答票'}],  note:'年金事務所の「社会保険料納入状況照会回答票」、または「社会保険料納入証明書」「健康保険・厚生年金保険料の領収証書の写し」（申請月の前々月までの24か月分）。いずれかでOK。健康保険料の納入額が「0円」と記載されている場合は、同じ期間の支払いが完了していることを確認できる書類もあわせてご提出ください。', form:{ file:'forms/shakai_hoken_form.pdf', label:'社会保険料納付記録 交付申請書（特定技能・適用事業所用）' } },
   jumin_hyo:     { image:'samples/jumin_hyo_sample.png',     note:'業務執行に関与する役員（代表で1名分）の住民票の写し。マイナンバーの記載がなく、本籍の記載があるものを取得してください。' },
   kessan:        { image:'samples/kessan_sample.png',        note:'直近3期分の決算文書（損益計算書及び貸借対照表）の写し。' },
   kakutei_shinkoku: { images:[{src:'samples/kakutei_shinkoku_sample1.jpg',label:'損益計算書'},{src:'samples/kakutei_shinkoku_sample2.jpg',label:'貸借対照表'}], note:'個人事業主の方は、直近3年分の確定申告書（青色申告決算書など）の写しをご提出ください。見本は青色申告決算書（不動産所得用）の例です。' },
@@ -723,10 +724,18 @@ function buildCompanySampleInline(label){
   }
   // ver.20260619.07: 取得用の申請書（PDF）ダウンロードボタン
   if(smp.form && smp.form.file){
+    // ver.20261109.01: 入力して申請書を作る（おすすめ）
+    if(k==='zeimu_3' || k==='shakai_hoken' || k==='rodo_hoken'){
+      var mb=document.createElement('button'); mb.type='button';
+      mb.style.cssText='display:inline-block;margin:0 6px 10px 0;padding:9px 14px;background:#059669;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;line-height:1.4;';
+      mb.textContent='✍ 入力して申請書を作る（おすすめ）';
+      mb.onclick=function(ev){ ev.preventDefault(); ev.stopPropagation(); openSinseiForm(k); };
+      box.appendChild(mb);
+    }
     var fb=document.createElement('a');
     fb.href=smp.form.file; fb.target='_blank'; fb.rel='noopener';
     fb.style.cssText='display:inline-block;margin:0 0 10px;padding:9px 14px;background:#1a56db;color:#fff;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;line-height:1.4;';
-    fb.textContent='\uD83D\uDCDD '+(smp.form.label||'取得用の申請書')+'（PDF）をダウンロード';
+    fb.textContent='\uD83D\uDCDD '+(smp.form.label||'取得用の申請書')+'（白紙PDF）をダウンロード';
     box.appendChild(fb);
   }
   // ver.20260619.10: 複数見本（images配列）対応
@@ -1481,6 +1490,128 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
     progressBar.style.width = '0%';
   }, 1200);
 });
+// ===== ver.20261109.01: 申請書を入力して作る（納税証明書交付請求書・社会保険料納付記録交付申請書・労働保険料等納付証明書） =====
+//   forms/ の様式（PDF）を pdf.js で描いて、その上に入力した内容を書き、jsPDF で印刷用PDFにする。会社は印刷→押印→郵送。
+//   入力内容はこの端末にだけ残す（localStorage）。サーバーには送らない。
+var SF = { d:{}, sel:{} };
+var SF_FORMS = {
+  zeimu_3:      { file:'forms/zeimu_3_form.pdf',      page:1, label:'納税証明書交付請求書（税務署）',          need:['coName','addr','rep','houjin','zeimusho'] },
+  shakai_hoken: { file:'forms/shakai_hoken_form.pdf', page:1, label:'社会保険料納付記録交付申請書（年金機構）', need:['coName','addr','rep','tel','nenkin','seiri'] },
+  rodo_hoken:   { file:'forms/rodo_hoken_form.pdf',   page:1, label:'労働保険料等納付証明書（労働局）',        need:['coName','addr','rep','roudou','rhNo'] }
+};
+function _sfKey(){ return 'co_sinsei_' + (COMPANY_ID || 'x'); }
+function _sfLoad(){ try{ var v = localStorage.getItem(_sfKey()); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+function _sfSave(){ try{ localStorage.setItem(_sfKey(), JSON.stringify(SF.d)); }catch(e){} }
+function _sfEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _sfDigits(s){ return String(s||'').normalize('NFKC').replace(/[^0-9]/g,''); }
+function _sfToday(){ return new Date(Date.now()+9*3600e3).toISOString().slice(0,10); }
+function openSinseiForm(first){
+  SF.d = _sfLoad() || {};
+  if(!SF.d.coName) SF.d.coName = COMPANY_NAME || '';
+  ['zs','nk','rk'].forEach(function(p){ var v = urlParams.get(p); if(v){ var k = {zs:'zeimusho',nk:'nenkin',rk:'roudou'}[p]; if(!SF.d[k]) SF.d[k] = v; } });
+  SF.sel = {}; SF.sel[first] = true;
+  _sfRender();
+}
+function _sfSet(k, v){ SF.d[k] = v; _sfSave(); }
+function _sfRender(){
+  var old = document.getElementById('sfModal'); if(old) old.remove();
+  var ov = document.createElement('div'); ov.id = 'sfModal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:10px;';
+  var need = {}; Object.keys(SF.sel).forEach(function(k){ if(SF.sel[k]) SF_FORMS[k].need.forEach(function(n){ need[n] = 1; }); });
+  var inp = function(k, lab, ph, note, type){ if(!need[k]) return ''; return '<label style="display:block;margin-bottom:10px;"><span style="display:block;font-size:12px;font-weight:800;color:#1e293b;margin-bottom:3px;">'+lab+'</span><input type="'+(type||'text')+'" value="'+_sfEsc(SF.d[k]||'')+'" placeholder="'+_sfEsc(ph||'')+'" oninput="_sfSet(\''+k+'\',this.value)" style="width:100%;box-sizing:border-box;font-size:14px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;">'+(note?'<span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">'+note+'</span>':'')+'</label>'; };
+  var h = '<div style="background:#fff;border-radius:12px;width:100%;max-width:620px;max-height:96vh;display:flex;flex-direction:column;overflow:hidden;">'
+    + '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#eff6ff;border-bottom:1px solid #bfdbfe;"><b style="font-size:14px;color:#1e3a5f;">✍ 申請書を入力して作る</b><span style="flex:1"></span><button onclick="document.getElementById(\'sfModal\').remove()" style="font-size:12px;font-weight:700;padding:5px 12px;border:1px solid #cbd5e1;background:#fff;border-radius:7px;cursor:pointer;">✕ 閉じる</button></div>'
+    + '<div style="flex:1;overflow:auto;padding:12px 14px;">'
+    + '<div style="font-size:12px;color:#334155;line-height:1.7;margin-bottom:10px;">答えると、入力済みの申請書（PDF）ができます。<b>印刷して代表者印を押し</b>、送り先へ郵送してください（送り先・同封するものは書類の説明をご覧ください）。</div>'
+    + '<div style="font-size:12px;font-weight:800;color:#1e293b;margin-bottom:4px;">作る申請書</div>'
+    + Object.keys(SF_FORMS).map(function(k){ return '<label style="display:flex;gap:7px;align-items:center;font-size:13px;margin:4px 0;"><input type="checkbox" '+(SF.sel[k]?'checked':'')+' onchange="SF.sel[\''+k+'\']=this.checked;_sfRender()">'+_sfEsc(SF_FORMS[k].label)+'</label>'; }).join('')
+    + '<div style="height:8px"></div>'
+    + inp('coName','会社名（法人名）','例：株式会社○○')
+    + inp('kana','会社名のフリガナ','例：カブシキガイシャ○○')
+    + inp('zip','本店の郵便番号','例：144-0052')
+    + inp('addr','本店の所在地','例：東京都大田区蒲田5-11-10')
+    + inp('rep','代表者の役職・氏名','例：代表取締役　国土　太郎')
+    + inp('tel','電話番号','例：03-1234-5678')
+    + inp('houjin','法人番号（13けた）','','国税庁の法人番号公表サイトで調べられます')
+    + inp('zeimusho','送り先の税務署の名前','例：蒲田','「○○税務署」の○○だけ')
+    + inp('nenkin','管轄の年金事務所の名前','例：大田年金事務所')
+    + inp('seiri','事業所整理記号','例：00-アイウ','年金事務所からの通知や保険料の納入告知書に書かれています')
+    + inp('jno','事業所番号','例：1234')
+    + inp('roudou','労働局（都道府県名）','例：東京','「○○労働局長殿」の○○だけ')
+    + inp('rhNo','労働保険番号（14けた）','例：13101123456000','労働保険の申告書の控えに書かれています')
+    + (Object.keys(SF.sel).some(function(k){ return SF.sel[k]; }) ? '<button id="sfMake" onclick="_sfMake()" style="width:100%;font-size:14px;font-weight:800;padding:11px;border:none;border-radius:9px;background:#1a56db;color:#fff;cursor:pointer;margin-top:4px;">📄 申請書（PDF）を作る</button>' : '<div style="font-size:12px;color:#94a3b8;">作る申請書を選んでください。</div>')
+    + '<div style="font-size:11px;color:#64748b;margin-top:6px;line-height:1.6;">入力した内容はこの端末にだけ残ります（次に作るときも使えます）。わからない欄は空けたままでも作れます（印刷してから手で書けます）。</div>'
+    + '</div></div>';
+  ov.innerHTML = h; document.body.appendChild(ov);
+}
+var _sfLibP = null;
+function _sfLoadLibs(){
+  if(_sfLibP) return _sfLibP;
+  var ld = function(src){ return new Promise(function(res, rej){ var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); };
+  _sfLibP = Promise.all([
+    window.pdfjsLib ? null : ld('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'),
+    window.jspdf ? null : ld('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+  ]).then(function(){ window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; });
+  return _sfLibP;
+}
+// 様式の上に書く位置（ポイント・左上から）
+function _sfDraw(key, g, d){
+  var S = 2, F = '"Hiragino Mincho ProN","Yu Mincho","MS Mincho","Noto Serif JP",serif';
+  var t = function(x, y, s, size, align){ if(!s) return; g.font = (size||11)*S + 'px ' + F; g.fillStyle = '#000'; g.textAlign = align||'left'; g.fillText(String(s), x*S, y*S); };
+  var fit = function(x, y, s, maxW, size){ if(!s) return; var z = size||11; g.font = z*S + 'px ' + F; while(z > 6 && g.measureText(String(s)).width > maxW*S){ z -= 0.5; g.font = z*S + 'px ' + F; } t(x, y, s, z); };
+  var boxes = function(x0, y, w, digits, size){ String(digits).split('').forEach(function(c, i){ t(x0 + w*(i+0.5), y, c, size||11, 'center'); }); };
+  var td = (d.date || _sfToday()).split('-'), ry = (+td[0]) - 2018;
+  if(key === 'zeimu_3'){
+    t(88, 83, d.zeimusho, 11, 'right');
+    t(418, 93, '令和'+ry, 10, 'right'); t(460, 93, String(+td[1]), 10, 'right'); t(500, 93, String(+td[2]), 10, 'right');
+    fit(300, 113, (d.zip?'〒'+d.zip+' ':'')+(d.addr||''), 240, 10);
+    fit(300, 133, d.kana, 240, 8);
+    fit(300, 153, d.coName, 210, 11);
+    fit(300, 168, d.rep, 210, 10);
+    var hj = _sfDigits(d.houjin); if(hj.length === 13) boxes(296, 197, 18.8, hj, 11);
+  } else if(key === 'shakai_hoken'){
+    t(433, 147, td[0], 9, 'right'); t(462, 147, String(+td[1]), 9, 'right'); t(490, 147, String(+td[2]), 9, 'right');
+    fit(56, 178, d.nenkin, 92, 10); fit(154, 178, d.seiri, 92, 10); fit(251, 178, d.jno, 92, 10);
+    if(d.zip) t(158, 206, d.zip, 9);
+    fit(150, 222, d.addr, 390, 11);
+    fit(150, 250, d.coName, 390, 11);
+    fit(150, 280, d.rep, 270, 11);
+    fit(150, 309, d.tel, 390, 11);
+  } else if(key === 'rodo_hoken'){
+    t(383, 158, '令和'+ry, 10, 'right'); t(420, 158, String(+td[1]), 10, 'right'); t(458, 158, String(+td[2]), 10, 'right');
+    t(155, 207, d.roudou, 11, 'right');
+    fit(312, 244, (d.zip?'〒'+d.zip+' ':'')+(d.addr||''), 182, 10);
+    fit(312, 268, d.coName, 182, 11);
+    fit(312, 295, d.rep, 182, 11);
+    var rn = _sfDigits(d.rhNo); if(rn.length === 14) boxes(194, 410, 19, rn, 10);
+  }
+}
+async function _sfMake(){
+  var btn = document.getElementById('sfMake'); if(btn){ btn.disabled = true; btn.textContent = '⏳ 作っています…'; }
+  try{
+    await _sfLoadLibs();
+    var pdf = null, keys = Object.keys(SF_FORMS).filter(function(k){ return SF.sel[k]; });
+    for(var i=0;i<keys.length;i++){
+      var f = SF_FORMS[keys[i]];
+      var doc = await window.pdfjsLib.getDocument(new URL(f.file, location.href).href).promise;
+      var page = await doc.getPage(f.page), vp = page.getViewport({ scale:2 });
+      var cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height;
+      var g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+      await page.render({ canvasContext:g, viewport:vp }).promise;
+      _sfDraw(keys[i], g, SF.d);
+      if(!pdf) pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4' }); else pdf.addPage('a4');
+      pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
+    }
+    var name = '申請書_' + String(SF.d.coName||'').replace(/[\\\/:*?"<>|\s　]+/g,'') + '.pdf';
+    pdf.save(name);
+    if(btn){ btn.disabled = false; btn.textContent = '📄 申請書（PDF）を作る'; }
+    alert('申請書（PDF）を保存しました。\n印刷して代表者印を押し、送り先へ郵送してください。\n取れた証明書は、このページからアップロードしてください。');
+  }catch(e){
+    console.error(e); alert('申請書を作れませんでした。通信状態を確かめて、もう一度お試しください。');
+    if(btn){ btn.disabled = false; btn.textContent = '📄 申請書（PDF）を作る'; }
+  }
+}
+
 </script>
 </body>
 </html>
