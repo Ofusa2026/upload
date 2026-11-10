@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- ver.20261110.01: 経歴書の入力画面に「🖼 画像（JPG）で作って添付する」を追加（スマホでも軽く作れる）。PDFと同じ見た目・同じ入力チェック。作る処理は _krMake(kind) の1箇所 -->
 <!-- ver.20261109.03: 履歴書の読み取り（📎 履歴書を選ぶ）をやめた（入力画面から外した） -->
 <!-- ver.20261109.02: 経歴書フォームに「📎 履歴書を選ぶ」を追加。AI（edge function keireki-ocr）で氏名・生年月日・住所・最終学歴・職歴を読み取り、空欄だけ埋める（黄色＝確認してください）。前の会社は建設っぽいものにチェック→同業他社経験に合算。履歴書は保存しない
      URLに keireki=1 を付けると「11. 経歴書」の入力画面がすぐ開く（案シスから経歴書の入力URLとして送れる） -->
@@ -1322,7 +1323,9 @@ function openKeirekiForm(key){
     + inp('rep','代表者の役職・氏名','text','例：代表取締役　国土　交通')
     + inp('date','証明する日','date')
     + '<datalist id="krGyoshuList"><option value="とび・土工"><option value="鉄筋施工"><option value="型枠施工"><option value="建設機械施工"><option value="内装仕上げ"><option value="左官"><option value="塗装"><option value="配管"><option value="電気通信"><option value="屋根ふき"><option value="建築大工"><option value="土木"><option value="建築"><option value="ライフライン・設備"></datalist>'
-    + '<button id="krMake" onclick="_krMakePdf()" style="width:100%;font-size:14px;font-weight:800;padding:11px;border:none;border-radius:9px;background:#1a56db;color:#fff;cursor:pointer;margin-top:4px;">📄 この内容でPDFを作って添付する</button>'
+    + '<button id="krMake" onclick="_krMake(\'pdf\')" style="width:100%;font-size:14px;font-weight:800;padding:11px;border:none;border-radius:9px;background:#1a56db;color:#fff;cursor:pointer;margin-top:4px;">📄 この内容でPDFを作って添付する</button>'
+    + '<button id="krMakeImg" onclick="_krMake(\'img\')" style="width:100%;font-size:13.5px;font-weight:800;padding:10px;border:1.5px solid #1a56db;border-radius:9px;background:#fff;color:#1a56db;cursor:pointer;margin-top:8px;">🖼 画像（JPG）で作って添付する</button>'
+    + '<div style="font-size:11px;color:#475569;margin-top:4px;line-height:1.6;">スマホで作るときは、画像のほうが軽くすぐできます。どちらで出していただいても大丈夫です。</div>'
     + '<div style="font-size:11px;color:#64748b;margin-top:6px;line-height:1.6;">押印は不要です。添付したら、ページ下の「送信」を押してください。入力した内容はこの端末に残るので、途中でやめても続きから書けます。</div>'
     + '</div>'
     + '<div style="flex:1 1 420px;min-width:300px;"><div style="font-size:11.5px;font-weight:800;color:#475569;margin-bottom:5px;">できあがりの見た目（入力するとすぐ変わります）</div><div style="border:1px solid #e2e8f0;border-radius:8px;background:#f1f5f9;padding:8px;overflow:hidden;"><div id="krPreviewWrap" style="transform-origin:top left;"><div id="krPreview"></div></div></div></div>'
@@ -1378,31 +1381,45 @@ async function _krOcr(file){
     var st2 = document.getElementById('krOcrSt'); if(st2){ st2.textContent = '✅ 読み取りました。黄色の欄を確認してください（すでに入っていた欄はそのままです）'; st2.style.color = '#047857'; }
   }catch(e){ console.error(e); say('⚠️ 読み取りでエラーになりました。手で入力してください', '#b91c1c'); }
 }
-async function _krMakePdf(){
+// ver.20261110.01: PDF（kind='pdf'）と画像（kind='img'）のどちらでも作れる。作る処理はここ1箇所だけ
+function _krMakePdf(){ return _krMake('pdf'); }
+async function _krMake(kind){
+  var isImg = (kind === 'img');
   var d = KR.d, miss = [];
   [['name','氏名'],['birth','生年月日'],['addr','現住所'],['school','最終学歴'],['nyusha','入社日'],['gyoshu','経験業種名'],['coName','証明者（会社名）'],['rep','代表者の役職・氏名']].forEach(function(x){ if(!String(d[x[0]]||'').trim()) miss.push(x[1]); });
   if(miss.length){ alert('まだ入っていない項目があります：\n・' + miss.join('\n・')); return; }
   var w = _krWarn();
   if(w.length && !confirm(w.join('\n') + '\n\nこのまま作りますか？')) return;
-  if(typeof html2canvas === 'undefined' || !window.jspdf){ alert('PDFを作る部品を読み込めませんでした。通信状態を確かめて、ページを開き直してください。'); return; }
-  var btn = document.getElementById('krMake'); if(btn){ btn.disabled = true; btn.textContent = '⏳ PDFを作っています…'; }
+  if(typeof html2canvas === 'undefined' || (!isImg && !window.jspdf)){ alert((isImg?'画像':'PDF')+'を作る部品を読み込めませんでした。通信状態を確かめて、ページを開き直してください。'); return; }
+  var ids = ['krMake','krMakeImg'], keep = {};
+  ids.forEach(function(id){ var b=document.getElementById(id); if(b){ keep[id]=b.textContent; b.disabled=true; b.style.opacity='.6'; } });
+  var me = document.getElementById(isImg ? 'krMakeImg' : 'krMake'); if(me) me.textContent = isImg ? '⏳ 画像を作っています…' : '⏳ PDFを作っています…';
+  var host = null;
   try{
-    var host = document.createElement('div'); host.style.cssText = 'position:fixed;left:-10000px;top:0;'; host.innerHTML = _krSheetHtml(); document.body.appendChild(host);
-    var canvas = await html2canvas(host.firstChild, { scale:2, backgroundColor:'#ffffff' });
-    host.remove();
-    var pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4' });
-    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
-    var b64 = pdf.output('datauristring').split(',')[1];
-    var fname = '経歴書_' + String(d.name).replace(/[\\\/:*?"<>|\s　]+/g,'') + '.pdf';
+    host = document.createElement('div'); host.style.cssText = 'position:fixed;left:-10000px;top:0;'; host.innerHTML = _krSheetHtml(); document.body.appendChild(host);
+    // 画像はスマホでも軽く作れるよう少し小さめ（A4で約1.5倍＝1191×1684）。PDFは今までどおり2倍
+    var canvas = await html2canvas(host.firstChild, { scale: isImg ? 1.5 : 2, backgroundColor:'#ffffff' });
+    host.remove(); host = null;
+    var jpg = canvas.toDataURL('image/jpeg', 0.92), b64, fname, mime;
+    var base = '経歴書_' + String(d.name).replace(/[\\\/:*?"<>|\s　]+/g,'');
+    if(isImg){
+      b64 = jpg.split(',')[1]; fname = base + '.jpg'; mime = 'image/jpeg';
+    } else {
+      var pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4' });
+      pdf.addImage(jpg, 'JPEG', 0, 0, 210, 297);
+      b64 = pdf.output('datauristring').split(',')[1]; fname = base + '.pdf'; mime = 'application/pdf';
+    }
+    if(!b64) throw new Error('empty');
     if(!fileData[KR.key]) fileData[KR.key] = [];
-    fileData[KR.key] = fileData[KR.key].filter(function(f){ return !/^経歴書_/.test(f.name); });
-    fileData[KR.key].push({ name:fname, mimeType:'application/pdf', base64:b64 });
+    fileData[KR.key] = fileData[KR.key].filter(function(f){ return !/^経歴書_/.test(f.name); });   // 前に作った経歴書（PDF・画像とも）は入れ替える
+    fileData[KR.key].push({ name:fname, mimeType:mime, base64:b64 });
     var m = document.getElementById('krModal'); if(m) m.remove();
     buildAllFields(); updateSubmitBtn();
-    alert('経歴書（PDF）を添付しました。\nページ下の「送信」を押すと提出されます。');
+    alert('経歴書（' + (isImg ? '画像' : 'PDF') + '）を添付しました。\nページ下の「送信」を押すと提出されます。');
   }catch(e){
-    console.error(e); alert('PDFを作れませんでした。もう一度お試しください。');
-    if(btn){ btn.disabled = false; btn.textContent = '📄 この内容でPDFを作って添付する'; }
+    console.error(e); if(host) try{ host.remove(); }catch(_e){}
+    alert((isImg ? '画像' : 'PDF') + 'を作れませんでした。もう一度お試しください。' + (isImg ? '' : '\nうまくいかないときは「🖼 画像（JPG）で作って添付する」もお試しください。'));
+    ids.forEach(function(id){ var b=document.getElementById(id); if(b){ b.disabled=false; b.style.opacity=''; if(keep[id]) b.textContent=keep[id]; } });
   }
 }
 
