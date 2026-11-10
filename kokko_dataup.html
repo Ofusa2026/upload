@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- ver.20261110.02: 「7. 求人票」の見本を記入見本（注意書き①〜⑨つき・会社名などは伏せたもの）に差し替え。［📄 記入見本（PDF）］［✅ チェックリスト］のボタンを追加。見本の画像は押すと大きく開く -->
 <!-- ver.20261110.01: 経歴書の入力画面に「🖼 画像（JPG）で作って添付する」を追加（スマホでも軽く作れる）。PDFと同じ見た目・同じ入力チェック。作る処理は _krMake(kind) の1箇所 -->
 <!-- ver.20261109.03: 履歴書の読み取り（📎 履歴書を選ぶ）をやめた（入力画面から外した） -->
 <!-- ver.20261109.02: 経歴書フォームに「📎 履歴書を選ぶ」を追加。AI（edge function keireki-ocr）で氏名・生年月日・住所・最終学歴・職歴を読み取り、空欄だけ埋める（黄色＝確認してください）。前の会社は建設っぽいものにチェック→同業他社経験に合算。履歴書は保存しない
@@ -796,8 +797,9 @@ const KOKKO_DOC_META = {
   },
   '7. 求人票': {
     name:'ハローワークの求人票',
-    sample:'kokko_07_kyujin.png', slow:true,
-    desc:'ハローワークの求人票。\n・直近1年以内のもの\n・フルタイムかつ建築・土木の作業員で、特定技能外国人と同じ職種の募集であること\n・求人を出していない場合は新しく求人を出して提出\n・求人番号が掲載されているもの\n・「プレビュー」「無効」表記は不可',
+    sample:'kokko_07_kyujin.png?v=20261110', slow:true,
+    mihon:{ pdf:'kokko_07_kyujin_mihon.pdf', check:'kokko_07_kyujin_check.png', label:'記入見本（PDF）' },   // ver.20261110.02: 記入見本とチェックリスト（samples/ に置いてある）
+    desc:'ハローワークの求人票。記入見本（PDF）を参考に求人票を出してください。\n・直近1年以内のもの\n・フルタイムかつ建築・土木の作業員で、特定技能外国人と同じ職種の募集であること\n・求人を出していない場合は新しく求人を出して提出\n・求人番号が掲載されているもの\n・「プレビュー」「無効」表記は不可',
     place:'管轄のハローワーク。ハローワークインターネットサービスでオンライン作成も可：https://www.hellowork.mhlw.go.jp/'
   },
   '9. 就業規則および賃金規程': {
@@ -1011,8 +1013,21 @@ function buildAllFields() {
       sampleWrap.style.cssText = 'margin-top:6px;';
       sampleWrap.innerHTML = '<details style="font-size:11px;"><summary style="cursor:pointer;color:#2563eb;font-weight:700;">🖼️ 見本を見る</summary>'+
         '<div style="margin-top:6px;text-align:center;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:6px;">'+
-        '<img src="'+url+'" alt="見本" loading="lazy" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:4px;"></div></details>';
+        '<a href="'+url+'" target="_blank" rel="noopener"><img src="'+url+'" alt="見本" loading="lazy" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:4px;"></a>'+
+        '<div style="font-size:10px;color:#64748b;margin-top:2px;">画像を押すと大きく開きます</div></div></details>';
       labelEl.appendChild(sampleWrap);
+    }
+
+    // ver.20261110.02: 記入見本（PDF）とチェックリスト（いまは「7. 求人票」だけ）
+    if (meta && meta.mihon && labelEl) {
+      const mWrap = document.createElement('div');
+      mWrap.style.cssText = 'margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;';
+      const mk = function(file, text, bg){ const a = document.createElement('a'); a.href = KOKKO_SAMPLE_BASE + file; a.target = '_blank'; a.rel = 'noopener';
+        a.style.cssText = 'display:inline-block;background:'+bg+';color:#fff;font-size:11px;font-weight:800;border-radius:6px;padding:6px 12px;text-decoration:none;line-height:1.4;';
+        a.textContent = text; return a; };
+      if (meta.mihon.pdf) mWrap.appendChild(mk(meta.mihon.pdf, '📄 ' + (meta.mihon.label || '記入見本') + 'を開く', '#1a56db'));
+      if (meta.mihon.check) mWrap.appendChild(mk(meta.mihon.check, '✅ 提出前チェックリストを開く', '#059669'));
+      labelEl.appendChild(mWrap);
     }
 
     // ラベル下に注意書き 💡 + note
