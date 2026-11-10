@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- company_dataup ver.20261111.01 - 書類ごとに「📍 取れるところ」（会社の住所から窓口・オンラインのボタン）を出す。案シスに住所が無い会社は、最初に住所の入力画面（郵便番号から住所を入れる）。中身は Edge Function upload-offices -->
 <!-- company_dataup ver.20261109.01 - 納税証明書（その３）・社会保険料・労働保険の「✍ 入力して申請書を作る」：答えると forms/ の様式に会社名・住所・代表者・法人番号・事業所整理記号・労働保険番号などを入れた印刷用PDFができる（印刷→押印→郵送）。入力内容は端末にだけ残す。 -->
 <!-- company_dataup ver.20261016.02 - 個人事業主の「納税証明書その3（5項目）」に5税目（源泉所得税及び復興特別所得税／申告所得税及び復興特別所得税／消費税及び地方消費税／相続税／贈与税）の「未納なし」確認（まとめて1チェック）、「確定申告書（直近3年分）」に3年分の有無の質問を追加（未回答ならアップロード不可、3年未満の回答はdoc_note（担当者向けメモ）に保存）。 -->
 <!-- company_dataup ver.20261016.01 - 個人事業主の住民票にも「アップロード前に確認してください」（マイナンバーの記載なし／本籍の記載あり）を追加。両方チェックするまでアップロードできない -->
@@ -1353,6 +1354,146 @@ function _applyLiveDoneFromCoDocCheck(){
 }
 
 // ver.20260525.34: DBキャッシュから書類リストを取得してから初期描画
+var UPL_OFF_CFG = { lists:['fieldsListLarge','fieldsListNormal','fieldsListKojin'], hide:'.tabs-wrap, .tab-panel, #submitBtn', sum:['zei','to','nk','rk'] };   // 📍 取れるところ（下の ver.20261111.01）
+// ===== ver.20261111.01: 📍 書類を取るところ（貴社の住所から）と、住所の入力（案シスに住所が無いときだけ） =====
+//  ・窓口とオンラインのボタンは Edge Function upload-offices（大房DB）が返す。中身は案シスの判定そのまま（このページでは判定しない）
+//  ・住所が案シスに入っていない会社だけ、最初に住所の入力画面を出す（保存は住所が空のときだけ。上書きはしない）
+//  ・ページごとの違いは UPL_OFF_CFG の1箇所
+var UPL_OFF_URL = SB_URL + '/functions/v1/upload-offices';
+var _uplOff = null, _uplOffAsked = false;
+function _uplOffEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function _uplOffPost(body){
+  return fetch(UPL_OFF_URL, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(Object.assign({ company_id:COMPANY_ID }, body||{})) })
+    .then(function(r){ return r.json(); });
+}
+function _uplOffLabels(){ var m = window._docLabelMap || {}; return Object.keys(m).map(function(k){ return m[k]; }).filter(Boolean); }
+function _uplOffDone(key){
+  var i = parseInt(String(key||'').replace(/^d/,''), 10), d = (Array.isArray(DOCS_LIST) && !isNaN(i)) ? DOCS_LIST[i] : null;
+  if(d && (d.done || d.st === 'skip' || d.st === 'ofusa')) return true;   // 提出済み・不要・弊社作成には出さない
+  return !!(d && UPL_OFF_CFG.skipDoc && UPL_OFF_CFG.skipDoc(d.l || ''));
+}
+(function(){
+  var st = document.createElement('style');
+  st.textContent = ''
+    + '.upl-off{margin:0 14px 12px;padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12.5px;line-height:1.55;color:#14532d;}'
+    + '.upl-off .l2{color:#166534;}'
+    + '.upl-off a.upl-off-btn{display:inline-block;margin-top:7px;padding:7px 11px;border-radius:8px;background:#2563eb;color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;}'
+    + '.upl-off .upl-off-note{font-size:11.5px;color:#334155;margin-top:3px;}'
+    + '.upl-off .upl-off-none{font-size:11.5px;color:#64748b;margin-top:4px;}'
+    + '.upl-off-sum{margin:0 0 12px;padding:10px 12px;border:2px solid #16a34a;border-radius:10px;background:#f0fdf4;font-size:13px;line-height:1.6;color:#14532d;}'
+    + '.upl-off-sum .sm{font-size:12px;}'
+    + '.ag{border:2px solid #1a56db;border-radius:12px;padding:18px 16px;background:#f8fbff;margin:4px 0 18px;}'
+    + '.ag-step{display:inline-block;font-size:12px;font-weight:800;color:#fff;background:#1a56db;border-radius:99px;padding:2px 10px;}'
+    + '.ag h2{font-size:18px;margin:10px 0 6px;color:#1a202c;}'
+    + '.ag p{font-size:13.5px;color:#4a5568;line-height:1.7;margin:0 0 12px;}'
+    + '.ag label{display:block;font-size:13px;font-weight:700;color:#2d3748;margin:12px 0 4px;}'
+    + '.ag label small{font-weight:400;color:#718096;}'
+    + '.ag input{width:100%;box-sizing:border-box;font-size:16px;padding:10px 12px;border:1.5px solid #cbd5e1;border-radius:8px;background:#fff;}'
+    + '.ag .row{display:flex;gap:8px;}.ag .row input{flex:1;min-width:0;}'
+    + '.ag .zbtn{flex:none;font-size:13px;font-weight:800;padding:0 12px;border:1.5px solid #1a56db;background:#fff;color:#1a56db;border-radius:8px;cursor:pointer;}'
+    + '.ag .ok{display:none;font-size:12.5px;color:#057a55;margin-top:6px;}'
+    + '.ag .err{display:none;font-size:12.5px;color:#c81e1e;margin-top:10px;line-height:1.6;}'
+    + '.ag .go{margin-top:18px;width:100%;font-size:16px;font-weight:800;padding:14px;border:none;border-radius:10px;background:#1a56db;color:#fff;cursor:pointer;}'
+    + '.ag .go:disabled{background:#94a3b8;cursor:default;}'
+    + '.ag .skip{display:none;margin-top:10px;font-size:12.5px;color:#1a56db;text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;}'
+    + '.ag .note{font-size:12px;color:#718096;margin-top:10px;line-height:1.6;}'
+    + UPL_OFF_CFG.hide.split(',').map(function(s){ return 'body.ag-on '+s.trim(); }).join(',') + '{display:none !important;}';
+  document.head.appendChild(st);
+})();
+function _uplOffBoxHtml(b){
+  var h = '<b>📍 取れるところ'+(b.need ? '（要確認）' : '')+'：</b>';
+  (b.p||[]).forEach(function(t, i){ h += (i ? '<br><span class="l2">'+_uplOffEsc(t)+'</span>' : _uplOffEsc(t)); });
+  (b.on||[]).forEach(function(o){
+    h += '<div><a class="upl-off-btn" href="'+_uplOffEsc(o[1])+'" target="_blank" rel="noopener">🌐 '+_uplOffEsc(o[0])+' ↗</a>'+(o[2] ? '<div class="upl-off-note">'+_uplOffEsc(o[2])+'</div>' : '')+'</div>';
+  });
+  if(b.none) h += '<div class="upl-off-none">オンラインでは取れません（郵送・窓口で取れます）</div>';
+  return h;
+}
+function _uplOffSumHtml(){
+  var s = (_uplOff && _uplOff.sum) || {}, nm = { zei:'税務署', to:'都税・役所', nk:'年金事務所', rk:'労働局' };
+  var parts = UPL_OFF_CFG.sum.filter(function(k){ return s[k]; }).map(function(k){ return nm[k]+'＝'+_uplOffEsc(s[k]); });
+  return '<b>📍 貴社の住所（'+_uplOffEsc(_uplOff.addr || s.addr || '')+'）から、書類を取るところを出しています</b>'
+    + (parts.length ? '<br><span class="sm">'+parts.join('／')+'</span>' : '')
+    + '<br><span class="sm">🌐 の青いボタンは、オンラインで請求・確認できるページです（押すと開きます）</span>'
+    + '<br><span class="sm">住所がちがうときは、担当者にご連絡ください。</span>';
+}
+function _uplOffPaint(){
+  if(!_uplOff || !_uplOff.docs) return;
+  var M = window._docLabelMap || {};
+  UPL_OFF_CFG.lists.forEach(function(id){
+    var list = document.getElementById(id); if(!list) return;
+    list.querySelectorAll('.upl-off, .upl-off-sum').forEach(function(x){ x.remove(); });
+    var n = 0;
+    list.querySelectorAll('.field-row').forEach(function(row){
+      var key = row.dataset.key, b = _uplOff.docs[M[key]];
+      if(!b || _uplOffDone(key)) return;
+      var d = document.createElement('div'); d.className = 'upl-off'; d.innerHTML = _uplOffBoxHtml(b);
+      d.addEventListener('click', function(e){ e.stopPropagation(); });
+      var hd = row.querySelector('.field-header'); if(hd){ hd.insertAdjacentElement('afterend', d); n++; }
+    });
+    if(n){ var s = document.createElement('div'); s.className = 'upl-off-sum'; s.innerHTML = _uplOffSumHtml(); list.insertBefore(s, list.firstChild); }
+  });
+}
+function _uplOffStart(){
+  if(_uplOffAsked || !COMPANY_ID) return; _uplOffAsked = true;
+  _uplOffPost({ labels:_uplOffLabels() }).then(function(r){
+    if(!r || !r.ok) return;
+    if(r.hasAddr === false){ _uplOffGate(); return; }
+    _uplOff = r; _uplOffPaint();
+  }).catch(function(){ /* 窓口が出なくてもアップロードはできる */ });
+}
+function _uplOffGate(){
+  if(document.getElementById('uplAddrGate')) return;
+  if(UPL_OFF_CFG.skipGate && UPL_OFF_CFG.skipGate()) return;
+  var g = document.createElement('div'); g.id = 'uplAddrGate'; g.className = 'ag';
+  g.innerHTML = '<span class="ag-step">はじめに（1回だけ）</span>'
+    + '<h2>会社の住所を入れてください</h2>'
+    + '<p>書類を取る窓口（税務署・年金事務所など）は、会社の住所で決まります。<br>登記簿（履歴事項全部証明書）の<b>本店の住所</b>を入れてください。</p>'
+    + '<label>郵便番号</label><div class="row"><input id="agZip" inputmode="numeric" autocomplete="postal-code" placeholder="例）1440052"><button type="button" class="zbtn" onclick="uplAgZip()">住所を入れる</button></div>'
+    + '<div class="ok" id="agOk">✓ 郵便番号から住所を入れました。番地を続けて入れてください。</div>'
+    + '<label>都道府県・市区町村</label><input id="agCity" placeholder="例）東京都大田区蒲田">'
+    + '<label>番地・建物名 <small>（建物名・部屋番号もあれば）</small></label><input id="agAddr" placeholder="例）5丁目11番10号 FUNDES蒲田8階">'
+    + '<div class="err" id="agErr"></div>'
+    + '<button type="button" class="go" id="agGo" onclick="uplAgSave()">住所を保存して次へ</button>'
+    + '<button type="button" class="skip" id="agSkip" onclick="uplAgSkip()">住所を入れずに書類のアップロードへ進む</button>'
+    + '<div class="note">※ 入れた住所は大房行政書士法人に届き、書類の取り方のご案内に使います。<br>※ 住所がちがっていたら、あとで担当者が直します。</div>';
+  var bar = document.getElementById('companyNameBar');
+  if(bar && bar.parentNode) bar.insertAdjacentElement('afterend', g); else document.body.insertBefore(g, document.body.firstChild);
+  document.body.classList.add('ag-on');
+  try{ g.scrollIntoView({ block:'start' }); }catch(e){}
+}
+function _uplAgErr(t, skip){ var e = document.getElementById('agErr'); if(e){ e.textContent = t || ''; e.style.display = t ? 'block' : 'none'; } var s = document.getElementById('agSkip'); if(s && skip) s.style.display = 'inline-block'; }
+function uplAgZip(){
+  var z = String((document.getElementById('agZip')||{}).value||'').normalize('NFKC').replace(/\D/g,'');
+  if(z.length !== 7){ _uplAgErr('郵便番号は7けたで入れてください（例：1440052）'); return; }
+  _uplAgErr('');
+  _uplOffPost({ zip_lookup:z }).then(function(r){
+    if(r && r.ok && r.addr){ document.getElementById('agCity').value = r.addr; document.getElementById('agOk').style.display = 'block'; document.getElementById('agAddr').focus(); }
+    else _uplAgErr('郵便番号から住所が見つかりませんでした。都道府県から入れてください。');
+  }).catch(function(){ _uplAgErr('郵便番号から住所を探せませんでした。都道府県から入れてください。'); });
+}
+function uplAgSave(){
+  var city = String(document.getElementById('agCity').value||'').trim(), ad = String(document.getElementById('agAddr').value||'').trim();
+  var zip = String(document.getElementById('agZip').value||'').trim();
+  if(!city){ _uplAgErr('都道府県・市区町村を入れてください'); return; }
+  if(!ad){ _uplAgErr('番地まで入れてください'); return; }
+  var go = document.getElementById('agGo'); go.disabled = true; go.textContent = '保存しています…'; _uplAgErr('');
+  var done = function(){ go.disabled = false; go.textContent = '住所を保存して次へ'; };
+  _uplOffPost({ labels:_uplOffLabels(), save:{ zip:zip, addr:city+ad } }).then(function(r){
+    done();
+    if(r && r.ok){ _uplOff = r; _uplAgClose(); _uplOffPaint(); return; }
+    if(r && r.error === 'addr'){ _uplAgErr(r.message || '住所を読み取れませんでした。都道府県から入れてください'); return; }
+    if(r && r.error === 'already'){ _uplAgClose(); _uplOffAsked = false; _uplOffStart(); return; }
+    _uplAgErr('保存できませんでした。時間をおいて、もう一度お試しください。', true);
+  }).catch(function(){ done(); _uplAgErr('保存できませんでした（通信が不安定です）。時間をおいて、もう一度お試しください。', true); });
+}
+function _uplAgClose(){ var g = document.getElementById('uplAddrGate'); if(g) g.remove(); document.body.classList.remove('ag-on'); try{ window.scrollTo(0, 0); }catch(e){} }
+function uplAgSkip(){ _uplAgClose(); }
+// 書類の一覧を描き直すたびに「📍 取れるところ」も付け直す（はじめての描画で問い合わせる）
+(function(){
+  var _orig = buildAllFields;
+  buildAllFields = function(){ var r = _orig.apply(this, arguments); try{ if(_uplOff) _uplOffPaint(); else _uplOffStart(); }catch(e){} return r; };
+})();
 (async function _initDocsAndBuild(){
   try { await _loadDocsFromCache(); } catch(e){ console.warn('_initDocsAndBuild err:', e); }
   // キャッシュがnormalのみ（区分未設定）の場合はDBから全タイプを取得して補完
