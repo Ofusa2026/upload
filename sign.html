@@ -137,7 +137,7 @@ body.signed-view #step2 [data-i18n="s2_doclabel"],body.signed-view #btnToStep3,b
 </head>
 <body>
 <div class="header" style="position:relative;">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20261106.01</span></div>
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20261112.01</span></div>
   <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
   <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
     <option value="ja">🌐 日本語</option>
@@ -690,28 +690,74 @@ function _htmlPaintSign(i){
 }
 
 // ===== 署名キャンバス =====
+// ver.20261112.01: 署名して「次へ」→「戻る」で署名画面に戻ると、署名欄が作り直されて白紙になり、
+//   「署名した」の印（hasDrawn）だけが残って白紙のまま送れてしまっていた（下書きの描き戻しも hasDrawn を見て止まっていた）。
+//   ① 大きさが同じなら作り直さない（書いた署名をそのまま残す）。大きさが変わるときは写し取ってから描き戻す
+//   ② 先へ進む・送信の直前に、署名欄に本当に線があるかを _sigHasInk() で見る（hasDrawn だけを信じない）
 function initCanvas(){
   canvas=document.getElementById('signCanvas');
   const dpr=window.devicePixelRatio||1;
   const wrap=document.getElementById('signScroll');
   const visW=wrap?wrap.clientWidth:canvas.getBoundingClientRect().width;
   const CW=Math.max(Math.round(visW)||300,1300); // 長い名前(〜30文字)用に広い描画幅
+  const nw=Math.round(CW*dpr), nh=Math.round(180*dpr);
+  _sigBindOnce();
+  if(ctx && canvas.width===nw && canvas.height===nh){   // 同じ大きさ＝作り直さない
+    if(!_sigSyncUi()) _restoreSignDraft();   // 線が無いときだけ下書きから戻す
+    return;
+  }
+  let snap=null; const ow=canvas.width, oh=canvas.height;
+  if(ctx && hasDrawn && ow && oh){
+    try{ snap=document.createElement('canvas'); snap.width=ow; snap.height=oh; snap.getContext('2d').drawImage(canvas,0,0); }catch(e){ snap=null; }
+  }
+  const odpr=canvas._dpr||dpr;
   canvas.style.width=CW+'px';
-  canvas.width=CW*dpr;canvas.height=180*dpr;
+  canvas.width=nw;canvas.height=nh; canvas._dpr=dpr;
   ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
   ctx.strokeStyle='#1a1a2e';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
-  if(!canvas._bound){
-    canvas._bound=true;
-    canvas.addEventListener('touchstart',onTS,{passive:false});
-    canvas.addEventListener('touchmove', onTM,{passive:false});
-    canvas.addEventListener('touchend',  onTE);
-    canvas.addEventListener('mousedown', onMD);
-    canvas.addEventListener('mousemove', onMM);
-    canvas.addEventListener('mouseup',   onMU);
-    window.addEventListener('resize',_onSignResize);
-    window.addEventListener('orientationchange',function(){setTimeout(_onSignResize,250);});
+  if(snap){
+    const sc=Math.min(nw/ow, nh/oh);
+    ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(snap,0,0,ow*sc,oh*sc); ctx.restore();
+    const k=sc*odpr/dpr; _sbX0*=k; _sbY0*=k; _sbX1*=k; _sbY1*=k;   // 切り出す範囲も同じだけ合わせる
+    _undoStack=[]; _pushUndoState(); _saveSignDraft();
+    _sigSyncUi();
+    return;
   }
+  _sigSyncUi();          // 白紙＝「進む」を止めて「ここに指でサイン」を出す
   _restoreSignDraft();   // ver.20261106.01: 前に書いた署名が残っていれば戻す
+}
+function _sigBindOnce(){
+  if(!canvas || canvas._bound) return;
+  canvas._bound=true;
+  canvas.addEventListener('touchstart',onTS,{passive:false});
+  canvas.addEventListener('touchmove', onTM,{passive:false});
+  canvas.addEventListener('touchend',  onTE);
+  canvas.addEventListener('mousedown', onMD);
+  canvas.addEventListener('mousemove', onMM);
+  canvas.addEventListener('mouseup',   onMU);
+  window.addEventListener('resize',_onSignResize);
+  window.addEventListener('orientationchange',function(){setTimeout(_onSignResize,250);});
+}
+// 署名欄に線があるか（透明でない点が1つでもあれば true）
+function _sigHasInk(){
+  if(!canvas||!ctx||!canvas.width||!canvas.height) return false;
+  try{ const d=ctx.getImageData(0,0,canvas.width,canvas.height).data; for(let i=3;i<d.length;i+=4){ if(d[i]>0) return true; } return false; }
+  catch(e){ return !!hasDrawn; }
+}
+// 線の有無に合わせて「進む」ボタンと「ここに指でサイン」をそろえる
+function _sigSyncUi(){
+  const ink=_sigHasInk();
+  hasDrawn=ink; if(!ink) _sbHas=false;
+  const b=document.getElementById('btnToStep3'); if(b) b.disabled=!ink;
+  const g=document.getElementById('signGuide'); if(g) g.classList.toggle('hidden', ink);
+  const n=document.getElementById('signNameRef'); if(n) n.classList.toggle('hidden', ink);
+  return ink;
+}
+// 署名が消えているときは知らせて止める
+function _sigRequire(){
+  if(_sigSyncUi()) return true;
+  alert(_t('sign_missing'));
+  return false;
 }
 function _onSignResize(){
   if(!canvas)return;
@@ -831,7 +877,7 @@ async function embedSignatureToOne(srcBytes, positions){
 }
 // docsArr の全PDFに同じ署名を焼き込み、[{idx, bytes}] を返す
 async function embedSignatureToAllDocs(){
-  if(!hasDrawn) return null;
+  if(!hasDrawn || !_sigHasInk()) return null;   // ver.20261112.01
   const out=[];
   for(let i=0;i<docsArr.length;i++){
     const d=docsArr[i];
@@ -940,7 +986,7 @@ async function submitCompanySign(){
   companyName = companyName.trim(); repName = repName.trim();
   if(!companyName){ alert('会社名を入力してください'); return; }
   if(!repName)    { alert('署名者（担当者名）を入力してください'); return; }
-  if(!hasDrawn)   { alert('署名してください'); return; }
+  if(!hasDrawn || !_sigHasInk()) { hasDrawn=false; alert(_t('sign_missing')); goStep(2); return; }   // ver.20261112.01
   var btn = document.getElementById('btnSubmit');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ 送信中…'; }
   var sn = document.getElementById('submitNote'); if(sn) sn.style.display='block';
@@ -979,7 +1025,7 @@ async function submitSign(){
   const name=document.getElementById('inputName').value.trim();
   const card='';
   if(!name){alert('氏名を入力してください');return;}
-  if(!hasDrawn){alert('署名してください');return;}
+  if(!hasDrawn || !_sigHasInk()){ hasDrawn=false; alert(_t('sign_missing')); goStep(2); return; }   // ver.20261112.01: 白紙のまま送らない
   const btn=document.getElementById('btnSubmit');
   btn.disabled=true;btn.innerHTML='<span>⏳ 処理中…</span>';
   // ver.20260724.20: Saysay方式(html)の保存経路は未完成。
@@ -1033,6 +1079,7 @@ async function submitSign(){
 // ver.20260804: 署名のローマ字AI判定
 const _EDGE_FN = 'https://ehwlgbwpycglmopiqyty.supabase.co/functions/v1/check-signature';
 async function checkAndGoStep3() {
+  if(!_sigRequire()) return;   // ver.20261112.01: 署名欄が白紙なら進ませない
   // 署名キャンバスから画像を取得
   var sigB64 = null;
   try {
@@ -1160,9 +1207,11 @@ var _TJA = {
   view_signed_btn:'📄 署名した書類を見る',
   signed_banner:'✅ 署名済みです。署名した書類を見返すことができます（もう一度署名することはできません）。',
   signed_at:'署名日時',
-  signed_pending_doc:'※ この書類は署名を反映中です。数分後にもう一度開くと、署名入りで表示されます。'
+  signed_pending_doc:'※ この書類は署名を反映中です。数分後にもう一度開くと、署名入りで表示されます。',
+  sign_missing:'署名が入っていません。署名欄にもう一度サインしてください。'   // ver.20261112.01
 };
 Object.assign(I18N, {
+  sign_missing:{en:'Your signature is missing. Please sign in the signature box again.',id:'Tanda tangan belum ada. Silakan tanda tangan lagi di kotak tanda tangan.',vi:'Chưa có chữ ký. Vui lòng ký lại vào ô chữ ký.',zh:'签名为空。请在签名栏中重新签名。',km:'មិនទាន់មានហត្ថលេខាទេ។ សូមចុះហត្ថលេខាម្តងទៀតក្នុងប្រអប់ហត្ថលេខា។',my:'လက်မှတ် မပါသေးပါ။ လက်မှတ်အကွက်တွင် ထပ်မံ လက်မှတ်ထိုးပါ။',th:'ยังไม่มีลายเซ็น กรุณาเซ็นชื่ออีกครั้งในช่องลายเซ็น'},
   doc_loading:{en:'📄 Loading the document…',id:'📄 Memuat dokumen…',vi:'📄 Đang tải tài liệu…',zh:'📄 正在加载文件…',km:'📄 កំពុងផ្ទុកឯកសារ…',my:'📄 စာရွက်စာတမ်းကို ဖွင့်နေသည်…',th:'📄 กำลังโหลดเอกสาร…'},
   doc_load_fail:{en:'Could not load the document. Please try again where the signal is good.',id:'Dokumen tidak dapat dimuat. Silakan coba lagi di tempat dengan sinyal yang baik.',vi:'Không tải được tài liệu. Vui lòng thử lại ở nơi có sóng tốt.',zh:'无法加载文件。请在信号良好的地方重试。',km:'មិនអាចផ្ទុកឯកសារបានទេ។ សូមព្យាយាមម្តងទៀតនៅកន្លែងដែលមានសេវាល្អ។',my:'စာရွက်စာတမ်းကို ဖွင့်၍မရပါ။ လိုင်းကောင်းသောနေရာတွင် ထပ်မံကြိုးစားပါ။',th:'ไม่สามารถโหลดเอกสารได้ กรุณาลองใหม่ในที่ที่สัญญาณดี'},
   btn_reload_doc:{en:'🔄 Try again',id:'🔄 Coba lagi',vi:'🔄 Thử lại',zh:'🔄 重新加载',km:'🔄 ព្យាយាមម្តងទៀត',my:'🔄 ထပ်မံကြိုးစားရန်',th:'🔄 ลองอีกครั้ง'},
