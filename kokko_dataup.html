@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- ver.20261113.01: 読み込み中は「書類の一覧を読み込んでいます…」を表示。読み込み（_get）は9秒で打ち切って1回やり直し、だめなら「通信が不安定です」と再読み込みボタン（DBが混んで真っ白に見えていた対策） -->
 <!-- ver.20261111.01: 書類ごとに「📍 取れるところ」（会社の住所から窓口・オンラインのボタン）を出す。案シスに住所が無い会社は、最初に住所の入力画面。中身は Edge Function upload-offices -->
 <!-- ver.20261110.02: 「7. 求人票」の見本を記入見本（注意書き①〜⑨つき・会社名などは伏せたもの）に差し替え。［📄 記入見本（PDF）］［✅ チェックリスト］のボタンを追加。見本の画像は押すと大きく開く -->
 <!-- ver.20261110.01: 経歴書の入力画面に「🖼 画像（JPG）で作って添付する」を追加（スマホでも軽く作れる）。PDFと同じ見た目・同じ入力チェック。作る処理は _krMake(kind) の1箇所 -->
@@ -395,7 +396,43 @@ document.addEventListener('DOMContentLoaded', function(){
   var b=document.getElementById('kokkoIdpwSave'); if(b) b.onclick=_saveKokkoIdpw;
   _initKokkoIdpw();
 });
-function _uplRpc(fn, body){ return fetch(SB_URL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, body: JSON.stringify(body||{}) }); }
+// ver.20261113.01: 読み込み用（名前が _get で終わる）は9秒で打ち切って自動で1回やり直す。
+//   DBが混んで返事が来ないと、書類一覧が出ないまま真っ白に見えていたため。保存・通知は二重にならないよう1回だけ。
+var _uplNetFail = false;
+function _uplFetchOnce(fn, body, ms){
+  var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+  var tm = ctl ? setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, ms) : null;
+  return fetch(SB_URL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, body: JSON.stringify(body||{}), signal: ctl ? ctl.signal : undefined })
+    .then(function(r){ if(tm) clearTimeout(tm); return r; }, function(e){ if(tm) clearTimeout(tm); throw e; });
+}
+function _uplRpc(fn, body){
+  if(!/_get$/.test(fn)) return _uplFetchOnce(fn, body, 60000);
+  var tries = 0, max = _uplNetFail ? 1 : 2;   // 一度つながらなかったら、ほかの読み込みは待たせない
+  function go(){
+    tries++;
+    return _uplFetchOnce(fn, body, _uplNetFail ? 5000 : 9000).then(function(r){
+      if(r.status >= 500 && tries < max) return new Promise(function(ok){ setTimeout(ok, 1500); }).then(go);
+      if(r.status >= 500) _uplNetFail = true;
+      return r;
+    }, function(e){
+      if(tries < max){ _uplShowLoading('通信に時間がかかっています。もう一度読み込んでいます…（' + (tries+1) + '回目）'); return new Promise(function(ok){ setTimeout(ok, 1500); }).then(go); }
+      _uplNetFail = true; throw e;
+    });
+  }
+  return go();
+}
+function _uplShowLoading(t){
+  var el = document.getElementById('fieldsList');
+  if(!el || el.querySelector('.field-row')) return;
+  el.innerHTML = '<div class="notice-box" style="margin-bottom:0;text-align:center;">⏳ ' + t + '</div>';
+}
+function _uplShowNetFail(){
+  var el = document.getElementById('fieldsList'); if(!el) return;
+  el.innerHTML = '<div class="notice-box" style="margin-bottom:0;text-align:center;line-height:1.8;">'
+    + '⚠️ 通信が不安定で、書類の一覧を読み込めませんでした。<br>少し時間をおいて、再読み込みしてください。'
+    + '<br><button type="button" onclick="location.reload()" style="margin-top:10px;padding:10px 22px;background:#1a56db;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer;">↻ 再読み込みする</button>'
+    + '<div style="font-size:11px;color:#64748b;margin-top:8px;">何度やっても出ないときは、担当者までご連絡ください。</div></div>';
+}
 
 async function notifyUploadToSystem(fileCount, companyId, companyName) {
   // companyId・companyName両方なくてもとりあえず送る（テーブル存在確認も兼ねる）
@@ -902,6 +939,8 @@ function buildAllFields() {
 
   // DBキャッシュ(kind=kokko)が無い場合は旧入管書類を出さず、案内文のみ表示
   if (!USE_NEW_DOCS || !Array.isArray(DOCS_LIST) || !DOCS_LIST.length) {
+    // ver.20261113.01: 通信が失敗して読めなかったときは「設定されていません」ではなく再読み込みの案内
+    if (_uplNetFail) { _uplShowNetFail(); window._docLabelMap = {}; return; }
     const msg = document.createElement('div');
     msg.className = 'notice-box';
     msg.style.marginBottom = '0';
@@ -1268,6 +1307,7 @@ function uplAgSkip(){ _uplAgClose(); }
   buildAllFields = function(){ var r = _orig.apply(this, arguments); try{ if(_uplOff) _uplOffPaint(); else _uplOffStart(); }catch(e){} return r; };
 })();
 (async function _initDocsAndBuild(){
+  _uplShowLoading('書類の一覧を読み込んでいます…');   // ver.20261113.01
   try { await _loadDocsFromCache(); } catch(e){ console.warn('_initDocsAndBuild err:', e); }
   // ver.20261021.01: キャッシュもURLの書類指定も無ければ、標準の国交省書類で組み立てる
   if(!(Array.isArray(DOCS_LIST) && DOCS_LIST.length) && COMPANY_ID){
@@ -1280,6 +1320,14 @@ function uplAgSkip(){ _uplAgClose(); }
   }
   try { await _applyKokkoLiveDone(); } catch(e){}
   buildAllFields();
+  // ver.20261113.01: 一部の読み込みが通信失敗のまま標準の書類で表示したときは、提出済みが出ていないかもしれないので上に案内
+  if (_uplNetFail && document.querySelector('#fieldsList .field-row')) {
+    var _nb = document.createElement('div');
+    _nb.className = 'notice-box';
+    _nb.style.cssText = 'margin-bottom:12px;line-height:1.7;';
+    _nb.innerHTML = '⚠️ 通信が不安定なため、「提出済み」の表示が出ていない可能性があります。<button type="button" onclick="location.reload()" style="margin-left:6px;padding:4px 12px;background:#1a56db;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;">↻ 再読み込み</button>';
+    var _fl = document.getElementById('fieldsList'); _fl.insertBefore(_nb, _fl.firstChild);
+  }
   // ver.20261109.02: URLに keireki=1 があれば「11. 経歴書」の入力画面をすぐ開く（案シスから経歴書の入力URLとして送る）
   try {
     if (urlParams.get('keireki') === '1' && window._docLabelMap) {
