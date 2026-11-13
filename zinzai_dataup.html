@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20261105.01'; // ver.20261105.01: 「国民健康保険料（税）納付証明書」にも納付証明書の見本を表示 ／ ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
+const VERSION = 'ver.20261113.01'; // ver.20261113.01: 課税・納税証明書の質問カード（「○年1月1日、日本に住んでいましたか？」・窓口案内・不要の案内）も言語ボタンに合わせて訳す。役所の人に見せる見出しと書類名は日本語のまま、下に訳を付ける ／ ver.20261105.01: 「国民健康保険料（税）納付証明書」にも納付証明書の見本を表示 ／ ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -1186,23 +1186,49 @@ function _latestKazeiReiwa() {
   const greg = (m >= 6) ? y : (y - 1);
   return greg - 2019; // 課税証明書の年度表記（例: 2026年6月以降 = 令和7年度）
 }
+// ver.20261113.01: 課税・納税証明書の質問カードも、上の言語ボタンに合わせて訳す（日本語はそのまま）
+//   役所の人に見せる「書類名（日本語）」と見出しは日本語のまま残し、その下に本人向けの訳を小さく付ける
+const TAX_I18N = {
+  en:{q:'Were you living in Japan on January 1, {Y}?',yes:'Yes',no:'No',noSub:'(Entered Japan in {Y} or later)',nn1:'Not needed if you entered Japan in {Y} or later.',nn2:'The 3 documents (tax certificate, tax payment certificate, withholding tax slip) are not required (the items below are greyed out).',hdr:'Show this screen (in Japanese) to the staff at the city office counter.',list:'(Income/tax certificate and tax payment certificate, 1 copy each)',where:'Get them at the city office of the city/ward/town where you lived on January 1, {Y}',n1:'If you have moved since then, request them by mail from the city office of your previous address (some offices accept online requests).',n2:'Bring: residence card',n3:'Fee: about 300 yen each',n4:'If you have a My Number Card, you may be able to get them at a convenience store.'},
+  vi:{q:'Vào ngày 1 tháng 1 năm {Y}, bạn có sống ở Nhật Bản không?',yes:'Có',no:'Không',noSub:'(Nhập cảnh từ năm {Y} trở đi)',nn1:'Nếu bạn nhập cảnh Nhật Bản từ năm {Y} trở đi thì không cần.',nn2:'Không cần nộp 3 giấy tờ: giấy chứng nhận thuế, giấy chứng nhận nộp thuế, phiếu khấu trừ thuế tại nguồn (các mục bên dưới đã chuyển sang màu xám).',hdr:'Hãy cho nhân viên tại quầy của tòa thị chính xem màn hình này (tiếng Nhật).',list:'(Giấy chứng nhận thu nhập/thuế và giấy chứng nhận nộp thuế, mỗi loại 1 bản)',where:'Lấy tại tòa thị chính nơi bạn sống vào ngày 1 tháng 1 năm {Y}',n1:'Nếu đã chuyển nhà sau đó, hãy xin gửi qua bưu điện từ tòa thị chính của địa chỉ cũ (một số nơi có thể làm trực tuyến).',n2:'Mang theo: thẻ cư trú',n3:'Lệ phí: khoảng 300 yên mỗi loại',n4:'Nếu có thẻ My Number, có thể lấy tại cửa hàng tiện lợi.'},
+  id:{q:'Apakah Anda tinggal di Jepang pada tanggal 1 Januari {Y}?',yes:'Ya',no:'Tidak',noSub:'(Masuk Jepang tahun {Y} atau setelahnya)',nn1:'Tidak diperlukan jika Anda masuk Jepang tahun {Y} atau setelahnya.',nn2:'3 dokumen (surat keterangan pajak, bukti pembayaran pajak, slip pemotongan pajak) tidak perlu diserahkan (item di bawah menjadi abu-abu).',hdr:'Tunjukkan layar ini (bahasa Jepang) kepada petugas di loket kantor kota.',list:'(Surat keterangan penghasilan/pajak dan bukti pembayaran pajak, masing-masing 1 lembar)',where:'Ambil di kantor kota/kecamatan tempat Anda tinggal pada tanggal 1 Januari {Y}',n1:'Jika sudah pindah sejak itu, mintalah lewat pos ke kantor kota alamat lama (sebagian bisa online).',n2:'Bawa: kartu izin tinggal (zairyu card)',n3:'Biaya: sekitar 300 yen per dokumen',n4:'Jika punya Kartu My Number, mungkin bisa dicetak di minimarket (konbini).'},
+  my:{q:'{Y} ခုနှစ် ဇန်နဝါရီ ၁ ရက်နေ့တွင် ဂျပန်၌ နေထိုင်ခဲ့ပါသလား။',yes:'ဟုတ်ကဲ့',no:'မဟုတ်ပါ',noSub:'({Y} ခုနှစ် နောက်ပိုင်း ဂျပန်သို့ ဝင်ရောက်)',nn1:'{Y} ခုနှစ် နောက်ပိုင်း ဂျပန်သို့ ဝင်ရောက်သူများ မလိုအပ်ပါ။',nn2:'အခွန်လက်မှတ်၊ အခွန်ပေးဆောင်ပြီးကြောင်း လက်မှတ်၊ အခွန်ဖြတ်တောက်စာရွက် ၃ မျိုး တင်ရန် မလိုပါ (အောက်ပါ အချက်များ မီးခိုးရောင် ဖြစ်နေပါသည်)။',hdr:'ဤမျက်နှာပြင် (ဂျပန်ဘာသာ) ကို မြို့နယ်ရုံး ကောင်တာရှိ ဝန်ထမ်းအား ပြပါ။',list:'(ဝင်ငွေ/အခွန် လက်မှတ်နှင့် အခွန်ပေးဆောင်ပြီးကြောင်း လက်မှတ်၊ တစ်မျိုးလျှင် ၁ စောင်)',where:'{Y} ခုနှစ် ဇန်နဝါရီ ၁ ရက်နေ့တွင် နေထိုင်ခဲ့သော မြို့နယ်ရုံး၌ ရယူပါ',n1:'ထို့နောက် အိမ်ပြောင်းခဲ့ပါက ယခင်လိပ်စာ၏ ရုံးသို့ စာတိုက်မှ တောင်းယူပါ (အချို့ အွန်လိုင်းဖြင့် ရနိုင်)။',n2:'ယူလာရန်: နေထိုင်ခွင့်ကတ် (ဇိုင်ရူးကတ်)',n3:'ကြေး: တစ်စောင်လျှင် ယန်း ၃၀၀ ခန့်',n4:'My Number ကတ် ရှိပါက convenience store တွင် ထုတ်ယူနိုင်ပါသည်။'},
+  ko:{q:'{Y}년 1월 1일에 일본에 살고 있었습니까?',yes:'예',no:'아니요',noSub:'({Y}년 이후 입국)',nn1:'{Y}년 이후에 입국한 분은 필요 없습니다.',nn2:'과세증명서·납세증명서·원천징수표 3가지는 제출할 필요가 없습니다(아래 항목은 회색으로 표시됩니다).',hdr:'이 화면(일본어)을 시청·구청 창구 직원에게 보여 주세요.',list:'(소득·과세증명서, 납세증명서 각 1통)',where:'{Y}년 1월 1일에 살던 시·구·정·촌의 관공서에서 발급',n1:'그 후 이사한 경우에는 이전 주소의 관공서에 우편으로 신청하세요(일부 온라인 가능).',n2:'준비물: 재류카드',n3:'수수료: 각 300엔 정도',n4:'마이넘버카드가 있으면 편의점에서 발급할 수 있는 경우도 있습니다.'},
+  ne:{q:'{Y} जनवरी १ मा तपाईं जापानमा बस्नुहुन्थ्यो?',yes:'हो',no:'होइन',noSub:'({Y} वा त्यसपछि जापान आएको)',nn1:'{Y} वा त्यसपछि जापान आउनुभएको भए आवश्यक छैन।',nn2:'कर प्रमाणपत्र, कर भुक्तानी प्रमाणपत्र र स्रोत कर कट्टी स्लिप — यी ३ वटा बुझाउनु पर्दैन (तलका वस्तुहरू खैरो देखिन्छन्)।',hdr:'यो स्क्रिन (जापानी भाषामा) नगरपालिका कार्यालयको काउन्टरमा कर्मचारीलाई देखाउनुहोस्।',list:'(आय/कर प्रमाणपत्र र कर भुक्तानी प्रमाणपत्र, प्रत्येक १ प्रति)',where:'{Y} जनवरी १ मा बसेको नगरपालिकाको कार्यालयबाट लिनुहोस्',n1:'त्यसपछि बसाइँ सर्नुभएको भए, पुरानो ठेगानाको कार्यालयबाट हुलाकमार्फत मगाउनुहोस् (केही ठाउँमा अनलाइन पनि)।',n2:'लैजाने: रेसिडेन्स कार्ड (जाइर्यु कार्ड)',n3:'शुल्क: प्रत्येक करिब ३०० येन',n4:'माइ नम्बर कार्ड भए कन्भिनियन्स स्टोरबाट पनि लिन सकिन्छ।'},
+  zh:{q:'{Y}年1月1日您是否住在日本？',yes:'是',no:'否',noSub:'（{Y}年以后入境）',nn1:'{Y}年以后入境的人不需要。',nn2:'课税证明书、纳税证明书、源泉征收票这3份不需要提交（下面的项目已变为灰色）。',hdr:'请把这个画面（日语）给市区町村政府窗口的工作人员看。',list:'（所得・课税证明书、纳税证明书 各1份）',where:'在{Y}年1月1日居住的市区町村政府办理',n1:'如果之后搬家了，请向原住址的政府邮寄申请（部分地区可在线办理）。',n2:'携带：在留卡',n3:'手续费：每份约300日元',n4:'如有个人编号卡（My Number卡），有时可在便利店领取。'},
+  th:{q:'วันที่ 1 มกราคม {Y} คุณอาศัยอยู่ในญี่ปุ่นหรือไม่?',yes:'ใช่',no:'ไม่ใช่',noSub:'(เข้าประเทศญี่ปุ่นตั้งแต่ปี {Y} เป็นต้นไป)',nn1:'ไม่จำเป็นสำหรับผู้ที่เข้าประเทศญี่ปุ่นตั้งแต่ปี {Y} เป็นต้นไป',nn2:'ไม่ต้องส่งเอกสาร 3 อย่าง (หนังสือรับรองภาษี หนังสือรับรองการชำระภาษี ใบหักภาษี ณ ที่จ่าย) (รายการด้านล่างเป็นสีเทา)',hdr:'กรุณาแสดงหน้าจอนี้ (ภาษาญี่ปุ่น) ให้เจ้าหน้าที่ที่เคาน์เตอร์สำนักงานเทศบาลดู',list:'(หนังสือรับรองรายได้/ภาษี และหนังสือรับรองการชำระภาษี อย่างละ 1 ฉบับ)',where:'ขอได้ที่สำนักงานเทศบาลของเมืองที่คุณอาศัยอยู่ในวันที่ 1 มกราคม {Y}',n1:'หากย้ายบ้านหลังจากนั้น ให้ขอทางไปรษณีย์จากสำนักงานเทศบาลของที่อยู่เดิม (บางแห่งทำออนไลน์ได้)',n2:'สิ่งที่ต้องนำไป: บัตรไซริวการ์ด',n3:'ค่าธรรมเนียม: ประมาณฉบับละ 300 เยน',n4:'หากมีบัตรมายนัมเบอร์ อาจขอได้ที่ร้านสะดวกซื้อ'},
+  km:{q:'នៅថ្ងៃទី 1 ខែមករា ឆ្នាំ {Y} តើអ្នករស់នៅប្រទេសជប៉ុនឬទេ?',yes:'បាទ/ចាស',no:'ទេ',noSub:'(ចូលប្រទេសជប៉ុនចាប់ពីឆ្នាំ {Y})',nn1:'មិនចាំបាច់ទេ ប្រសិនបើអ្នកចូលប្រទេសជប៉ុនចាប់ពីឆ្នាំ {Y}។',nn2:'មិនចាំបាច់ដាក់ឯកសារ 3 (លិខិតបញ្ជាក់ពន្ធ លិខិតបញ្ជាក់ការបង់ពន្ធ ប័ណ្ណកាត់ពន្ធ) ទេ (ធាតុខាងក្រោមប្រែជាពណ៌ប្រផេះ)។',hdr:'សូមបង្ហាញអេក្រង់នេះ (ភាសាជប៉ុន) ដល់បុគ្គលិកនៅបញ្ជរសាលាក្រុង។',list:'(លិខិតបញ្ជាក់ប្រាក់ចំណូល/ពន្ធ និងលិខិតបញ្ជាក់ការបង់ពន្ធ មួយៗ 1 ច្បាប់)',where:'ទទួលនៅសាលាក្រុងនៃទីកន្លែងដែលអ្នករស់នៅថ្ងៃទី 1 ខែមករា ឆ្នាំ {Y}',n1:'ប្រសិនបើបានផ្លាស់ទីលំនៅបន្ទាប់ពីនោះ សូមស្នើសុំតាមប្រៃសណីយ៍ពីសាលាក្រុងនៃអាសយដ្ឋានចាស់ (ខ្លះអាចធ្វើតាមអនឡាញ)។',n2:'យកមកជាមួយ៖ ប័ណ្ណស្នាក់នៅ (Zairyu Card)',n3:'ថ្លៃសេវា៖ ប្រហែល 300 យ៉េន ក្នុងមួយច្បាប់',n4:'ប្រសិនបើមានប័ណ្ណ My Number អាចទទួលបាននៅហាងលក់ទំនិញ (convenience store)។'},
+  mn:{q:'{Y} оны 1-р сарын 1-нд та Японд амьдарч байсан уу?',yes:'Тийм',no:'Үгүй',noSub:'({Y} оноос хойш Японд ирсэн)',nn1:'{Y} оноос хойш Японд ирсэн бол шаардлагагүй.',nn2:'Татварын тодорхойлолт, татвар төлсөн тодорхойлолт, суутгалын хуудас гэсэн 3 бичгийг өгөх шаардлагагүй (доорх зүйлс саарал болсон).',hdr:'Энэ дэлгэцийг (япон хэлээр) хотын захиргааны цонхны ажилтанд үзүүлнэ үү.',list:'(Орлого/татварын тодорхойлолт, татвар төлсөн тодорхойлолт тус бүр 1 хувь)',where:'{Y} оны 1-р сарын 1-нд амьдарч байсан хот/дүүргийн захиргаанаас авна',n1:'Түүнээс хойш нүүсэн бол өмнөх хаягийн захиргаанаас шуудангаар захиална уу (зарим нь онлайнаар боломжтой).',n2:'Авчрах зүйл: оршин суух үнэмлэх (Zairyu card)',n3:'Хураамж: тус бүр ойролцоогоор 300 иен',n4:'My Number карттай бол дэлгүүрээс (convenience store) авах боломжтой.'},
+  si:{q:'{Y} ජනවාරි 1 වන දින ඔබ ජපානයේ ජීවත් වුණාද?',yes:'ඔව්',no:'නැත',noSub:'({Y} හෝ ඉන් පසු ජපානයට පැමිණි)',nn1:'{Y} හෝ ඉන් පසු ජපානයට පැමිණියේ නම් අවශ්‍ය නැත.',nn2:'බදු සහතිකය, බදු ගෙවීම් සහතිකය සහ ප්‍රභවයේදී අඩු කළ බදු පත්‍රිකාව යන ලේඛන 3 ඉදිරිපත් කිරීම අවශ්‍ය නැත (පහත අයිතම අළු පැහැයෙන් පෙන්වයි).',hdr:'මෙම තිරය (ජපන් භාෂාවෙන්) නගර කාර්යාලයේ කවුළුවේ සේවකයාට පෙන්වන්න.',list:'(ආදායම්/බදු සහතිකය සහ බදු ගෙවීම් සහතිකය, එක් එක් පිටපත් 1)',where:'{Y} ජනවාරි 1 වන දින ඔබ ජීවත් වූ නගරයේ කාර්යාලයෙන් ලබා ගන්න',n1:'ඉන් පසු පදිංචිය වෙනස් කළේ නම්, පැරණි ලිපිනයේ කාර්යාලයෙන් තැපෑලෙන් ඉල්ලා ගන්න (සමහර ස්ථාන ඔන්ලයින්).',n2:'රැගෙන එන්න: පදිංචි කාඩ්පත (Zairyu card)',n3:'ගාස්තුව: එක් එකකට යෙන් 300 පමණ',n4:'My Number කාඩ්පතක් ඇත්නම් convenience store එකකින් ලබා ගත හැකි විය හැක.'}
+};
+function _taxT(k){
+  if (typeof currentLang === 'undefined' || currentLang === 'ja') return null;
+  const t = TAX_I18N[currentLang] || TAX_I18N.en;
+  return String(t[k] || TAX_I18N.en[k] || '').replace(/\{Y\}/g, String(_latestKazeiReiwa() + 2018));
+}
+function _taxEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function _taxNoticeCardHTML() {
   const r = _latestKazeiReiwa();
   const refYear = r + 2018; // 令和r年度の賦課期日 = (r+2018)年1月1日（令和7年度→2025年）
   return '' +
     '<div class="tax-notice-card" style="margin:0 0 12px;border-radius:12px;overflow:hidden;border:1px solid #d5e3e1;box-shadow:0 1px 3px rgba(0,0,0,.06);">' +
-      '<div style="background:#14807a;color:#fff;font-weight:800;font-size:14px;padding:11px 14px;">役所の窓口でこの画面をお見せください</div>' +
+      '<div style="background:#14807a;color:#fff;font-weight:800;font-size:14px;padding:11px 14px;">役所の窓口でこの画面をお見せください' +
+        (_taxT('hdr') ? '<div style="font-weight:600;font-size:12px;margin-top:4px;opacity:.95;">' + _taxEsc(_taxT('hdr')) + '</div>' : '') + '</div>' +
       '<div style="background:#fff;padding:14px;">' +
         '<div style="font-size:14px;font-weight:700;color:#111827;line-height:1.9;">' +
           '・令和' + r + '年度　所得・課税証明書　1通<br>' +
           '・令和' + r + '年度　納税証明書（市区町村民税）　1通' +
         '</div>' +
+        (_taxT('list') ? '<div style="font-size:12px;color:#475569;margin-top:2px;line-height:1.6;">' + _taxEsc(_taxT('list')) + '</div>' : '') +
         '<div style="margin-top:12px;background:#fdf7ec;border:1px solid #f0e2c4;border-radius:8px;padding:9px 11px;font-size:11.5px;color:#8a6d3b;line-height:1.7;">' +
-          '<strong style="color:#7a5a1e;font-size:13.5px;">' + refYear + '年1月1日に住んでいた市区町村の役所で取得</strong><br>' +
-          '※ そこから引っ越した場合は、前の住所の役所へ郵送で取り寄せてください（一部オンライン対応あり）<br>' +
-          '※ もちもの　在留カード<br>' +
-          '※ 手数料 各300円程度<br>' +
-          '※ マイナンバーカードがあればコンビニで発行できる場合もあります' +
+          (_taxT('where')
+            ? '<strong style="color:#7a5a1e;font-size:13.5px;">' + _taxEsc(_taxT('where')) + '</strong><br>' +
+              '※ ' + _taxEsc(_taxT('n1')) + '<br>※ ' + _taxEsc(_taxT('n2')) + '<br>※ ' + _taxEsc(_taxT('n3')) + '<br>※ ' + _taxEsc(_taxT('n4'))
+            : '<strong style="color:#7a5a1e;font-size:13.5px;">' + refYear + '年1月1日に住んでいた市区町村の役所で取得</strong><br>' +
+              '※ そこから引っ越した場合は、前の住所の役所へ郵送で取り寄せてください（一部オンライン対応あり）<br>' +
+              '※ もちもの　在留カード<br>' +
+              '※ 手数料 各300円程度<br>' +
+              '※ マイナンバーカードがあればコンビニで発行できる場合もあります') +
         '</div>' +
       '</div>' +
     '</div>';
@@ -1234,10 +1260,10 @@ function _taxQuestionHTML() {
   const btn = function(active, bg, brd, col){ return 'flex:1;padding:10px 8px;border-radius:9px;border:2px solid ' + (active?brd:'#e2e8f0') + ';background:' + (active?bg:'#fff') + ';color:' + (active?col:'#475569') + ';font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;line-height:1.4;'; };
   return '' +
     '<div style="margin:0 0 12px;">' +
-      '<div style="font-size:13.5px;font-weight:800;color:#0f2040;margin-bottom:8px;line-height:1.6;">' + refYear + '年1月1日、日本に住んでいましたか？</div>' +
+      '<div style="font-size:13.5px;font-weight:800;color:#0f2040;margin-bottom:8px;line-height:1.6;">' + (_taxT('q') ? _taxEsc(_taxT('q')) : refYear + '年1月1日、日本に住んでいましたか？') + '</div>' +
       '<div style="display:flex;gap:8px;">' +
-        '<button type="button" onclick="_setTaxNeeded(true)" style="' + btn(yesActive,'#ecfdf5','#16a34a','#166534') + '">はい</button>' +
-        '<button type="button" onclick="_setTaxNeeded(false)" style="' + btn(noActive,'#eff6ff','#2563eb','#1e40af') + '">いいえ<br><span style="font-weight:600;font-size:11px;">（' + refYear + '年以降に入国）</span></button>' +
+        '<button type="button" onclick="_setTaxNeeded(true)" style="' + btn(yesActive,'#ecfdf5','#16a34a','#166534') + '">' + (_taxT('yes') ? _taxEsc(_taxT('yes')) : 'はい') + '</button>' +
+        '<button type="button" onclick="_setTaxNeeded(false)" style="' + btn(noActive,'#eff6ff','#2563eb','#1e40af') + '">' + (_taxT('no') ? _taxEsc(_taxT('no')) : 'いいえ') + '<br><span style="font-weight:600;font-size:11px;">' + (_taxT('noSub') ? _taxEsc(_taxT('noSub')) : '（' + refYear + '年以降に入国）') + '</span></button>' +
       '</div>' +
     '</div>';
 }
@@ -1245,8 +1271,8 @@ function _taxNotNeededNoteHTML() {
   const refYear = _latestKazeiReiwa() + 2018;
   return '' +
     '<div style="margin:0 0 12px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:12px 14px;font-size:12.5px;color:#334155;line-height:1.7;">' +
-      '<span style="font-weight:800;color:#0f2040;">' + refYear + '年以降に入国された方は不要です。</span><br>' +
-      '課税証明書・納税証明書・源泉徴収票の3点は提出不要です（下の項目はグレーになっています）。' +
+      '<span style="font-weight:800;color:#0f2040;">' + (_taxT('nn1') ? _taxEsc(_taxT('nn1')) : refYear + '年以降に入国された方は不要です。') + '</span><br>' +
+      (_taxT('nn2') ? _taxEsc(_taxT('nn2')) : '課税証明書・納税証明書・源泉徴収票の3点は提出不要です（下の項目はグレーになっています）。') +
     '</div>';
 }
 function _jaLabelOf(key) {
