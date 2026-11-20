@@ -1,0 +1,1844 @@
+<!-- tsuikan_company_dataup tsuikan ver.20261119.01 - 追完専用（入管から追加で求められた書類だけ・理由つき）。もとは company_dataup.html -->
+<!DOCTYPE html>
+<!-- company_dataup ver.20261111.01 - 書類ごとに「📍 取れるところ」（会社の住所から窓口・オンラインのボタン）を出す。案シスに住所が無い会社は、最初に住所の入力画面（郵便番号から住所を入れる）。中身は Edge Function upload-offices -->
+<!-- company_dataup ver.20261109.01 - 納税証明書（その３）・社会保険料・労働保険の「✍ 入力して申請書を作る」：答えると forms/ の様式に会社名・住所・代表者・法人番号・事業所整理記号・労働保険番号などを入れた印刷用PDFができる（印刷→押印→郵送）。入力内容は端末にだけ残す。 -->
+<!-- company_dataup ver.20261016.02 - 個人事業主の「納税証明書その3（5項目）」に5税目（源泉所得税及び復興特別所得税／申告所得税及び復興特別所得税／消費税及び地方消費税／相続税／贈与税）の「未納なし」確認（まとめて1チェック）、「確定申告書（直近3年分）」に3年分の有無の質問を追加（未回答ならアップロード不可、3年未満の回答はdoc_note（担当者向けメモ）に保存）。 -->
+<!-- company_dataup ver.20261016.01 - 個人事業主の住民票にも「アップロード前に確認してください」（マイナンバーの記載なし／本籍の記載あり）を追加。両方チェックするまでアップロードできない -->
+<!-- company_dataup ver.20261008.01 - 納税証明書（その３）に税目ごと（源泉所得税及び復興特別所得税／法人税／消費税及び地方消費税）の「未納なし」確認チェックを追加。3つすべて確認するとアップロード可。 -->
+<!-- company_dataup ver.20261003.02 - 容量アップ：1ファイルずつ送信に変更（合計の上限なし・1ファイル35MBまで）。写真はHEIC→JPEG変換＋自動圧縮。一部失敗時は失敗分だけ残して理由を表示。 -->
+<!-- company_dataup ver.20261003.01 - アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。企業書類は1回でまとめて送るため合計30MB超は事前に分割送信を案内。 -->
+<!-- company_dataup ver.20261002.03 - 決算文書の回答のファイル名への付記をやめた（doc_noteのみ）。個人事業主タブにも「発行後3か月以内」の注意書き。債務超過の案内文を本番の文面に -->
+<!-- company_dataup ver.20261002.02 - 決算文書の事前確認の回答（債務超過／3期未満）を upload_notifications.doc_note にも保存（ファイル名の付記はそのまま） -->
+<!-- company_dataup ver.20261002.01 - 中小企業タブ最上部に「発行後3か月以内」の注意書きを追加。決算文書に事前確認（3期分の有無／純資産マイナス=債務超過）を追加し、回答をファイル名に付記 -->
+<!-- 旧: ver.20260910.01 - 送信済み書類の「⏳ 確認中」表示を追加（人材ページから移植）。担当が提出済み確定するまで、アップ済み書類が「未選択」に戻って見える問題の対策 -->
+<!-- 旧: ver.20260805.01 - 複数見本(images配列)対応。社会保険をVer1(納入証明書)/Ver2(回答票)の2枚表示。間取り・協議会・納税証明(その3 法人/個人)・個人住民税の見本を実書類に差し替え -->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<!-- 画像圧縮・HEIC変換ライブラリ（ver.20261003.02: 容量対策） -->
+<script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+<title>追加書類のアップロード（所属機関）</title>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-dark: #1341a8;
+    --success: #057a55;
+    --success-bg: #f0fdf4;
+    --success-border: #bbf7d0;
+    --error: #9b1c1c;
+    --error-bg: #fef2f2;
+    --error-border: #fecaca;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --text: #1a202c;
+    --sub: #718096;
+    --border: #e2e8f0;
+    --hover: #eff6ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px 16px 60px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 28px 20px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  .header { text-align: center; margin-bottom: 24px; }
+  .office-name { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+  .page-icon { font-size: 36px; margin-bottom: 8px; }
+  h1 { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: var(--sub); line-height: 1.7; }
+  .company-name-bar {
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  /* ─── タブ ─── */
+  .tabs-wrap {
+    display: flex;
+    background: #eef2f7;
+    border-radius: 14px;
+    padding: 4px;
+    margin-bottom: 20px;
+    gap: 4px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 11px 6px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.5;
+    text-align: center;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--sub);
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .tab-btn.active {
+    background: var(--card);
+    color: var(--primary);
+    box-shadow: 0 2px 8px rgba(26,86,219,0.12);
+  }
+  .tab-btn .tab-count {
+    display: inline-block;
+    background: var(--success);
+    color: white;
+    border-radius: 99px;
+    font-size: 10px;
+    padding: 1px 6px;
+    margin-left: 3px;
+    font-weight: 700;
+    vertical-align: middle;
+    line-height: 1.6;
+  }
+  .tab-btn .tab-count.hidden { display: none; }
+
+  /* ─── パネル ─── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* 注意ボックス */
+  .notice-box {
+    font-size: 12px;
+    color: #6b4f00;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    padding: 10px 13px;
+    line-height: 1.8;
+    margin-bottom: 16px;
+  }
+  .notice-box a { color: var(--primary); text-decoration: underline; }
+
+  /* ─── フィールド ─── */
+  .fields-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .field-row {
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .field-row.has-file { border-color: var(--primary); background: #eff6ff; }
+  .field-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    cursor: pointer;
+    user-select: none;
+    gap: 8px;
+  }
+  .field-label { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+  .field-status { font-size: 12px; color: var(--sub); white-space: nowrap; }
+  .field-status.ready { color: var(--success); font-weight: 600; }
+  .chevron { font-size: 11px; color: var(--sub); transition: transform 0.2s; flex-shrink: 0; }
+  .field-row.open .chevron { transform: rotate(180deg); }
+  .field-body {
+    border-top: 1.5px solid var(--border);
+    padding: 12px 14px;
+    display: none;
+  }
+  .field-row.open .field-body { display: block; }
+  .field-row.has-file .field-body { border-top-color: var(--primary); }
+  .file-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: var(--text);
+    gap: 6px;
+  }
+  .file-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-remove {
+    background: none;
+    border: none;
+    color: #e53e3e;
+    font-size: 15px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .add-btn-wrap { display: flex; gap: 8px; }
+  .add-file-label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: white;
+    border: 1.5px dashed var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 13px;
+    color: var(--sub);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .add-file-label:hover { background: var(--hover); border-color: var(--primary); color: var(--primary); }
+  .hint { font-size: 11px; color: var(--sub); margin-top: 6px; text-align: center; }
+
+  .submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 12px;
+  }
+  .submit-btn:hover { background: var(--primary-dark); }
+  .submit-btn:disabled { background: #a0aec0; cursor: not-allowed; }
+  .progress-wrap {
+    display: none;
+    background: #e2e8f0;
+    border-radius: 99px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .progress-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 99px;
+    transition: width 0.3s;
+    width: 0%;
+  }
+  .status-msg {
+    display: none;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.6;
+    white-space: pre-line;
+    text-align: center;
+  }
+  .status-msg.success { background: var(--success-bg); border: 1.5px solid var(--success-border); color: var(--success); }
+  .status-msg.error { text-align:left; background: var(--error-bg); border: 1.5px solid var(--error-border); color: var(--error); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="office-name">大房行政書士法人</div>
+    <div class="page-icon">🏢</div>
+    <h1>追加書類のアップロード</h1>
+    <div class="subtitle" id="tkSub">出入国在留管理庁より、追加資料の提出を求められております。<br>お手数ですが、下記の書類をアップロードいただけますようお願いいたします。</div>
+    <div id="tkErrBox" style="display:none;margin-top:12px;padding:12px 14px;border-radius:10px;background:#fff7ed;border:1.5px solid #fdba74;color:#9a3412;font-size:13px;font-weight:700;line-height:1.7;"></div>
+  </div>
+  <div class="company-name-bar" id="companyNameBar" style="display:none;"></div>
+
+  <!-- タブ -->
+  <div class="tabs-wrap">
+    <button class="tab-btn active" id="tabBtnLarge" onclick="switchTab('large')">
+      💹 大企業<br><small>源泉1,000万円以上</small>
+      <span class="tab-count hidden" id="countLarge"></span>
+    </button>
+    <button class="tab-btn" id="tabBtnNormal" onclick="switchTab('normal')">
+      🏭 中小企業
+      <span class="tab-count hidden" id="countNormal"></span>
+    </button>
+    <button class="tab-btn" id="tabBtnKojin" onclick="switchTab('kojin')">
+      👤 個人事業主
+      <span class="tab-count hidden" id="countKojin"></span>
+    </button>
+  </div>
+
+  <!-- 大企業パネル -->
+  <div class="tab-panel active" id="panelLarge">
+    <div class="fields-list" id="fieldsListLarge"></div>
+  </div>
+
+  <!-- 中小企業パネル -->
+  <div class="tab-panel" id="panelNormal">
+    <div class="notice-box">
+      <strong>📅 発行日にご注意ください</strong><br>
+      次の書類は、発行後3か月以内のものが必要です。
+      <ul style="margin:6px 0;padding-left:20px;">
+        <li>役員の住民票の写し</li>
+        <li>労働保険料等納付証明書</li>
+        <li>税務署発行の納税証明書（その3）</li>
+        <li>法人住民税の市町村発行の納税証明書</li>
+      </ul>
+      一部の書類のご提出が遅れ、申請時点で3か月を超える場合は、再度のご提出をお願いすることがございます。
+    </div>
+    <div class="notice-box">
+      ⚠️ 3年間継続した受入れ実績があり過去3年間債務超過なし（法人に限る）、または
+      <a href="https://www.moj.go.jp/isa/content/001378932.pdf" target="_blank">こちらの条件</a>
+      に当てはまる企業様は<strong>事前にお申し出ください</strong>。
+    </div>
+    <div class="fields-list" id="fieldsListNormal"></div>
+  </div>
+
+  <!-- 個人事業主パネル -->
+  <div class="tab-panel" id="panelKojin">
+    <div class="notice-box"><!-- ver.20261002.03 -->
+      <strong>📅 発行日にご注意ください</strong><br>
+      次の書類は、発行後3か月以内のものが必要です。
+      <ul style="margin:6px 0;padding-left:20px;">
+        <li>個人事業主の住民票の写し</li>
+        <li>労働保険料等納付証明書</li>
+        <li>税務署発行の納税証明書（その3）</li>
+        <li>個人住民税の市町村発行の納税証明書</li>
+      </ul>
+      一部の書類のご提出が遅れ、申請時点で3か月を超える場合は、再度のご提出をお願いすることがございます。
+    </div>
+    <div class="fields-list" id="fieldsListKojin"></div>
+  </div>
+
+  <button class="submit-btn" id="submitBtn" disabled>送信する</button>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="status-msg" id="statusMsg"></div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
+
+// Supabase（アップロード通知用）
+const SB_URL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
+const SB_KEY = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
+function _uplRpc(fn, body){ return fetch(SB_URL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, body: JSON.stringify(body||{}) }); }
+
+async function notifyUploadToSystem(fileCount, companyId, companyName) {
+  // companyId・companyName両方なくてもとりあえず送る（テーブル存在確認も兼ねる）
+  try {
+    const payload = {
+      file_count: fileCount,
+      source: 'company_dataup',
+      created_at: new Date().toISOString()
+    };
+    if (companyId) payload.company_id = companyId;
+    if (companyName) payload.company_name = companyName;
+    if (FOLDER_ID) payload.folder_id = FOLDER_ID;
+    console.log('📤 Supabase通知送信:', payload);
+    const res = await _uplRpc('upload_notify', { p_payload: payload });
+    if (res.ok) {
+      console.log('✅ 案件管理システムに通知しました (HTTP ' + res.status + ')');
+    } else {
+      const errText = await res.text();
+      console.error('❌ Supabase通知エラー (HTTP ' + res.status + '):', errText);
+    }
+  } catch(e) {
+    console.error('❌ 通知送信例外:', e);
+  }
+}
+
+const urlParams = new URLSearchParams(window.location.search);
+const FOLDER_ID = urlParams.get('folder') || '';
+// ===== ver.20261003.01: アップロードできない理由の判定・表示 =====
+var UPL_MAX_FILE_MB = 25;   // 1ファイルの上限目安（送信サーバーの受付量）
+var UPL_MAX_TOTAL_MB = 30;  // 1回でまとめて送る合計の上限目安
+var UPL_TIMEOUT_MS = 180000; // 3分で時間切れ
+function _uplMB(bytes){ return (bytes/1024/1024).toFixed(1)+'MB'; }
+// ファイル選択時のチェック（問題なければ ''）
+function _uplCheckFile(file, compressImages){
+  var name = file && file.name || '', t = file && file.type || '';
+  var isImg = /^image\//.test(t) || /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(name);
+  var isPdf = t === 'application/pdf' || /\.pdf$/i.test(name);
+  if (!isImg && !isPdf) return '「'+name+'」は対応していないファイル形式です（JPG・PNG・PDFのみ）。Word・Excel等はPDFに変換するか、写真に撮ってアップロードしてください。';
+  if (!file.size) return '「'+name+'」は中身が空（0バイト）のため読み込めません。撮影・保存し直してから選んでください。';
+  if (file.size > UPL_MAX_FILE_MB*1024*1024 && !(isImg && compressImages)) return '「'+name+'」は '+_uplMB(file.size)+' あり大きすぎます（1ファイル'+UPL_MAX_FILE_MB+'MBまで）。PDFはページを分けるか圧縮して、写真は解像度を下げてからアップロードしてください。';
+  return '';
+}
+// 送信エラーの理由を日本語で返す
+function _uplErrReason(err){
+  var m = String((err && err.message) || err || '');
+  if (m.indexOf('NO_FOLDER') === 0) return 'このアップロード用URLに保存先フォルダが設定されていません。お手数ですが担当者へご連絡ください（URLが途中で切れている可能性もあります）。';
+  if (m.indexOf('FILE_TOO_LARGE') === 0) return 'ファイルが大きすぎます（'+(m.split(':')[1]||'')+'）。1ファイル'+UPL_MAX_FILE_MB+'MBまでです。PDFはページを分けるか圧縮してください。';
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'インターネットにつながっていません（オフライン）。電波の良い場所かWi-Fiにつないでから、もう一度送信してください。';
+  if ((err && err.name === 'AbortError') || /timeout|時間切れ/i.test(m)) return '送信に時間がかかりすぎて途中で止まりました（ファイルが大きい・通信が遅い）。Wi-Fiにつなぐか、枚数を減らして送信してください。';
+  if (/Failed to fetch|NetworkError|Load failed|network connection/i.test(m)) return '通信エラーで送信できませんでした（電波が弱い・途中で回線が切れた・ファイルが大きすぎる等）。通信状況を確認して、もう一度送信してください。';
+  var hs = m.match(/HTTP (\d{3})/);
+  if (hs) {
+    var c = +hs[1];
+    if (c === 413) return 'ファイルが大きすぎて受け付けられませんでした。枚数を減らすか、分けて送信してください。';
+    if (c === 429 || c >= 500) return 'サーバーが混み合っているか一時的なエラーです（HTTP '+c+'）。少し時間をおいて、もう一度送信してください。';
+    return 'サーバーから想定外の応答がありました（HTTP '+c+'）。時間をおいても続く場合は担当者へご連絡ください。';
+  }
+  if (/folder|フォルダ|not found|権限|permission|access denied|Access/i.test(m)) return '保存先フォルダが見つからないか、アクセス権がありません。お手数ですが担当者へご連絡ください（フォルダの移動・削除の可能性があります）。';
+  if (/Read failed|読み込/i.test(m)) return 'ファイルを読み込めませんでした（破損している・クラウド上にだけあり端末に保存されていない等）。端末に保存し直すか撮り直してから選んでください。';
+  if (/Exceeded|limit|上限|too large|Request Entity/i.test(m)) return 'ファイルサイズが上限を超えています。枚数を減らすか、分けて送信してください。';
+  if (/BAD_RESPONSE|JSON|Unexpected token|Unexpected end/i.test(m)) return 'サーバーの応答を読み取れませんでした（ファイルが大きすぎる・一時的な障害の可能性）。枚数を減らして、もう一度送信してください。';
+  return '原因不明のエラーです（'+m.slice(0,80)+'）。もう一度送信しても失敗する場合は、この画面のスクリーンショットを担当者へお送りください。';
+}
+// タイムアウト付き fetch
+function _uplFetch(url, opts){
+  if (typeof AbortController === 'undefined') return fetch(url, opts);
+  var ac = new AbortController();
+  var tm = setTimeout(function(){ ac.abort(); }, UPL_TIMEOUT_MS);
+  opts = Object.assign({}, opts, { signal: ac.signal });
+  return fetch(url, opts).finally(function(){ clearTimeout(tm); });
+}
+// 失敗一覧を「理由ごと」にまとめた文章にする  list=[{docLabel, reason}]
+function _uplFormatFailures(list){
+  var byReason = {}, order = [];
+  list.forEach(function(f){ if(!byReason[f.reason]){ byReason[f.reason]=[]; order.push(f.reason); } if(byReason[f.reason].indexOf(f.docLabel)<0) byReason[f.reason].push(f.docLabel); });
+  return order.map(function(r){ return '■ ' + byReason[r].join('、') + '\n　→ ' + r; }).join('\n');
+}
+// 選択時に弾いたファイルの理由を表示
+function _uplShowRejected(list){
+  if (!list.length) return;
+  alert('次のファイルは追加できませんでした。\n\n' + list.join('\n\n'));
+}
+
+const COMPANY_ID = urlParams.get('company') || '';
+// 追完専用: t=追完の記録（tsuikan_upload_log.id）。書類・理由・注意点はここから読む
+const TSUIKAN_ID = urlParams.get('t') || '';
+window._tkMeta = null; window._tkLoadErr = '';
+const COMPANY_NAME = urlParams.get('name') ? decodeURIComponent(urlParams.get('name')) : '';
+// ver.20260525.01: 新パラメータ docs=BASE64URL(JSON [{l,r,t}])
+const DOCS_PARAM = urlParams.get('docs') || '';
+function _decodeDocsParam(s){
+  if(!s) return null;
+  try {
+    var b64 = s.replace(/-/g,'+').replace(/_/g,'/');
+    while(b64.length % 4) b64 += '=';
+    var bin = atob(b64);
+    var txt = decodeURIComponent(escape(bin));
+    var arr = JSON.parse(txt);
+    if(!Array.isArray(arr)) return null;
+    return arr;
+  } catch(e){
+    console.warn('docs param decode err:', e);
+    return null;
+  }
+}
+// ver.20260525.34: docs パラメータが空でも COMPANY_ID があれば upload_docs_cache から取得
+let DOCS_LIST = _decodeDocsParam(DOCS_PARAM);
+let USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
+
+const SUPABASE_URL_UPL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
+const SUPABASE_KEY_UPL = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
+function _loadDocsFromCache(){
+  return new Promise(function(resolve){
+    // 追完専用: 追完の記録から書類と理由を読む（docs パラメータ・書類キャッシュは使わない）
+    if(!TSUIKAN_ID){ window._tkLoadErr='nolink'; resolve(null); return; }
+    _uplRpc('tsuikan_upload_items_get', { p_id: TSUIKAN_ID, p_target: 'company' })
+    .then(function(r){ return r.ok ? r.json() : null; }).then(function(o){
+      if(!o || !Array.isArray(o.items)){ window._tkLoadErr='notfound'; resolve(null); return; }
+      window._tkMeta = { deadline:o.deadline||'', done:!!o.done };
+      window._tkSampleByLabel = {};
+      o.items.forEach(function(it){ if(it && it.doc && (it.sample_note || it.sample_image)){ var sm = {}; if(it.sample_note) sm.note = it.sample_note; if(it.sample_image && /^(samples\/|https:\/\/)/.test(it.sample_image)) sm.image = it.sample_image; window._tkSampleByLabel[it.doc] = sm; } });
+      DOCS_LIST = o.items.filter(function(it){ return it && it.doc; }).map(function(it){
+        return { l:String(it.doc), r:1, t:'giji', done:!!it.done, note:'', tkNote:it.note||'', tips:Array.isArray(it.tips)?it.tips:[], kind:it.kind||'', year:it.year||'', scope:it.scope||'', sashi:it.sashimodoshi||'', forms:Array.isArray(it.forms)?it.forms:[] };
+      });
+      USE_NEW_DOCS = true;
+      resolve(DOCS_LIST);
+    }).catch(function(e){ console.warn('tsuikan items rpc err:', e); window._tkLoadErr='network'; resolve(null); });
+    return;
+    if(USE_NEW_DOCS){ resolve(DOCS_LIST); return; }
+    if(!COMPANY_ID){ resolve(null); return; }
+    _uplRpc('upload_docs_cache_get', { p_case_id: COMPANY_ID, p_kind: 'company' })
+    .then(function(r){ return r.ok ? r.json() : null; }).then(function(docs){
+      if(docs && Array.isArray(docs) && docs.length){
+        DOCS_LIST = docs;
+        USE_NEW_DOCS = true;
+        resolve(DOCS_LIST);
+      } else {
+        resolve(null);
+      }
+    }).catch(function(e){
+      console.warn('upload_docs_cache rpc err:', e);
+      resolve(null);
+    });
+  });
+}
+console.log('📋 USE_NEW_DOCS:', USE_NEW_DOCS, 'DOCS_LIST:', DOCS_LIST);
+
+// ver.20260525.22: 書類名にふりがな(ruby)を付与する辞書
+// マッチしない書類は日本語のまま表示
+const DOC_RUBY = {
+  // ── 会社（中小） ──
+  '決算文書の写し（損益計算書及び貸借対照表）': '<ruby>決算文書<rt>けっさんぶんしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し（<ruby>損益計算書<rt>そんえきけいさんしょ</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>貸借対照表<rt>たいしゃくたいしょうひょう</rt></ruby>）',
+  '決算文書の写し3期分（損益計算書及び貸借対照表）': '<ruby>決算文書<rt>けっさんぶんしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し3<ruby>期分<rt>きぶん</rt></ruby>（<ruby>損益計算書<rt>そんえきけいさんしょ</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>貸借対照表<rt>たいしゃくたいしょうひょう</rt></ruby>）',
+  '登記事項証明書（履歴事項全部証明書）': '<ruby>登記事項証明書<rt>とうきじこうしょうめいしょ</rt></ruby>（<ruby>履歴事項全部証明書<rt>りれきじこうぜんぶしょうめいしょ</rt></ruby>）',
+  // ver.20260908: 技人国（技術・人文知識・国際業務）の企業（所属機関）書類
+  '事業内容を明らかにする案内書（会社案内・沿革・取引先等）': '<ruby>事業内容<rt>じぎょうないよう</rt></ruby>を<ruby>明<rt>あき</rt></ruby>らかにする<ruby>案内書<rt>あんないしょ</rt></ruby>（<ruby>会社案内<rt>かいしゃあんない</rt></ruby>・<ruby>沿革<rt>えんかく</rt></ruby>・<ruby>取引先<rt>とりひきさき</rt></ruby>など）',
+  '直近年度の決算文書の写し（新規事業は事業計画書）': '<ruby>直近年度<rt>ちょっきんねんど</rt></ruby>の<ruby>決算文書<rt>けっさんぶんしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し（<ruby>新規事業<rt>しんきじぎょう</rt></ruby>は<ruby>事業計画書<rt>じぎょうけいかくしょ</rt></ruby>）',
+  '所属機関の代表者に関する申告書（参考様式）': '<ruby>所属機関<rt>しょぞくきかん</rt></ruby>の<ruby>代表者<rt>だいひょうしゃ</rt></ruby>に<ruby>関<rt>かん</rt></ruby>する<ruby>申告書<rt>しんこくしょ</rt></ruby>（<ruby>参考様式<rt>さんこうようしき</rt></ruby>）',
+  '法定調書合計表の写し（給与所得の源泉徴収票等）': '<ruby>法定調書合計表<rt>ほうていちょうしょごうけいひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し（<ruby>給与所得<rt>きゅうよしょとく</rt></ruby>の<ruby>源泉徴収票<rt>げんせんちょうしゅうひょう</rt></ruby>など）',
+  '役員（代表で1名分）の住民票の写し': '<ruby>役員<rt>やくいん</rt></ruby>（<ruby>代表<rt>だいひょう</rt></ruby>で1<ruby>名分<rt>めいぶん</rt></ruby>）の<ruby>住民票<rt>じゅうみんひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '業務に関わる役員（最低1名分）の住民票の写し': '<ruby>業務<rt>ぎょうむ</rt></ruby>に<ruby>関<rt>かか</rt></ruby>わる<ruby>役員<rt>やくいん</rt></ruby>（<ruby>最低<rt>さいてい</rt></ruby>1<ruby>名分<rt>めいぶん</rt></ruby>）の<ruby>住民票<rt>じゅうみんひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '労働保険料等納付証明書（未納なし証明）': '<ruby>労働保険料等納付証明書<rt>ろうどうほけんりょうとうのうふしょうめいしょ</rt></ruby>（<ruby>未納<rt>みのう</rt></ruby>なし<ruby>証明<rt>しょうめい</rt></ruby>）',
+  '労働保険料等納付証明書': '<ruby>労働保険料等納付証明書<rt>ろうどうほけんりょうとうのうふしょうめいしょ</rt></ruby>',
+  '社会保険料納入状況照会回答票': '<ruby>社会保険料納入状況照会回答票<rt>しゃかいほけんりょうのうにゅうじょうきょうしょうかいかいとうひょう</rt></ruby>',
+  '社会保険料納入状況照会回答票または領収書24ヶ月分': '<ruby>社会保険料納入状況照会回答票<rt>しゃかいほけんりょうのうにゅうじょうきょうしょうかいかいとうひょう</rt></ruby>または<ruby>領収書<rt>りょうしゅうしょ</rt></ruby>24ヶ<ruby>月分<rt>げつぶん</rt></ruby>',
+  '納税証明書（その３）源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税 ＊税務署発行': '<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（その３）<ruby>源泉所得税<rt>げんせんしょとくぜい</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>復興特別所得税<rt>ふっこうとくべつしょとくぜい</rt></ruby>・<ruby>法人税<rt>ほうじんぜい</rt></ruby>・<ruby>消費税<rt>しょうひぜい</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>地方消費税<rt>ちほうしょうひぜい</rt></ruby> ＊<ruby>税務署発行<rt>ぜいむしょはっこう</rt></ruby>',
+  '納税証明書（地方税）法人住民税 ＊市町村発行': '<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（<ruby>地方税<rt>ちほうぜい</rt></ruby>）<ruby>法人住民税<rt>ほうじんじゅうみんぜい</rt></ruby> ＊<ruby>市町村発行<rt>しちょうそんはっこう</rt></ruby>',
+  '就業規則': '<ruby>就業規則<rt>しゅうぎょうきそく</rt></ruby>',
+  '賃金規定': '<ruby>賃金規定<rt>ちんぎんきてい</rt></ruby>',
+  '36協定届出書': '36<ruby>協定届出書<rt>きょうていとどけでしょ</rt></ruby>',
+  '変形労働届出書': '<ruby>変形労働届出書<rt>へんけいろうどうとどけでしょ</rt></ruby>',
+  '年間カレンダー': '<ruby>年間<rt>ねんかん</rt></ruby>カレンダー',
+  '③ 居住予定物件の物件資料': '③ <ruby>居住予定物件<rt>きょじゅうよていぶっけん</rt></ruby>の<ruby>物件資料<rt>ぶっけんしりょう</rt></ruby>',
+  '予定物件の間取り図、物件資料など': '<ruby>予定物件<rt>よていぶっけん</rt></ruby>の<ruby>間取<rt>まど</rt></ruby>り<ruby>図<rt>ず</rt></ruby>、<ruby>物件資料<rt>ぶっけんしりょう</rt></ruby>など',
+  '協議会加入証明書': '<ruby>協議会加入証明書<rt>きょうぎかいかにゅうしょうめいしょ</rt></ruby>',
+  // ── 会社（大企業） ──
+  '四季報の写しまたは法定調書合計表の写し': '<ruby>四季報<rt>しきほう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>しまたは<ruby>法定調書合計表<rt>ほうていちょうしょごうけいひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '四季報の写し、または上場証明書類': '<ruby>四季報<rt>しきほう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し、または<ruby>上場証明書類<rt>じょうじょうしょうめいしょるい</rt></ruby>',
+  '法定調書合計表の写し（税務署発行）': '<ruby>法定調書合計表<rt>ほうていちょうしょごうけいひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し（<ruby>税務署発行<rt>ぜいむしょはっこう</rt></ruby>）',
+  // ── 会社（個人事業主） ──
+  '個人事業主納税証明書その3(5項目)': '<ruby>個人事業主納税証明書<rt>こじんじぎょうぬしのうぜいしょうめいしょ</rt></ruby>その3(5<ruby>項目<rt>こうもく</rt></ruby>)',
+  '個人事業主の住民票の写し': '<ruby>個人事業主<rt>こじんじぎょうぬし</rt></ruby>の<ruby>住民票<rt>じゅうみんひょう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '住民税の納税証明書': '<ruby>住民税<rt>じゅうみんぜい</rt></ruby>の<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>',
+  '個人住民税の納税証明書（直近2年度分）＊市区町村発行': '<ruby>個人住民税<rt>こじんじゅうみんぜい</rt></ruby>の<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（<ruby>直近<rt>ちょっきん</rt></ruby>2<ruby>年度分<rt>ねんどぶん</rt></ruby>）＊<ruby>市区町村発行<rt>しくちょうそんはっこう</rt></ruby>',
+  '住民票': '<ruby>住民票<rt>じゅうみんひょう</rt></ruby>',
+  'マイナポータルからダウンロードした医療保険の資格情報の写し': 'マイナポータルからダウンロードした<ruby>医療保険<rt>いりょうほけん</rt></ruby>の<ruby>資格情報<rt>しかくじょうほう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  'マイナポータルからダウンロードした医療保険の資格情報の写し、または資格確認書の写し': 'マイナポータルからダウンロードした<ruby>医療保険<rt>いりょうほけん</rt></ruby>の<ruby>資格情報<rt>しかくじょうほう</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し、または<ruby>資格確認書<rt>しかくかくにんしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し',
+  '国民健康保険料(税)納付証明書(直近1年度)': '<ruby>国民健康保険料<rt>こくみんけんこうほけんりょう</rt></ruby>(<ruby>税<rt>ぜい</rt></ruby>)<ruby>納付証明書<rt>のうふしょうめいしょ</rt></ruby>(<ruby>直近<rt>ちょっきん</rt></ruby>1<ruby>年度<rt>ねんど</rt></ruby>)',
+  '国民健康保険料（税）納付証明書（直近2年分）': '<ruby>国民健康保険料<rt>こくみんけんこうほけんりょう</rt></ruby>（<ruby>税<rt>ぜい</rt></ruby>）<ruby>納付証明書<rt>のうふしょうめいしょ</rt></ruby>（<ruby>直近<rt>ちょっきん</rt></ruby>2<ruby>年分<rt>ねんぶん</rt></ruby>）',
+  '被保険者記録照会回答表': '<ruby>被保険者記録照会回答表<rt>ひほけんしゃきろくしょうかいかいとうひょう</rt></ruby>',
+  '被保険者記録照会(納付Ⅱ)': '<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>(<ruby>納付<rt>のうふ</rt></ruby>Ⅱ)',
+  '被保険者記録照会（納付Ⅱ）または国民年金保険料領収証書の写し（直近24ヶ月分）': '<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>（<ruby>納付<rt>のうふ</rt></ruby>Ⅱ）または<ruby>国民年金保険料領収証書<rt>こくみんねんきんほけんりょうりょうしゅうしょうしょ</rt></ruby>の<ruby>写<rt>うつ</rt></ruby>し（<ruby>直近<rt>ちょっきん</rt></ruby>24ヶ<ruby>月分<rt>げつぶん</rt></ruby>）',
+  '納税証明書（その３）＊税務署発行　税目）源泉所得税及び復興特別所得税、法人税、消費税及び地方消費税': '<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（その３）＊<ruby>税務署発行<rt>ぜいむしょはっこう</rt></ruby>　<ruby>税目<rt>ぜいもく</rt></ruby>）<ruby>源泉所得税<rt>げんせんしょとくぜい</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>復興特別所得税<rt>ふっこうとくべつしょとくぜい</rt></ruby>、<ruby>法人税<rt>ほうじんぜい</rt></ruby>、<ruby>消費税<rt>しょうひぜい</rt></ruby><ruby>及<rt>およ</rt></ruby>び<ruby>地方消費税<rt>ちほうしょうひぜい</rt></ruby>',
+  '納税証明書（その３）＊税務署発行　税目）源泉所得税・申告所得税・消費税・地方消費税・相続税・贈与税': '<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（その３）＊<ruby>税務署発行<rt>ぜいむしょはっこう</rt></ruby>　<ruby>税目<rt>ぜいもく</rt></ruby>）<ruby>源泉所得税<rt>げんせんしょとくぜい</rt></ruby>・<ruby>申告所得税<rt>しんこくしょとくぜい</rt></ruby>・<ruby>消費税<rt>しょうひぜい</rt></ruby>・<ruby>地方消費税<rt>ちほうしょうひぜい</rt></ruby>・<ruby>相続税<rt>そうぞくぜい</rt></ruby>・<ruby>贈与税<rt>ぞうよぜい</rt></ruby>',
+  // ── 分野別 ──
+  '造船・舶用工業分野 特定技能評価試験結果': '<ruby>造船<rt>ぞうせん</rt></ruby>・<ruby>舶用工業分野<rt>はくようこうぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '自動車整備分野 特定技能評価試験結果': '<ruby>自動車整備分野<rt>じどうしゃせいびぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '認定自動車整備士資格証（写し）': '<ruby>認定自動車整備士資格証<rt>にんていじどうしゃせいびししかくしょう</rt></ruby>（<ruby>写<rt>うつ</rt></ruby>し）',
+  '航空分野 特定技能評価試験結果': '<ruby>航空分野<rt>こうくうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '宿泊分野 特定技能評価試験結果': '<ruby>宿泊分野<rt>しゅくはくぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '農業分野 特定技能評価試験結果': '<ruby>農業分野<rt>のうぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '漁業分野 特定技能評価試験結果': '<ruby>漁業分野<rt>ぎょぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '飲食料品製造業分野 特定技能評価試験結果': '<ruby>飲食料品製造業分野<rt>いんしょくりょうひんせいぞうぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '外食業分野 特定技能評価試験結果': '<ruby>外食業分野<rt>がいしょくぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  'ビルクリーニング分野 特定技能評価試験結果': 'ビルクリーニング<ruby>分野<rt>ぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '素形材・産業機械・電気電子情報産業分野 特定技能評価試験結果': '<ruby>素形材<rt>そけいざい</rt></ruby>・<ruby>産業機械<rt>さんぎょうきかい</rt></ruby>・<ruby>電気電子情報産業分野<rt>でんきでんしじょうほうさんぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '林業分野 特定技能評価試験結果': '<ruby>林業分野<rt>りんぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  '木材産業分野 特定技能評価試験結果': '<ruby>木材産業分野<rt>もくざいさんぎょうぶんや</rt></ruby> <ruby>特定技能評価試験結果<rt>とくていぎのうひょうかしけんけっか</rt></ruby>',
+  // ── その他 ──
+  'その他': 'その<ruby>他<rt>た</rt></ruby>'
+};
+
+function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');}
+function _labelWithRuby(ja){
+  return _esc(ja); // ver.20260603: ふりがな(ruby)を廃止し素のラベルを表示（DOC_RUBYは未使用）
+}
+
+if (COMPANY_NAME) {
+  const bar = document.getElementById('companyNameBar');
+  bar.textContent = '🏢 ' + COMPANY_NAME;
+  bar.style.display = 'block';
+}
+
+// ─── 大企業（源泉1,000万円以上）の書類 ───
+const LARGE_KEYS = ['shikiho', 'hoteichosho'];
+const LARGE_DOCS = {
+  shikiho:     '四季報の写し、または上場証明書類',
+  hoteichosho: '法定調書合計表の写し（税務署発行）',
+};
+
+// ─── 中小企業の書類 ───
+const NORMAL_KEYS = [
+  'kessan', 'tokibo', 'jumin_hyo', 'rodo_hoken', 'shakai_hoken',
+  'zeimu_3', 'zeimu_shimin', 'chingin_kitei',
+  'san_roku', 'henkei_rodo', 'nengkan_cal', 'madori', 'other',
+];
+const NORMAL_DOCS = {
+  kessan:        '決算文書の写し（損益計算書及び貸借対照表）（直近3期分）',
+  tokibo:        '登記事項証明書（履歴事項全部証明書）（※発行より３カ月以内）',
+  jumin_hyo:     '役員（代表で1名分）の住民票の写し（※本籍記載あり、マイナンバー省略、発行より３カ月以内）',
+  rodo_hoken:    '労働保険料等納付証明書（未納なし証明）',
+  shakai_hoken:  '社会保険料納入状況照会回答票（申請月の前々月までの24か月分）',
+  zeimu_3:       '納税証明書（その３）源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税 ＊税務署発行',
+  zeimu_shimin:  '納税証明書（地方税）法人住民税【直近2年度分】＊市町村発行',
+  shugyo_kisoku: '就業規則',
+  chingin_kitei: '賃金規定（※就業規則の中に賃金規定が含まれる場合、就業規則をお送りください）',
+  san_roku:      '36協定届出書',
+  henkei_rodo:   '変形労働届出書（※1年単位変形労働時間制を適用している場合のみ）',
+  nengkan_cal:   '年間カレンダー（※1年単位変形労働時間制を適用している場合のみ）',
+  madori:        '居住予定物件の資料（賃貸契約書類又は間取り図（suumoなどの賃貸サイト等））',
+  other:         'その他',
+};
+
+// ─── 個人事業主の書類 ───
+const KOJIN_KEYS = [
+  'kojin_jumin', 'kojin_rodo', 'kojin_iryo', 'kojin_kokuho',
+  'kojin_nenkin_fu', 'kojin_nenkin_rec', 'kojin_zeimu3', 'kojin_shimin', 'other_kojin',
+];
+const KOJIN_DOCS = {
+  kojin_jumin:    '個人事業主の住民票の写し',
+  kojin_rodo:     '労働保険料等納付証明書（未納なし証明）',
+  kojin_iryo:     'マイナポータルからダウンロードした医療保険の資格情報の写し、または資格確認書の写し',
+  kojin_kokuho:   '国民健康保険料（税）納付証明書（直近2年分）',
+  kojin_nenkin_fu:'被保険者記録照会（納付Ⅱ）または国民年金保険料領収証書の写し（直近24ヶ月分）',
+  kojin_nenkin_rec:'被保険者記録照会回答票',
+  kojin_zeimu3:   '納税証明書（その３）＊税務署発行　税目）源泉所得税・申告所得税・消費税・地方消費税・相続税・贈与税',
+  kojin_shimin:   '個人住民税の納税証明書（直近2年度分）＊市区町村発行',
+  other_kojin:    'その他',
+};
+
+// ver.20260616.01: 画面の表示ラベル → co_doc_check に保存される正規名（index.html準拠）への照合エイリアス。
+// 表示テキストは情報量を保つため変えず、提出済み(staff::/skip::)判定だけ正規名に寄せてグレーアウトを効かせる。
+const DOC_DONE_ALIAS = {
+  // ── 会社（中小） ──
+  '決算文書の写し3期分（損益計算書及び貸借対照表）': '決算文書の写し（損益計算書及び貸借対照表）',
+  '決算文書の写し（損益計算書及び貸借対照表）（直近3期分）': '決算文書の写し（損益計算書及び貸借対照表）',
+  '登記事項証明書（履歴事項全部証明書）（※発行より３カ月以内）': '登記事項証明書（履歴事項全部証明書）',
+  '役員（代表で1名分）の住民票の写し（※本籍記載あり、マイナンバー省略、発行より３カ月以内）': '役員（代表で1名分）の住民票の写し',
+  '社会保険料納入状況照会回答票（申請月の前々月までの24か月分）': '社会保険料納入状況照会回答票',
+  '賃金規定（※就業規則の中に賃金規定が含まれる場合、就業規則をお送りください）': '賃金規定',
+  '変形労働届出書（※1年単位変形労働時間制を適用している場合のみ）': '変形労働届出書',
+  '年間カレンダー（※1年単位変形労働時間制を適用している場合のみ）': '年間カレンダー',
+  '居住予定物件の資料（賃貸契約書類又は間取り図（suumoなどの賃貸サイト等））': '③ 居住予定物件の物件資料',
+  '業務に関わる役員（最低1名分）の住民票の写し': '役員（代表で1名分）の住民票の写し',
+  '社会保険料納入状況照会回答票または領収書24ヶ月分': '社会保険料納入状況照会回答票',
+  '納税証明書（その３）＊税務署発行　税目）源泉所得税及び復興特別所得税、法人税、消費税及び地方消費税': '納税証明書（その３）源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税 ＊税務署発行',
+  '予定物件の間取り図、物件資料など': '③ 居住予定物件の物件資料',
+  // ── 会社（個人事業主） ──
+  '個人事業主の住民票の写し': '住民票',
+  '労働保険料等納付証明書（未納なし証明）': '労働保険料等納付証明書',
+  'マイナポータルからダウンロードした医療保険の資格情報の写し、または資格確認書の写し': 'マイナポータルからダウンロードした医療保険の資格情報の写し',
+  '国民健康保険料（税）納付証明書（直近2年分）': '国民健康保険料(税)納付証明書(直近1年度)',
+  '被保険者記録照会（納付Ⅱ）または国民年金保険料領収証書の写し（直近24ヶ月分）': '被保険者記録照会(納付Ⅱ)',
+  '被保険者記録照会回答票': '被保険者記録照会回答表',
+  '納税証明書（その３）＊税務署発行　税目）源泉所得税・申告所得税・消費税・地方消費税・相続税・贈与税': '個人事業主納税証明書その3(5項目)',
+  '個人住民税の納税証明書（直近2年度分）＊市区町村発行': '住民税の納税証明書'
+};
+
+// ver.20260616.01: docs パラメータも upload_docs_cache も無い場合に、ハードコード書類辞書を
+// 新ロジック用の DOCS_LIST 形式 [{l, t, r}] に変換する。これで旧ロジック描画(done未対応)を経由せず、
+// 常に新ブランチ(グレーアウト対応)＋ _applyLiveDoneFromCoDocCheck に通せる。
+function _buildFallbackDocsList(){
+  var out = [];
+  (typeof LARGE_KEYS !== 'undefined' ? LARGE_KEYS : []).forEach(function(k){ if(LARGE_DOCS[k]) out.push({ l: LARGE_DOCS[k], t: 'large', r: 0 }); });
+  (typeof NORMAL_KEYS !== 'undefined' ? NORMAL_KEYS : []).forEach(function(k){ if(NORMAL_DOCS[k]) out.push({ l: NORMAL_DOCS[k], t: 'normal', r: 0 }); });
+  (typeof KOJIN_KEYS !== 'undefined' ? KOJIN_KEYS : []).forEach(function(k){ if(KOJIN_DOCS[k]) out.push({ l: KOJIN_DOCS[k], t: 'kojin', r: 0 }); });
+  return out;
+}
+
+// ver.20260616.03: 正本(settings.required_docs_co / _large / _kojin)をRPCで取得してDOCS_LISTを構築（脱ハードコード）。
+// index.html が co_doc_check に書く正規名と同一の配列なので、表示ラベルとグレーアウト判定が常に一致し、別名や手修正が不要になる。
+function _loadRequiredDocsFromDB(){
+  return new Promise(function(resolve){
+    _uplRpc('upload_required_docs_get', {})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      if(!d || typeof d!=='object'){ resolve(null); return; }
+      var out=[];
+      function add(arr,t){ (Array.isArray(arr)?arr:[]).forEach(function(l){ l=(l==null?'':String(l)).trim(); if(l) out.push({ l:l, t:t, r:0 }); }); }
+      add(d.large,'large'); add(d.normal,'normal'); add(d.kojin,'kojin');
+      // 任意提出枠「その他」（ハードコード版と同様に中小・個人事業主に用意）
+      if(Array.isArray(d.normal) && d.normal.length) out.push({ l:'その他', t:'normal', r:0 });
+      if(Array.isArray(d.kojin)  && d.kojin.length)  out.push({ l:'その他', t:'kojin',  r:0 });
+      resolve(out.length ? out : null);
+    })
+    .catch(function(e){ console.warn('required_docs rpc err:', e); resolve(null); });
+  });
+}
+
+const fileData = {};
+
+// ─── タブ切り替え ───
+function switchTab(tab) {
+  ['large', 'normal', 'kojin'].forEach(t => {
+    const panelId = t === 'large' ? 'panelLarge' : t === 'normal' ? 'panelNormal' : 'panelKojin';
+    const btnId   = t === 'large' ? 'tabBtnLarge' : t === 'normal' ? 'tabBtnNormal' : 'tabBtnKojin';
+    document.getElementById(panelId).classList.toggle('active', t === tab);
+    document.getElementById(btnId).classList.toggle('active', t === tab);
+  });
+}
+
+// ─── フィールド行を生成 ───
+// ver.20260619.06: 企業書類の「説明＋見本画像」（人材UPと同様・日本語のみ）。動的キー対策で書類名(ラベル)のキーワードから判定。
+var COMPANY_DOC_SAMPLES = {
+  kaizen_hyouka: { image:'samples/kaizen_hyouka_sample.png', note:'直近期末で純資産がマイナス（債務超過）のときに必要です。中小企業診断士・税理士・公認会計士などの第三者が、直近期の決算をもとに「債務超過の原因」と「いつ・どのように解消する見通しか」を評価した書面です。決まった様式はありません。作成をご依頼いただく際は、直近3期分の決算文書と、今後の事業計画（売上・利益の見込み）をお渡しください。' },
+  houtei:        { image:'samples/houtei_sample.png',        note:'源泉徴収税額が1,000万円以上の大企業の場合に提出。法定調書合計表（給与所得の源泉徴収票等の法定調書合計表）の写し、または四季報の写し・上場証明書類でも可。' },
+  tokibo:        { image:'samples/tokibo_sample.png',        note:'法務局またはオンライン（登記・供託オンライン申請システム）で取得。「履歴事項全部証明書」を取得してください（現在事項証明書は不可の場合あり）。発行から3か月以内のもの。' },
+  zeimu_3:       { image:'samples/zeimu_3_sample.png',       note:'税務署発行の「納税証明書（その３）」。税目＝源泉所得税及び復興特別所得税・法人税・消費税及び地方消費税。未納がないことの証明。', form:{ file:'forms/zeimu_3_form.pdf', label:'納税証明書交付請求書（税務署）' } },
+  zeimu_shimin:  { image:'samples/zeimu_shimin_sample.png',  note:'市区町村発行の法人住民税の納税証明書（直近2年度分）。' },
+  rodo_hoken:    { form:{ file:'forms/rodo_hoken_form.pdf', label:'労働保険料等納付証明書' }, image:'samples/rodo_hoken_sample.png',    note:'労働保険料等の未納なし証明。入管申請の際は、添付のフォーマットでの提出が必要となります。添付フォーマットの黄色箇所をご記入のうえ、返信用封筒を同封し、管轄の労働局へご送付いただきますようお願いいたします。押印済みの書類が返送されますので、返送された書類をご提出ください。', form:{ file:'forms/rodo_hoken_form.pdf', label:'労働保険料等納付証明書（特定技能外国人関係申請用）' } },
+  shakai_hoken:  { form:{ file:'forms/shakai_hoken_form.pdf', label:'社会保険料納付記録交付申請書' }, images:[{src:'samples/shakai_hoken_sample.png',label:'Ver.1 社会保険料納入証明書'},{src:'samples/shakai_hoken_sample2.png',label:'Ver.2 社会保険料納入状況照会回答票'}],  note:'年金事務所の「社会保険料納入状況照会回答票」、または「社会保険料納入証明書」「健康保険・厚生年金保険料の領収証書の写し」（申請月の前々月までの24か月分）。いずれかでOK。健康保険料の納入額が「0円」と記載されている場合は、同じ期間の支払いが完了していることを確認できる書類もあわせてご提出ください。', form:{ file:'forms/shakai_hoken_form.pdf', label:'社会保険料納付記録 交付申請書（特定技能・適用事業所用）' } },
+  jumin_hyo:     { image:'samples/jumin_hyo_sample.png',     note:'業務執行に関与する役員（代表で1名分）の住民票の写し。マイナンバーの記載がなく、本籍の記載があるものを取得してください。' },
+  kessan:        { image:'samples/kessan_sample.png',        note:'直近3期分の決算文書（損益計算書及び貸借対照表）の写し。' },
+  kakutei_shinkoku: { images:[{src:'samples/kakutei_shinkoku_sample1.jpg',label:'損益計算書'},{src:'samples/kakutei_shinkoku_sample2.jpg',label:'貸借対照表'}], note:'個人事業主の方は、直近3年分の確定申告書（青色申告決算書など）の写しをご提出ください。見本は青色申告決算書（不動産所得用）の例です。' },
+  shugyo_kisoku: { image:'samples/shugyo_kisoku_sample.png', note:'就業規則。常時10人以上を使用する事業場は労働基準監督署への届出が必要（受付印のある写し）。' },
+  chingin_kitei: { image:'samples/chingin_kitei_sample.png', note:'賃金規定。就業規則本体に賃金規定が含まれる場合は、その該当部分でも可。' },
+  san_roku:      { image:'samples/san_roku_sample.png',      note:'時間外労働・休日労働に関する協定届（36協定／様式第９号）。労働基準監督署への届出（受付印のある写し）。有効期間が切れていないもの。' },
+  henkei_rodo:   { image:'samples/henkei_rodo_sample.png',   note:'変形労働時間制を採用している場合の協定届。年間カレンダー等を添付。' },
+  nengkan_cal:   { image:'samples/nengkan_cal_sample.png',   note:'変形労働時間制の所定労働日・休日を示す年間カレンダー。' },
+  madori:        { image:'samples/madori_sample.png',        note:'特定技能外国人の住居予定物件の間取り図・物件資料。居室の広さ（1人あたり7.5㎡以上が目安）が分かるもの。' },
+  kyogikai:      { image:'samples/kyogikai_sample.png',      note:'受け入れ分野の協議会への加入を証明する書類。分野により名称・様式が異なります。' },
+  kojin_jumin:     { image:'samples/kojin_jumin_sample.png',     note:'個人事業主本人の住民票の写し（マイナンバー記載なし）。' },
+  kojin_iryo:      { image:'samples/kojin_iryo_sample.png',      note:'マイナポータルからダウンロードした医療保険の資格情報の写し、または資格確認書の写し。' },
+  kojin_kokuho:    { image:'samples/kojin_kokuho_sample.png',    note:'国民健康保険料（税）納付証明書（直近2年分）。市区町村窓口で取得。' },
+  kojin_nenkin_fu: { image:'samples/kojin_nenkin_fu_sample.png', note:'被保険者記録照会（納付Ⅱ）または国民年金保険料領収証書の写し（直近24か月分）。' },
+  kojin_nenkin_rec:{ image:'samples/kojin_nenkin_rec_sample.png',note:'年金事務所で取得する被保険者記録照会回答票。' },
+  kojin_zeimu3:    { image:'samples/kojin_zeimu3_sample.png',    note:'税務署発行の納税証明書（その３）。税目＝源泉所得税・申告所得税・消費税・地方消費税・相続税・贈与税。', form:{ file:'forms/zeimu_3_form.pdf', label:'納税証明書交付請求書（税務署）' } },
+  kojin_shimin:    { image:'samples/kojin_shimin_sample.png',    note:'市区町村発行の個人住民税の納税証明書（直近2年度分）。' }
+};
+// 書類名(ラベル)のキーワードから見本キーを判定（動的キー d0.. / 固定キー 両対応）
+function _coSampleKeyByLabel(label){
+  var t = String(label||'');
+  var has = function(){ for(var i=0;i<arguments.length;i++){ if(t.indexOf(arguments[i])<0) return false; } return true; };
+  if(t.indexOf('債務超過')>=0 || t.indexOf('改善の見通し')>=0 || t.indexOf('企業評価書')>=0) return 'kaizen_hyouka';
+  if(t.indexOf('登記事項')>=0) return 'tokibo';
+  if(t.indexOf('法定調書')>=0 || t.indexOf('四季報')>=0 || t.indexOf('上場証明')>=0) return 'houtei';
+  if(t.indexOf('協議会')>=0) return 'kyogikai';
+  if(t.indexOf('個人住民税')>=0) return 'kojin_shimin';
+  if(t.indexOf('法人住民税')>=0 || has('地方税','法人')) return 'zeimu_shimin';
+  if(t.indexOf('納税証明')>=0){
+    if(t.indexOf('法人税')>=0) return 'zeimu_3';
+    if(t.indexOf('申告所得税')>=0 || t.indexOf('相続税')>=0 || t.indexOf('贈与税')>=0) return 'kojin_zeimu3';
+    return 'zeimu_3';
+  }
+  if(t.indexOf('労働保険')>=0) return 'rodo_hoken';
+  if(t.indexOf('社会保険料')>=0) return 'shakai_hoken';
+  if(t.indexOf('住民票')>=0) return (t.indexOf('役員')>=0) ? 'jumin_hyo' : 'kojin_jumin';
+  if(t.indexOf('決算')>=0) return 'kessan';
+  if(t.indexOf('確定申告')>=0) return 'kakutei_shinkoku';
+  if(t.indexOf('就業規則')>=0) return 'shugyo_kisoku';
+  if(t.indexOf('賃金')>=0) return 'chingin_kitei';
+  if(t.indexOf('36協定')>=0 || t.indexOf('３６協定')>=0 || t.indexOf('時間外労働')>=0) return 'san_roku';
+  if(t.indexOf('変形労働')>=0) return 'henkei_rodo';
+  if(t.indexOf('年間カレンダー')>=0) return 'nengkan_cal';
+  if(t.indexOf('間取り')>=0 || t.indexOf('物件')>=0 || t.indexOf('居住予定')>=0) return 'madori';
+  if(t.indexOf('医療保険')>=0 || t.indexOf('資格確認書')>=0 || t.indexOf('マイナポータル')>=0) return 'kojin_iryo';
+  if(t.indexOf('国民健康保険')>=0) return 'kojin_kokuho';
+  if(t.indexOf('被保険者記録照会回答票')>=0) return 'kojin_nenkin_rec';
+  if(t.indexOf('被保険者記録照会')>=0 || t.indexOf('国民年金')>=0) return 'kojin_nenkin_fu';
+  return null;
+}
+function buildCompanySampleInline(label){
+  var k = _coSampleKeyByLabel(label);
+  var smp = k ? COMPANY_DOC_SAMPLES[k] : null;
+  if(!smp && window._tkSampleByLabel && window._tkSampleByLabel[label]) smp = window._tkSampleByLabel[label];
+  if(!smp) return null;
+  var box=document.createElement('div');
+  box.style.cssText='margin:0 0 10px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;';
+  if(smp.note){
+    var n=document.createElement('div');
+    n.style.cssText='font-size:12px;color:#92400e;line-height:1.7;white-space:pre-wrap;margin-bottom:8px;';
+    n.textContent='💡 '+smp.note;
+    box.appendChild(n);
+  }
+  // ver.20260619.07: 取得用の申請書（PDF）ダウンロードボタン
+  if(smp.form && smp.form.file){
+    // ver.20261109.01: 入力して申請書を作る（おすすめ）
+    if(k==='zeimu_3' || k==='shakai_hoken' || k==='rodo_hoken'){
+      var mb=document.createElement('button'); mb.type='button';
+      mb.style.cssText='display:inline-block;margin:0 6px 10px 0;padding:9px 14px;background:#059669;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;line-height:1.4;';
+      mb.textContent='✍ 入力して申請書を作る（おすすめ）';
+      mb.onclick=function(ev){ ev.preventDefault(); ev.stopPropagation(); openSinseiForm(k); };
+      box.appendChild(mb);
+    }
+    var fb=document.createElement('a');
+    fb.href=smp.form.file; fb.target='_blank'; fb.rel='noopener';
+    fb.style.cssText='display:inline-block;margin:0 0 10px;padding:9px 14px;background:#1a56db;color:#fff;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;line-height:1.4;';
+    fb.textContent='\uD83D\uDCDD '+(smp.form.label||'取得用の申請書')+'（白紙PDF）をダウンロード';
+    box.appendChild(fb);
+  }
+  // ver.20260619.10: 複数見本（images配列）対応
+  var __imgs = smp.images ? smp.images : (smp.image ? [{src:smp.image}] : []);
+  if(__imgs.length){
+    var cap=document.createElement('div');
+    cap.style.cssText='font-size:11px;color:#a16207;font-weight:700;margin-bottom:4px;';
+    cap.textContent='\uD83D\uDCC4 見本（イメージ）'+(__imgs.length>1?'：'+__imgs.length+'種':'');
+    box.appendChild(cap);
+    __imgs.forEach(function(it){
+      if(it.label){ var lb=document.createElement('div'); lb.style.cssText='font-size:11px;color:#92400e;font-weight:700;margin:6px 0 3px;'; lb.textContent=it.label; box.appendChild(lb); }
+      var a=document.createElement('a'); a.href=it.src; a.target='_blank'; a.rel='noopener';
+      var img=document.createElement('img'); img.src=it.src; img.alt='見本'; img.loading='lazy';
+      img.style.cssText='max-width:100%;width:240px;border:1px solid #e5e7eb;border-radius:8px;display:block;background:#fff;margin-bottom:4px;';
+      a.appendChild(img); box.appendChild(a);
+    });
+    var tap=document.createElement('div'); tap.style.cssText='font-size:10px;color:#a16207;margin-top:1px;'; tap.textContent='タップで拡大'; box.appendChild(tap);
+  }
+  if(false && smp.image){
+    var cap=document.createElement('div');
+    cap.style.cssText='font-size:11px;color:#a16207;font-weight:700;margin-bottom:4px;';
+    cap.textContent='📄 見本（イメージ）';
+    box.appendChild(cap);
+    var a=document.createElement('a'); a.href=smp.image; a.target='_blank'; a.rel='noopener';
+    var img=document.createElement('img'); img.src=smp.image; img.alt='見本'; img.loading='lazy';
+    img.style.cssText='max-width:100%;width:240px;border:1px solid #e5e7eb;border-radius:8px;display:block;background:#fff;';
+    a.appendChild(img); box.appendChild(a);
+    var tap=document.createElement('div'); tap.style.cssText='font-size:10px;color:#a16207;margin-top:3px;'; tap.textContent='タップで拡大';
+    box.appendChild(tap);
+  }
+  return box;
+}
+// ver.20260910.01: 送信済み書類の「確認中」表示（人材ページ zinzai_dataup から移植）。
+//   送信後にリンクを閉じて再度開くと、この画面で選んだファイルはメモリから消え「未選択」に戻る。
+//   案シスの提出済み確定(担当者確認)まで反映されないため、その間の空白を localStorage で埋める。
+//   キー d0.. は書類構成が変わると別書類を指しうるため、判定は「日本語ラベル」で行う。
+function _reviewingLsKey(){ return 'ofusa_upload_submitted_co_' + (typeof COMPANY_ID !== 'undefined' ? COMPANY_ID : ''); }
+function _reviewingMap(){ try { return JSON.parse(localStorage.getItem(_reviewingLsKey()) || '{}') || {}; } catch(e){ return {}; } }
+function _isReviewingLabel(label){ if(!label) return false; var m=_reviewingMap(); return !!m[label]; }
+function _reviewingLabel(){ return '⏳ 確認中'; }
+function _recordSubmittedLabels(labels){
+  try {
+    var m = _reviewingMap();
+    (labels||[]).forEach(function(l){ if(l) m[l] = Date.now(); });
+    localStorage.setItem(_reviewingLsKey(), JSON.stringify(m));
+  } catch(e){ console.warn('submitted labels save failed:', e); }
+}
+function buildFieldRow(key, docsMap) {
+  const arr = fileData[key] || [];
+  const hasFile = arr.length > 0;
+  const row = document.createElement('div');
+  row.className = 'field-row' + (hasFile ? ' has-file' : '');
+  row.dataset.key = key;
+
+  const header = document.createElement('div');
+  header.className = 'field-header';
+  header.innerHTML = `
+    <span class="field-label">${_labelWithRuby(docsMap[key])}</span>
+    <span class="field-status${hasFile ? ' ready' : ''}">${hasFile ? arr.length + '件選択済み ✓' : '未選択'}</span>
+    <span class="chevron">▼</span>
+  `;
+  header.onclick = () => row.classList.toggle('open');
+
+  const body = document.createElement('div');
+  body.className = 'field-body';
+  var __si = buildCompanySampleInline(docsMap[key]); if(__si) body.appendChild(__si);
+  { var _fb = (typeof _tkFormsBox === 'function') ? _tkFormsBox(key) : null; if (_fb) body.appendChild(_fb); } // ver.20260619.06: 見本（説明＋画像）を本体先頭に表示
+
+  const fileListEl = document.createElement('div');
+  fileListEl.className = 'file-list';
+  renderFileList(key, fileListEl);
+  body.appendChild(fileListEl);
+
+  const addWrap = document.createElement('div');
+  addWrap.className = 'add-btn-wrap';
+  const label = document.createElement('label');
+  label.className = 'add-file-label';
+  label.innerHTML = '📷 ファイルを追加';
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,application/pdf';
+  input.multiple = true;
+  input.style.display = 'none';
+  input.onchange = async (e) => {
+    const files = Array.from(e.target.files);
+    // ver.20261003.01: 追加できないファイルは理由を表示して除外
+    const _rejected = [];
+    for (const file of files) {
+      const _why = _uplCheckFile(file, true);
+      if (_why) { _rejected.push(_why); continue; }
+      let b64, _prep;
+      try { _prep = await _coPrepFile(file); b64 = await toBase64(_prep.blob); }
+      catch (er) { _rejected.push('「'+file.name+'」を読み込めませんでした（破損している・クラウド上にだけあり端末に保存されていない等）。端末に保存し直すか撮り直してから選んでください。'); continue; }
+      if (_prep.blob.size > UPL_MAX_FILE_MB*1024*1024) { _rejected.push('「'+file.name+'」は '+_uplMB(_prep.blob.size)+' あり大きすぎます（1ファイル'+UPL_MAX_FILE_MB+'MBまで）。PDFはページを分けるか圧縮してからアップロードしてください。'); continue; }
+      if (!fileData[key]) fileData[key] = [];
+      fileData[key].push({ name: _prep.name, mimeType: _prep.mimeType, base64: b64 });
+    }
+    input.value = '';
+    _uplShowRejected(_rejected);
+    buildAllFields();
+    updateSubmitBtn();
+  };
+  label.appendChild(input);
+  // ver.20260913: 役員の住民票は「マイナンバー記載なし」「本籍記載あり」の両方を確認しないとアップロードできない
+  // ver.20261016.01: 個人事業主の住民票（kojin_jumin）にも同じ確認を出す
+  var _isYakuinJumin = String(docsMap[key]||'').indexOf('住民票') >= 0;
+  if (_isYakuinJumin) {
+    if (!window._yakuinJuminChecks) window._yakuinJuminChecks = {};
+    var _chk = window._yakuinJuminChecks[key] || { mynumber:false, honseki:false };
+    window._yakuinJuminChecks[key] = _chk;
+    var checkWrap = document.createElement('div');
+    checkWrap.style.cssText = 'background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7;';
+    checkWrap.innerHTML = '<div style="font-weight:700;color:#b45309;margin-bottom:6px;">アップロード前に確認してください</div>';
+    var mkChk = function(field, text){
+      var lb = document.createElement('label');
+      lb.style.cssText = 'display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:4px;';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = !!_chk[field]; cb.style.cssText='margin-top:3px;flex:none;';
+      cb.onchange = function(){ _chk[field] = cb.checked; _updateYakuinJuminGate(key, label, input); };
+      var sp = document.createElement('span'); sp.textContent = text;
+      lb.appendChild(cb); lb.appendChild(sp);
+      return lb;
+    };
+    checkWrap.appendChild(mkChk('mynumber','マイナンバーの記載が「ない」ことを確認しました'));
+    checkWrap.appendChild(mkChk('honseki','本籍の記載が「ある」ことを確認しました'));
+    body.appendChild(checkWrap);
+  }
+  // ver.20260916: 社会保険料は「健康保険料が0円でない」または「0円だが支払完了書類を添付」のどちらか1つを確認しないとアップロードできない
+  var _isShakaiHoken = String(docsMap[key]||'').indexOf('社会保険料') >= 0;
+  if (_isShakaiHoken) {
+    if (!window._shakaiHokenChecks) window._shakaiHokenChecks = {};
+    var _sc = window._shakaiHokenChecks[key] || { notzero:false, attached:false };
+    window._shakaiHokenChecks[key] = _sc;
+    var scWrap = document.createElement('div');
+    scWrap.style.cssText = 'background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7;';
+    scWrap.innerHTML = '<div style="font-weight:700;color:#b45309;margin-bottom:6px;">アップロード前に確認してください（いずれか1つ）</div>';
+    var mkScChk = function(field, other, text){
+      var lb = document.createElement('label');
+      lb.style.cssText = 'display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:4px;';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = !!_sc[field]; cb.style.cssText='margin-top:3px;flex:none;';
+      cb.onchange = function(){
+        _sc[field] = cb.checked;
+        if (cb.checked) { _sc[other] = false; }  // 片方を選んだらもう片方は外す（排他）
+        buildAllFields();  // 排他反映のため再描画
+        _updateShakaiHokenGate(key, label, input);
+      };
+      var sp = document.createElement('span'); sp.textContent = text;
+      lb.appendChild(cb); lb.appendChild(sp);
+      return lb;
+    };
+    scWrap.appendChild(mkScChk('notzero','attached','健康保険料が「0円」ではないことを確認しました'));
+    scWrap.appendChild(mkScChk('attached','notzero','「0円」だったため、同じ期間の支払いが完了したことを確認できる書類もあわせて添付します'));
+    body.appendChild(scWrap);
+  }
+  // ver.20261008.01: 納税証明書（その３）は3つの税目それぞれで「未納がない」ことを確認しないとアップロードできない
+  // ver.20261016.02: 個人事業主の納税証明書その3（5項目）も対象にし、税目は法人3項目／個人5項目で出し分ける
+  var _isKojinZeimu3 = _isKojinZeimu3Label(docsMap[key]);
+  var _isZeimu3 = _isKojinZeimu3 || String(docsMap[key]||'').indexOf('納税証明書（その３）') >= 0;
+  if (_isZeimu3) {
+    if (!window._zeimu3Checks) window._zeimu3Checks = {};
+    if (!window._zeimu3Fields) window._zeimu3Fields = {};
+    var _zc = window._zeimu3Checks[key] || {};
+    window._zeimu3Checks[key] = _zc;
+    window._zeimu3Fields[key] = _isKojinZeimu3 ? ['kojin5'] : ['genzen','houjin','shohi'];
+    var zWrap = document.createElement('div');
+    zWrap.style.cssText = 'background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7;';
+    zWrap.innerHTML = '<div style="font-weight:700;color:#b45309;margin-bottom:6px;">' + (_isKojinZeimu3 ? '未納がないことを確認してください' : '税目ごとに未納がないことを確認してください') + '</div>';
+    var mkZChk = function(field, text){
+      var lb = document.createElement('label');
+      lb.style.cssText = 'display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:4px;';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = !!_zc[field]; cb.style.cssText='margin-top:3px;flex:none;';
+      cb.onchange = function(){ _zc[field] = cb.checked; _updateZeimu3Gate(key, label, input); };
+      var sp = document.createElement('span'); sp.textContent = text;
+      lb.appendChild(cb); lb.appendChild(sp);
+      return lb;
+    };
+    var _zLabels = { genzen:'源泉所得税及び復興特別所得税', houjin:'法人税', shotoku:'申告所得税及び復興特別所得税', shohi:'消費税及び地方消費税', sozoku:'相続税', zoyo:'贈与税' };
+    if (_isKojinZeimu3) {
+      // 個人事業主は5税目をまとめて1つのチェックで確認する
+      var k5 = mkZChk('kojin5', '');
+      k5.querySelector('span').innerHTML = '次の5つの税目すべてに未納がないことを確認しました<div style="margin-top:2px;color:#374151;">・源泉所得税及び復興特別所得税<br>・申告所得税及び復興特別所得税<br>・消費税及び地方消費税<br>・相続税<br>・贈与税</div>';
+      zWrap.appendChild(k5);
+    } else {
+      window._zeimu3Fields[key].forEach(function(f){ zWrap.appendChild(mkZChk(f, _zLabels[f] + '：未納がないことを確認しました')); });
+    }
+    body.appendChild(zWrap);
+  }
+  // ver.20261016.02: 確定申告書（直近3年分）は「3年分あるか」に答えないとアップロードできない
+  var _isKakutei = _isKakuteiLabel(docsMap[key]);
+  if (_isKakutei) {
+    if (!window._kakuteiChecks) window._kakuteiChecks = {};
+    var _tc = window._kakuteiChecks[key] || { nen:'' };
+    window._kakuteiChecks[key] = _tc;
+    var tWrap = document.createElement('div');
+    tWrap.style.cssText = 'background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7;';
+    tWrap.innerHTML = '<div style="font-weight:700;color:#b45309;margin-bottom:6px;">アップロード前に確認させてください</div><div style="font-weight:700;margin:6px 0 4px;">直近3年分の確定申告書をご用意いただけますか。</div>';
+    [['3nen','はい、3年分を添付します'],['miman','開業から3年未満のため、提出可能な年の分を添付します']].forEach(function(o){
+      var lb = document.createElement('label');
+      lb.style.cssText = 'display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:4px;';
+      var rb = document.createElement('input');
+      rb.type = 'radio'; rb.name = 'kakutei_nen_' + key; rb.checked = (_tc.nen === o[0]); rb.style.cssText='margin-top:3px;flex:none;';
+      rb.onchange = function(){ if (rb.checked) _tc.nen = o[0]; _updateKakuteiGate(key, label, input); };
+      var sp = document.createElement('span'); sp.textContent = o[1];
+      lb.appendChild(rb); lb.appendChild(sp);
+      tWrap.appendChild(lb);
+    });
+    body.appendChild(tWrap);
+  }
+  // ver.20261002.01: 決算文書（損益計算書及び貸借対照表）は「3期分の有無」「純資産がマイナスでないか」に答えないとアップロードできない
+  var _isKessan = _isKessanLabel(docsMap[key]);
+  if (_isKessan) {
+    if (!window._kessanChecks) window._kessanChecks = {};
+    var _kc = window._kessanChecks[key] || { ki:'', junshisan:'' };
+    window._kessanChecks[key] = _kc;
+    var kWrap = document.createElement('div');
+    kWrap.style.cssText = 'background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7;';
+    kWrap.innerHTML = '<div style="font-weight:700;color:#b45309;margin-bottom:6px;">アップロード前に確認させてください</div>';
+    var kHint = document.createElement('div');
+    kHint.style.cssText = 'background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:6px;padding:8px 10px;margin-top:6px;';
+    kHint.textContent = '直近期が債務超過の場合、今後の事業の見通しを説明する書類（中小企業診断士・公認会計士などの評価書、改善計画など）が必要になることがあります。必要な書類は担当者からご連絡しますので、決算書はこのままアップロードしてください。';   // ver.20261002.03
+    kHint.style.display = (_kc.junshisan === 'minus') ? 'block' : 'none';
+    var mkQ = function(field, question, opts){
+      var q = document.createElement('div');
+      q.style.cssText = 'font-weight:700;margin:6px 0 4px;';
+      q.textContent = question;
+      kWrap.appendChild(q);
+      opts.forEach(function(o){
+        var lb = document.createElement('label');
+        lb.style.cssText = 'display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:4px;';
+        var rb = document.createElement('input');
+        rb.type = 'radio'; rb.name = 'kessan_' + field + '_' + key; rb.checked = (_kc[field] === o[0]); rb.style.cssText='margin-top:3px;flex:none;';
+        rb.onchange = function(){
+          if (rb.checked) _kc[field] = o[0];
+          kHint.style.display = (_kc.junshisan === 'minus') ? 'block' : 'none';
+          _updateKessanGate(key, label, input);
+        };
+        var sp = document.createElement('span'); sp.textContent = o[1];
+        lb.appendChild(rb); lb.appendChild(sp);
+        kWrap.appendChild(lb);
+      });
+    };
+    mkQ('ki', '1. 直近3期分をご用意いただけますか。', [['3ki','はい、3期分を添付します'],['miman','設立から3期未満のため、提出可能な期の分を添付します']]);
+    mkQ('junshisan', '2. 直近期の貸借対照表で、「純資産の部」の合計はマイナスになっていませんか。', [['plus','マイナスではありません'],['minus','マイナスになっています（債務超過）']]);
+    kWrap.appendChild(kHint);
+    body.appendChild(kWrap);
+  }
+  addWrap.appendChild(label);
+  body.appendChild(addWrap);
+  if (_isKessan) _updateKessanGate(key, label, input);
+  // 役員住民票はチェック未完了ならアップロードボタンを無効化
+  if (_isYakuinJumin) _updateYakuinJuminGate(key, label, input);
+  if (_isShakaiHoken) _updateShakaiHokenGate(key, label, input);
+  if (_isZeimu3) _updateZeimu3Gate(key, label, input);
+  if (_isKakutei) _updateKakuteiGate(key, label, input);
+  const hint = document.createElement('div');
+  hint.className = 'hint';
+  hint.textContent = 'JPG / PNG / PDF';
+  body.appendChild(hint);
+
+  row.appendChild(header);
+  row.appendChild(body);
+  if (hasFile) row.classList.add('open');
+  return row;
+}
+
+function renderFileList(key, container) {
+  container.innerHTML = '';
+  const arr = fileData[key] || [];
+  arr.forEach((d, i) => {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    item.innerHTML = `<span class="file-item-name">📄 ${d.name}</span><button class="file-remove" title="削除">✕</button>`;
+    item.querySelector('.file-remove').onclick = () => {
+      fileData[key].splice(i, 1);
+      buildAllFields();
+      updateSubmitBtn();
+    };
+    container.appendChild(item);
+  });
+}
+
+// ver.20260916: 社会保険料のアップロードゲート（どちらか1つ確認でアップロード可）
+function _updateShakaiHokenGate(key, label, input){
+  try{
+    var chk = (window._shakaiHokenChecks && window._shakaiHokenChecks[key]) || {};
+    var ok = !!chk.notzero || !!chk.attached;
+    if(!label) return;
+    var txt = ok ? '📷 ファイルを追加' : '🔒 上のいずれかを確認するとアップロードできます';
+    var textNode = null;
+    for(var i=0;i<label.childNodes.length;i++){
+      if(label.childNodes[i].nodeType === 3){ textNode = label.childNodes[i]; break; }
+    }
+    if(textNode){ textNode.nodeValue = txt; }
+    else { label.insertBefore(document.createTextNode(txt), label.firstChild); }
+    if(ok){
+      label.style.opacity = '1';
+      label.style.pointerEvents = 'auto';
+      label.style.cursor = 'pointer';
+      if(input) input.disabled = false;
+    } else {
+      label.style.opacity = '0.6';
+      label.style.pointerEvents = 'none';
+      label.style.cursor = 'not-allowed';
+      if(input) input.disabled = true;
+    }
+  }catch(e){ console.warn('shakai hoken gate err:', e); }
+}
+// ver.20261008.01: 納税証明書（その３）のアップロードゲート（3税目すべて未納なし確認でアップロード可）
+function _updateZeimu3Gate(key, label, input){
+  try{
+    var chk = (window._zeimu3Checks && window._zeimu3Checks[key]) || {};
+    var flds = (window._zeimu3Fields && window._zeimu3Fields[key]) || ['genzen','houjin','shohi'];
+    var ok = flds.every(function(f){ return !!chk[f]; });
+    if(!label) return;
+    var txt = ok ? '📷 ファイルを追加' : (flds.length === 1 ? '🔒 上の確認にチェックするとアップロードできます' : ('🔒 上の' + flds.length + 'つを確認するとアップロードできます'));
+    var textNode = null;
+    for(var i=0;i<label.childNodes.length;i++){
+      if(label.childNodes[i].nodeType === 3){ textNode = label.childNodes[i]; break; }
+    }
+    if(textNode){ textNode.nodeValue = txt; }
+    else { label.insertBefore(document.createTextNode(txt), label.firstChild); }
+    if(ok){
+      label.style.opacity = '1';
+      label.style.pointerEvents = 'auto';
+      label.style.cursor = 'pointer';
+      if(input) input.disabled = false;
+    } else {
+      label.style.opacity = '0.6';
+      label.style.pointerEvents = 'none';
+      label.style.cursor = 'not-allowed';
+      if(input) input.disabled = true;
+    }
+  }catch(e){ console.warn('zeimu3 gate err:', e); }
+}
+// ver.20261002.01: 決算文書（損益計算書及び貸借対照表）の判定・回答タグ・アップロードゲート
+function _isKessanLabel(l){ l = String(l||''); return l.indexOf('決算') >= 0 && l.indexOf('損益') >= 0; }
+// 回答をファイル名に付記する（拡張子は末尾のまま）。担当者がドライブ・一覧のファイル名で債務超過／3期未満に気づけるようにする
+// ver.20261016.02: 個人事業主の納税証明書その3（5項目）と確定申告書の判定
+function _isKojinZeimu3Label(l){ l = String(l||''); return (l.indexOf('その3') >= 0 || l.indexOf('その３') >= 0) && (l.indexOf('個人事業主') >= 0 || l.indexOf('申告所得税') >= 0); }
+function _isKakuteiLabel(l){ return String(l||'').indexOf('確定申告') >= 0; }
+function _updateKakuteiGate(key, label, input){
+  try{
+    var chk = (window._kakuteiChecks && window._kakuteiChecks[key]) || {};
+    var ok = !!chk.nen;
+    if(!label) return;
+    var txt = ok ? '📷 ファイルを追加' : '🔒 上の質問に答えるとアップロードできます';
+    var textNode = null;
+    for(var i=0;i<label.childNodes.length;i++){
+      if(label.childNodes[i].nodeType === 3){ textNode = label.childNodes[i]; break; }
+    }
+    if(textNode){ textNode.nodeValue = txt; }
+    else { label.insertBefore(document.createTextNode(txt), label.firstChild); }
+    label.style.opacity = ok ? '1' : '0.6';
+    label.style.pointerEvents = ok ? 'auto' : 'none';
+    label.style.cursor = ok ? 'pointer' : 'not-allowed';
+    if(input) input.disabled = !ok;
+  }catch(e){ console.warn('kakutei gate err:', e); }
+}
+function _kessanAnswerTag(key, l){
+  if(_isKakuteiLabel(l)){ var kc = (window._kakuteiChecks && window._kakuteiChecks[key]) || {}; return kc.nen === 'miman' ? '【3年未満と回答】' : ''; }
+  if(!_isKessanLabel(l)) return '';
+  var c = (window._kessanChecks && window._kessanChecks[key]) || {};
+  var t = '';
+  if(c.junshisan === 'minus') t += '【債務超過と回答】';
+  if(c.ki === 'miman') t += '【3期未満と回答】';
+  return t;
+}
+// ver.20261002.02: 回答をDB（upload_notifications.doc_note）にも保存する。ファイル名の付記と同じ内容を、括弧なしで返す
+function _kessanNote(key, l){
+  if(_isKakuteiLabel(l)){ var kc = (window._kakuteiChecks && window._kakuteiChecks[key]) || {}; return kc.nen === 'miman' ? '3年未満と回答' : ''; }
+  if(!_isKessanLabel(l)) return '';
+  var c = (window._kessanChecks && window._kessanChecks[key]) || {};
+  var a = [];
+  if(c.junshisan === 'minus') a.push('債務超過と回答');
+  if(c.ki === 'miman') a.push('3期未満と回答');
+  return a.join('・');
+}
+function _updateKessanGate(key, label, input){
+  try{
+    var chk = (window._kessanChecks && window._kessanChecks[key]) || {};
+    var ok = !!chk.ki && !!chk.junshisan;
+    if(!label) return;
+    var txt = ok ? '📷 ファイルを追加' : '🔒 上の2つの質問に答えるとアップロードできます';
+    var textNode = null;
+    for(var i=0;i<label.childNodes.length;i++){
+      if(label.childNodes[i].nodeType === 3){ textNode = label.childNodes[i]; break; }
+    }
+    if(textNode){ textNode.nodeValue = txt; }
+    else { label.insertBefore(document.createTextNode(txt), label.firstChild); }
+    if(ok){
+      label.style.opacity = '1';
+      label.style.pointerEvents = 'auto';
+      label.style.cursor = 'pointer';
+      if(input) input.disabled = false;
+    } else {
+      label.style.opacity = '0.6';
+      label.style.pointerEvents = 'none';
+      label.style.cursor = 'not-allowed';
+      if(input) input.disabled = true;
+    }
+  }catch(e){ console.warn('kessan gate err:', e); }
+}
+// ver.20260913: 役員住民票のアップロードゲート（マイナンバーなし+本籍あり 両方確認でアップロード可）
+function _updateYakuinJuminGate(key, label, input){
+  try{
+    var chk = (window._yakuinJuminChecks && window._yakuinJuminChecks[key]) || {};
+    var ok = !!chk.mynumber && !!chk.honseki;
+    if(!label) return;
+    // ラベルのテキスト部分だけ差し替える（input要素は残す）
+    var txt = ok ? '📷 ファイルを追加' : '🔒 上の2つを確認するとアップロードできます';
+    var textNode = null;
+    for(var i=0;i<label.childNodes.length;i++){
+      if(label.childNodes[i].nodeType === 3){ textNode = label.childNodes[i]; break; }
+    }
+    if(textNode){ textNode.nodeValue = txt; }
+    else { label.insertBefore(document.createTextNode(txt), label.firstChild); }
+    if(ok){
+      label.style.opacity = '1';
+      label.style.pointerEvents = 'auto';
+      label.style.cursor = 'pointer';
+      if(input) input.disabled = false;
+    } else {
+      label.style.opacity = '0.6';
+      label.style.pointerEvents = 'none';
+      label.style.cursor = 'not-allowed';
+      if(input) input.disabled = true;
+    }
+  }catch(e){ console.warn('yakuin jumin gate err:', e); }
+}
+
+function buildAllFields() {
+  // ver.20260525.01: docsパラメータがあれば、それに従って書類リストを構築
+  if (USE_NEW_DOCS) {
+    // ver.20260908: 技人国（t:'giji'）の書類は企業カテゴリー(大/中小/個人)のタブに属さないため、
+    //   タブを隠して全書類を1リストで表示する。giji書類は normal バケツに寄せる。
+    var _hasGiji = Array.isArray(DOCS_LIST) && DOCS_LIST.some(function(d){ return d && d.t === 'giji'; });
+    if (_hasGiji) {
+      DOCS_LIST = DOCS_LIST.map(function(d){
+        if (d && d.t === 'giji') { var nd = {}; for (var k in d) nd[k] = d[k]; nd.t = 'normal'; return nd; }
+        return d;
+      });
+      try {
+        var _tw = document.querySelector('.tabs-wrap'); if (_tw) _tw.style.display = 'none';
+        var _nb = document.querySelector('#panelNormal .notice-box'); if (_nb) _nb.style.display = 'none';
+        var _pn = document.getElementById('panelNormal'); if (_pn){ _pn.classList.add('active'); _pn.style.display=''; }
+        var _pl = document.getElementById('panelLarge'); if (_pl) _pl.classList.remove('active');
+        var _pk = document.getElementById('panelKojin'); if (_pk) _pk.classList.remove('active');
+      } catch(e){ console.warn('giji tab hide err:', e); }
+    }
+    // 新ロジック: DOCS_LIST = [{l: '書類名', r: 1, t: 'large'|'normal'|'kojin'}, ...]
+    // 各書類に安定キー 'd0', 'd1', ... を割り当てて、tでタブ振り分け
+    const buckets = { large: [], normal: [], kojin: [] };
+    const labelMap = {};  // key → 日本語ラベル
+    DOCS_LIST.forEach(function(d, i){
+      const key = 'd' + i;
+      const t = d.t || 'normal';
+      labelMap[key] = d.l || '';
+      if (!buckets[t]) buckets[t] = [];
+      buckets[t].push({key: key, label: d.l || '', req: !!d.r, done: !!d.done, note: d.note || ''});
+      if(!window._tkInfo) window._tkInfo = {};
+      window._tkInfo[key] = { note:d.tkNote||'', tips:d.tips||[], kind:d.kind||'', year:d.year||'', scope:d.scope||'', sashi:d.sashi||'', forms:d.forms||[] };
+    });
+    window._docLabelMap = labelMap;
+    // ver.20260611.04: 送信判定用に実際の描画キー(d0..dN)を保持（固定配列だと動的書類を拾えず送信ボタンが押せない不具合の修正）
+    window._allDocKeys = DOCS_LIST.map(function(d, i){ return 'd' + i; });
+
+    // バッジ更新用に各タブの書類数表示
+    const renderBucket = function(listEl, items){
+      listEl.innerHTML = '';
+      if (!items.length) {
+        const empty = document.createElement('div');
+        empty.style.cssText = 'padding:20px;text-align:center;color:#94a3b8;font-size:13px;';
+        empty.textContent = 'この区分の書類はありません';
+        listEl.appendChild(empty);
+        return;
+      }
+      // docsMap を動的構築
+      const docsMap = {};
+      items.forEach(function(it){ docsMap[it.key] = it.label; });
+      items.forEach(function(it){
+        const row = buildFieldRow(it.key, docsMap);
+        const labelEl = row.querySelector('.field-label');
+        // 必須マーク
+        if (it.req && labelEl && labelEl.innerHTML.indexOf('必須') === -1) {
+          labelEl.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + labelEl.innerHTML;
+        }
+        // ver.20260603: 取得済み/不要はグレーアウト（国交省アップロードと同様・再提出は可能）
+        if (it.done) {
+          row.style.background = '#cbd5e1';
+          row.style.borderColor = '#94a3b8';
+          row.style.opacity = '0.7';
+          if (labelEl) {
+            const doneEl = document.createElement('span');
+            doneEl.style.cssText = 'color:#16a34a;font-size:11px;font-weight:700;margin-left:4px;';
+            doneEl.textContent = '✓ 提出済み（再提出が必要な場合のみ）';
+            labelEl.appendChild(doneEl);
+          }
+        } else if (typeof _isReviewingLabel === 'function' && _isReviewingLabel(it.label) && !(fileData[it.key] && fileData[it.key].length)) {
+          // ver.20260910.01: 送信済みだが担当未確認の書類は「⏳ 確認中」を表示（提出済み確定が優先）
+          var _stEl = row.querySelector('.field-status');
+          if (_stEl) { _stEl.className = 'field-status'; _stEl.textContent = _reviewingLabel(); _stEl.style.color = '#b45309'; }
+        }
+        if (labelEl && typeof _tkInfoHtml === 'function') { const _ti = _tkInfoHtml(it.key); if (_ti) { const _te = document.createElement('div'); _te.innerHTML = _ti; labelEl.appendChild(_te.firstChild); } }
+        if (it.note && labelEl) {
+          const noteEl = document.createElement('div');
+          noteEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:400;margin-top:4px;line-height:1.6;';
+          noteEl.textContent = '💡 ' + it.note;
+          labelEl.appendChild(noteEl);
+        }
+        listEl.appendChild(row);
+      });
+    };
+    renderBucket(document.getElementById('fieldsListLarge'),  buckets.large || []);
+    renderBucket(document.getElementById('fieldsListNormal'), buckets.normal || []);
+    renderBucket(document.getElementById('fieldsListKojin'),  buckets.kojin || []);
+
+    // 書類があるタブを初期表示にする（normal優先 → kojin → large）
+    if ((buckets.normal||[]).length === 0 && (buckets.kojin||[]).length > 0) {
+      switchTab('kojin');
+    } else if ((buckets.normal||[]).length === 0 && (buckets.kojin||[]).length === 0 && (buckets.large||[]).length > 0) {
+      switchTab('large');
+    }
+    return;
+  }
+
+  // 旧ロジック（後方互換）
+  // 大企業タブ
+  const listLarge = document.getElementById('fieldsListLarge');
+  listLarge.innerHTML = '';
+  LARGE_KEYS.forEach(key => listLarge.appendChild(buildFieldRow(key, LARGE_DOCS)));
+
+  // 中小企業タブ
+  const listNormal = document.getElementById('fieldsListNormal');
+  listNormal.innerHTML = '';
+  NORMAL_KEYS.forEach(key => listNormal.appendChild(buildFieldRow(key, NORMAL_DOCS)));
+
+  // 個人事業主タブ
+  const listKojin = document.getElementById('fieldsListKojin');
+  listKojin.innerHTML = '';
+  KOJIN_KEYS.forEach(key => listKojin.appendChild(buildFieldRow(key, KOJIN_DOCS)));
+
+  // ver.20260611.04: 送信判定用に描画キーを保持（旧モードは固定キー）
+  window._allDocKeys = [...LARGE_KEYS, ...NORMAL_KEYS, ...KOJIN_KEYS];
+
+  // タブバッジ更新
+  const cntL = LARGE_KEYS.filter(k => fileData[k] && fileData[k].length > 0).length;
+  const cntN = NORMAL_KEYS.filter(k => fileData[k] && fileData[k].length > 0).length;
+  const cntK = KOJIN_KEYS.filter(k => fileData[k] && fileData[k].length > 0).length;
+  document.getElementById('countLarge').textContent = cntL;
+  document.getElementById('countLarge').className = 'tab-count' + (cntL > 0 ? '' : ' hidden');
+  document.getElementById('countNormal').textContent = cntN;
+  document.getElementById('countNormal').className = 'tab-count' + (cntN > 0 ? '' : ' hidden');
+  document.getElementById('countKojin').textContent = cntK;
+  document.getElementById('countKojin').className = 'tab-count' + (cntK > 0 ? '' : ' hidden');
+}
+
+function updateSubmitBtn() {
+  const allKeys = (window._allDocKeys && window._allDocKeys.length) ? window._allDocKeys : [...LARGE_KEYS, ...NORMAL_KEYS, ...KOJIN_KEYS];
+  const hasAny = allKeys.some(k => fileData[k] && fileData[k].length > 0);
+  document.getElementById('submitBtn').disabled = !hasAny;
+}
+
+// ver.20261003.02: 1ファイルずつ送るため上限を35MBに（送信時に約1.3倍になるため、送信サーバーの約50MB枠に収まる値）
+UPL_MAX_FILE_MB = 35;
+// ver.20261003.02: 写真はHEIC→JPEG変換・自動圧縮（1〜2MB程度）。PDFはそのまま
+async function _coPrepFile(file){
+  var name = file.name || 'file', mime = file.type || '';
+  var isHeic = /\.(heic|heif)$/i.test(name) || mime === 'image/heic' || mime === 'image/heif';
+  var isImg = /^image\//.test(mime) || isHeic || /\.(jpe?g|png|gif|webp)$/i.test(name);
+  if (!isImg) return { blob: file, name: name, mimeType: mime || 'application/pdf' };
+  var blob = file;
+  if (isHeic && typeof heic2any !== 'undefined') {
+    try { var cv = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 }); blob = Array.isArray(cv) ? cv[0] : cv; name = name.replace(/\.(heic|heif)$/i, '') + '.jpg'; mime = 'image/jpeg'; }
+    catch (e) { console.warn('HEIC変換失敗（そのまま続行）:', name, e); }
+  }
+  if (typeof imageCompression !== 'undefined') {
+    try {
+      blob = await imageCompression(blob, { maxSizeMB: 1.5, maxWidthOrHeight: 2400, useWebWorker: true, fileType: 'image/jpeg', initialQuality: 0.85 });
+      mime = 'image/jpeg'; if (!/\.(jpe?g)$/i.test(name)) name = name.replace(/\.[^.]+$/, '') + '.jpg';
+    } catch (e) { console.warn('圧縮失敗（元ファイルで続行）:', name, e); }
+  }
+  return { blob: blob, name: name, mimeType: mime || 'image/jpeg' };
+}
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = () => reject(new Error('Read failed'));
+    r.readAsDataURL(file);
+  });
+}
+
+
+
+// 追完専用：追完の書類マスタに入れたフォーマット（様式）のボタン（今のページの申請用紙ボタンは見本の欄にそのまま出る）
+function _tkFormsBox(key){
+  var i = window._tkInfo && window._tkInfo[key];
+  var fs = ((i && i.forms) || []).filter(function(f){ return f && f.url && /^(https:\/\/|forms\/)/.test(f.url); });
+  if (!fs.length) return null;
+  var box = document.createElement('div');
+  box.style.cssText = 'margin:0 0 10px;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;';
+  var h = document.createElement('div');
+  h.style.cssText = 'font-size:12px;font-weight:700;color:#1d4ed8;margin-bottom:6px;';
+  h.textContent = '📥 フォーマット';
+  box.appendChild(h);
+  fs.forEach(function(f){
+    var a = document.createElement('a');
+    a.href = f.url; a.target = '_blank'; a.rel = 'noopener';
+    a.style.cssText = 'display:block;margin-top:5px;padding:9px 12px;background:#fff;border:1.5px solid #93c5fd;border-radius:8px;color:#1d4ed8;font-size:13px;font-weight:700;text-decoration:none;';
+    a.textContent = '📄 ' + String(f.label || 'フォーマット');
+    a.addEventListener('click', function(e){ e.stopPropagation(); });
+    box.appendChild(a);
+  });
+  return box;
+}
+// ===== 追完専用：見出し・理由の表示 =====
+function _tkEsc(x){ return String(x||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _tkHeader(){
+  var box = document.getElementById('tkErrBox'), msg = '';
+  if (window._tkLoadErr || !(Array.isArray(DOCS_LIST) && DOCS_LIST.length)) msg = 'このURLでは書類を表示できません。お手数ですが、大房行政書士法人の担当者までご連絡ください。';
+  else if (window._tkMeta && window._tkMeta.done) msg = 'こちらの追加資料は、すべて受領いたしました。ご協力ありがとうございました。';
+  if (box){ box.textContent = msg; box.style.display = msg ? 'block' : 'none'; }
+  var d = window._tkMeta && window._tkMeta.deadline ? String(window._tkMeta.deadline).slice(0,10) : '';
+  if (!msg && /^\d{4}-\d{2}-\d{2}$/.test(d)){
+    var t = new Date(d + 'T00:00:00'); t.setDate(t.getDate() - 2);
+    var now = new Date(); now.setHours(0,0,0,0);
+    var sub = document.getElementById('tkSub');
+    if (sub && t >= now) sub.innerHTML += '<br><b>' + (t.getMonth()+1) + '月' + t.getDate() + '日</b>までにご提出をお願いいたします。';
+  }
+}
+function _tkHideForm(){ try { document.querySelectorAll('.tabs-wrap, .tab-panel, #submitBtn').forEach(function(el){ el.style.display = 'none'; }); } catch(e){} }
+// 書類名の下に出す：印（再提出・ご署名・お支払い）／年度・範囲／→ 理由／・注意点
+function _tkInfoHtml(key){
+  var i = window._tkInfo && window._tkInfo[key]; if(!i) return '';
+  var tag = function(t, bg, fg){ return '<span style="display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:99px;background:' + bg + ';color:' + fg + ';margin-right:4px;">' + _tkEsc(t) + '</span>'; };
+  var tags = [];
+  if (i.sashi || i.kind === 'redo') tags.push(tag('再提出のお願い', '#fee2e2', '#b91c1c'));
+  if (i.kind === 'sign') tags.push(tag('ご署名・ご押印', '#ede9fe', '#6d28d9'));
+  if (i.kind === 'pay') tags.push(tag('お支払い後の証明', '#fef3c7', '#b45309'));
+  var ys = [i.year, i.scope].filter(Boolean).join('・');
+  if (ys) tags.push(tag(ys, '#e0f2fe', '#0369a1'));
+  var n = String(i.sashi || i.note || '').trim();
+  var tips = (i.tips || []).slice(0,2).map(function(x){ return String(x||'').trim(); }).filter(Boolean);
+  if (!tags.length && !n && !tips.length) return '';
+  var h = '<div style="margin-top:5px;font-weight:400;line-height:1.65;">';
+  if (tags.length) h += '<div style="margin-bottom:3px;">' + tags.join('') + '</div>';
+  if (n) h += '<div style="font-size:12.5px;color:#1e3a5f;">→ ' + _tkEsc(n) + '</div>';
+  tips.forEach(function(tp){ h += '<div style="font-size:12px;color:#b45309;">・' + _tkEsc(tp) + '</div>'; });
+  return h + '</div>';
+}
+function _applyLiveDoneFromCoDocCheck(){
+  // ver.20260607.01: co_doc_check をライブ読みして done(取得済み/不要) を上書き（キャッシュのスナップショットに依存しない）
+  return new Promise(function(resolve){
+    if(!COMPANY_ID || !Array.isArray(DOCS_LIST) || !DOCS_LIST.length){ resolve(); return; }
+    _uplRpc('upload_co_doc_check_get', { p_co_id: COMPANY_ID })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(rows){
+      var doneSet = {};
+      (rows||[]).forEach(function(row){
+        var dk = row.doc_key || ''; var idx = dk.indexOf('::'); if(idx<0) return;
+        var prefix = dk.substring(0, idx); var name = dk.substring(idx+2);
+        var v = row.value; var truthy = (v!=null && v!=='' && v!=='false');
+        if((prefix==='staff' || prefix==='skip') && truthy){ doneSet[name] = true; }
+      });
+      DOCS_LIST.forEach(function(d){
+        if(d && d.l){
+          var alias = DOC_DONE_ALIAS[d.l];
+          d.done = !!(doneSet[d.l] || (alias && doneSet[alias]));
+        }
+      });
+      resolve();
+    })
+    .catch(function(e){ console.warn('co_doc_check live fetch err:', e); resolve(); });
+  });
+}
+
+// ver.20260525.34: DBキャッシュから書類リストを取得してから初期描画
+var UPL_OFF_CFG = { lists:['fieldsListLarge','fieldsListNormal','fieldsListKojin'], hide:'.tabs-wrap, .tab-panel, #submitBtn', sum:['zei','to','nk','rk'] };   // 📍 取れるところ（下の ver.20261111.01）
+// ===== ver.20261111.01: 📍 書類を取るところ（貴社の住所から）と、住所の入力（案シスに住所が無いときだけ） =====
+//  ・窓口とオンラインのボタンは Edge Function upload-offices（大房DB）が返す。中身は案シスの判定そのまま（このページでは判定しない）
+//  ・住所が案シスに入っていない会社だけ、最初に住所の入力画面を出す（保存は住所が空のときだけ。上書きはしない）
+//  ・ページごとの違いは UPL_OFF_CFG の1箇所
+var UPL_OFF_URL = SB_URL + '/functions/v1/upload-offices';
+var _uplOff = null, _uplOffAsked = false;
+function _uplOffEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function _uplOffPost(body){
+  return fetch(UPL_OFF_URL, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(Object.assign({ company_id:COMPANY_ID }, body||{})) })
+    .then(function(r){ return r.json(); });
+}
+function _uplOffLabels(){ var m = window._docLabelMap || {}; return Object.keys(m).map(function(k){ return m[k]; }).filter(Boolean); }
+function _uplOffDone(key){
+  var i = parseInt(String(key||'').replace(/^d/,''), 10), d = (Array.isArray(DOCS_LIST) && !isNaN(i)) ? DOCS_LIST[i] : null;
+  if(d && (d.done || d.st === 'skip' || d.st === 'ofusa')) return true;   // 提出済み・不要・弊社作成には出さない
+  return !!(d && UPL_OFF_CFG.skipDoc && UPL_OFF_CFG.skipDoc(d.l || ''));
+}
+(function(){
+  var st = document.createElement('style');
+  st.textContent = ''
+    + '.upl-off{margin:0 14px 12px;padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12.5px;line-height:1.55;color:#14532d;}'
+    + '.upl-off .l2{color:#166534;}'
+    + '.upl-off a.upl-off-btn{display:inline-block;margin-top:7px;padding:7px 11px;border-radius:8px;background:#2563eb;color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;}'
+    + '.upl-off .upl-off-note{font-size:11.5px;color:#334155;margin-top:3px;}'
+    + '.upl-off .upl-off-none{font-size:11.5px;color:#64748b;margin-top:4px;}'
+    + '.upl-off-sum{margin:0 0 12px;padding:10px 12px;border:2px solid #16a34a;border-radius:10px;background:#f0fdf4;font-size:13px;line-height:1.6;color:#14532d;}'
+    + '.upl-off-sum .sm{font-size:12px;}'
+    + '.ag{border:2px solid #1a56db;border-radius:12px;padding:18px 16px;background:#f8fbff;margin:4px 0 18px;}'
+    + '.ag-step{display:inline-block;font-size:12px;font-weight:800;color:#fff;background:#1a56db;border-radius:99px;padding:2px 10px;}'
+    + '.ag h2{font-size:18px;margin:10px 0 6px;color:#1a202c;}'
+    + '.ag p{font-size:13.5px;color:#4a5568;line-height:1.7;margin:0 0 12px;}'
+    + '.ag label{display:block;font-size:13px;font-weight:700;color:#2d3748;margin:12px 0 4px;}'
+    + '.ag label small{font-weight:400;color:#718096;}'
+    + '.ag input{width:100%;box-sizing:border-box;font-size:16px;padding:10px 12px;border:1.5px solid #cbd5e1;border-radius:8px;background:#fff;}'
+    + '.ag .row{display:flex;gap:8px;}.ag .row input{flex:1;min-width:0;}'
+    + '.ag .zbtn{flex:none;font-size:13px;font-weight:800;padding:0 12px;border:1.5px solid #1a56db;background:#fff;color:#1a56db;border-radius:8px;cursor:pointer;}'
+    + '.ag .ok{display:none;font-size:12.5px;color:#057a55;margin-top:6px;}'
+    + '.ag .err{display:none;font-size:12.5px;color:#c81e1e;margin-top:10px;line-height:1.6;}'
+    + '.ag .go{margin-top:18px;width:100%;font-size:16px;font-weight:800;padding:14px;border:none;border-radius:10px;background:#1a56db;color:#fff;cursor:pointer;}'
+    + '.ag .go:disabled{background:#94a3b8;cursor:default;}'
+    + '.ag .skip{display:none;margin-top:10px;font-size:12.5px;color:#1a56db;text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;}'
+    + '.ag .note{font-size:12px;color:#718096;margin-top:10px;line-height:1.6;}'
+    + UPL_OFF_CFG.hide.split(',').map(function(s){ return 'body.ag-on '+s.trim(); }).join(',') + '{display:none !important;}';
+  document.head.appendChild(st);
+})();
+function _uplOffBoxHtml(b){
+  var h = '<b>📍 取れるところ'+(b.need ? '（要確認）' : '')+'：</b>';
+  (b.p||[]).forEach(function(t, i){ h += (i ? '<br><span class="l2">'+_uplOffEsc(t)+'</span>' : _uplOffEsc(t)); });
+  (b.on||[]).forEach(function(o){
+    h += '<div><a class="upl-off-btn" href="'+_uplOffEsc(o[1])+'" target="_blank" rel="noopener">🌐 '+_uplOffEsc(o[0])+' ↗</a>'+(o[2] ? '<div class="upl-off-note">'+_uplOffEsc(o[2])+'</div>' : '')+'</div>';
+  });
+  if(b.none) h += '<div class="upl-off-none">オンラインでは取れません（郵送・窓口で取れます）</div>';
+  return h;
+}
+function _uplOffSumHtml(){
+  var s = (_uplOff && _uplOff.sum) || {}, nm = { zei:'税務署', to:'都税・役所', nk:'年金事務所', rk:'労働局' };
+  var parts = UPL_OFF_CFG.sum.filter(function(k){ return s[k]; }).map(function(k){ return nm[k]+'＝'+_uplOffEsc(s[k]); });
+  return '<b>📍 貴社の住所（'+_uplOffEsc(_uplOff.addr || s.addr || '')+'）から、書類を取るところを出しています</b>'
+    + (parts.length ? '<br><span class="sm">'+parts.join('／')+'</span>' : '')
+    + '<br><span class="sm">🌐 の青いボタンは、オンラインで請求・確認できるページです（押すと開きます）</span>'
+    + '<br><span class="sm">住所がちがうときは、担当者にご連絡ください。</span>';
+}
+function _uplOffPaint(){
+  if(!_uplOff || !_uplOff.docs) return;
+  var M = window._docLabelMap || {};
+  UPL_OFF_CFG.lists.forEach(function(id){
+    var list = document.getElementById(id); if(!list) return;
+    list.querySelectorAll('.upl-off, .upl-off-sum').forEach(function(x){ x.remove(); });
+    var n = 0;
+    list.querySelectorAll('.field-row').forEach(function(row){
+      var key = row.dataset.key, b = _uplOff.docs[M[key]];
+      if(!b || _uplOffDone(key)) return;
+      var d = document.createElement('div'); d.className = 'upl-off'; d.innerHTML = _uplOffBoxHtml(b);
+      d.addEventListener('click', function(e){ e.stopPropagation(); });
+      var hd = row.querySelector('.field-header'); if(hd){ hd.insertAdjacentElement('afterend', d); n++; }
+    });
+    if(n){ var s = document.createElement('div'); s.className = 'upl-off-sum'; s.innerHTML = _uplOffSumHtml(); list.insertBefore(s, list.firstChild); }
+  });
+}
+function _uplOffStart(){
+  if(_uplOffAsked || !COMPANY_ID) return; _uplOffAsked = true;
+  _uplOffPost({ labels:_uplOffLabels() }).then(function(r){
+    if(!r || !r.ok) return;
+    if(r.hasAddr === false){ _uplOffGate(); return; }
+    _uplOff = r; _uplOffPaint();
+  }).catch(function(){ /* 窓口が出なくてもアップロードはできる */ });
+}
+function _uplOffGate(){
+  if(document.getElementById('uplAddrGate')) return;
+  if(UPL_OFF_CFG.skipGate && UPL_OFF_CFG.skipGate()) return;
+  var g = document.createElement('div'); g.id = 'uplAddrGate'; g.className = 'ag';
+  g.innerHTML = '<span class="ag-step">はじめに（1回だけ）</span>'
+    + '<h2>会社の住所を入れてください</h2>'
+    + '<p>書類を取る窓口（税務署・年金事務所など）は、会社の住所で決まります。<br>登記簿（履歴事項全部証明書）の<b>本店の住所</b>を入れてください。</p>'
+    + '<label>郵便番号</label><div class="row"><input id="agZip" inputmode="numeric" autocomplete="postal-code" placeholder="例）1440052"><button type="button" class="zbtn" onclick="uplAgZip()">住所を入れる</button></div>'
+    + '<div class="ok" id="agOk">✓ 郵便番号から住所を入れました。番地を続けて入れてください。</div>'
+    + '<label>都道府県・市区町村</label><input id="agCity" placeholder="例）東京都大田区蒲田">'
+    + '<label>番地・建物名 <small>（建物名・部屋番号もあれば）</small></label><input id="agAddr" placeholder="例）5丁目11番10号 FUNDES蒲田8階">'
+    + '<div class="err" id="agErr"></div>'
+    + '<button type="button" class="go" id="agGo" onclick="uplAgSave()">住所を保存して次へ</button>'
+    + '<button type="button" class="skip" id="agSkip" onclick="uplAgSkip()">住所を入れずに書類のアップロードへ進む</button>'
+    + '<div class="note">※ 入れた住所は大房行政書士法人に届き、書類の取り方のご案内に使います。<br>※ 住所がちがっていたら、あとで担当者が直します。</div>';
+  var bar = document.getElementById('companyNameBar');
+  if(bar && bar.parentNode) bar.insertAdjacentElement('afterend', g); else document.body.insertBefore(g, document.body.firstChild);
+  document.body.classList.add('ag-on');
+  try{ g.scrollIntoView({ block:'start' }); }catch(e){}
+}
+function _uplAgErr(t, skip){ var e = document.getElementById('agErr'); if(e){ e.textContent = t || ''; e.style.display = t ? 'block' : 'none'; } var s = document.getElementById('agSkip'); if(s && skip) s.style.display = 'inline-block'; }
+function uplAgZip(){
+  var z = String((document.getElementById('agZip')||{}).value||'').normalize('NFKC').replace(/\D/g,'');
+  if(z.length !== 7){ _uplAgErr('郵便番号は7けたで入れてください（例：1440052）'); return; }
+  _uplAgErr('');
+  _uplOffPost({ zip_lookup:z }).then(function(r){
+    if(r && r.ok && r.addr){ document.getElementById('agCity').value = r.addr; document.getElementById('agOk').style.display = 'block'; document.getElementById('agAddr').focus(); }
+    else _uplAgErr('郵便番号から住所が見つかりませんでした。都道府県から入れてください。');
+  }).catch(function(){ _uplAgErr('郵便番号から住所を探せませんでした。都道府県から入れてください。'); });
+}
+function uplAgSave(){
+  var city = String(document.getElementById('agCity').value||'').trim(), ad = String(document.getElementById('agAddr').value||'').trim();
+  var zip = String(document.getElementById('agZip').value||'').trim();
+  if(!city){ _uplAgErr('都道府県・市区町村を入れてください'); return; }
+  if(!ad){ _uplAgErr('番地まで入れてください'); return; }
+  var go = document.getElementById('agGo'); go.disabled = true; go.textContent = '保存しています…'; _uplAgErr('');
+  var done = function(){ go.disabled = false; go.textContent = '住所を保存して次へ'; };
+  _uplOffPost({ labels:_uplOffLabels(), save:{ zip:zip, addr:city+ad } }).then(function(r){
+    done();
+    if(r && r.ok){ _uplOff = r; _uplAgClose(); _uplOffPaint(); return; }
+    if(r && r.error === 'addr'){ _uplAgErr(r.message || '住所を読み取れませんでした。都道府県から入れてください'); return; }
+    if(r && r.error === 'already'){ _uplAgClose(); _uplOffAsked = false; _uplOffStart(); return; }
+    _uplAgErr('保存できませんでした。時間をおいて、もう一度お試しください。', true);
+  }).catch(function(){ done(); _uplAgErr('保存できませんでした（通信が不安定です）。時間をおいて、もう一度お試しください。', true); });
+}
+function _uplAgClose(){ var g = document.getElementById('uplAddrGate'); if(g) g.remove(); document.body.classList.remove('ag-on'); try{ window.scrollTo(0, 0); }catch(e){} }
+function uplAgSkip(){ _uplAgClose(); }
+// 書類の一覧を描き直すたびに「📍 取れるところ」も付け直す（はじめての描画で問い合わせる）
+(function(){
+  var _orig = buildAllFields;
+  buildAllFields = function(){ var r = _orig.apply(this, arguments); try{ if(_uplOff) _uplOffPaint(); else _uplOffStart(); }catch(e){} return r; };
+})();
+(async function _initDocsAndBuild(){
+  try { await _loadDocsFromCache(); } catch(e){ console.warn('_initDocsAndBuild err:', e); }
+  if (TSUIKAN_ID || window._tkLoadErr) { try { document.querySelectorAll('#panelNormal .notice-box').forEach(function(el){ el.style.display='none'; }); } catch(e){} _tkHeader(); if (!(Array.isArray(DOCS_LIST) && DOCS_LIST.length)) { DOCS_LIST = []; USE_NEW_DOCS = true; } if (DOCS_LIST.length && !(window._tkMeta && window._tkMeta.done)) buildAllFields(); else _tkHideForm(); return; }
+  // キャッシュがnormalのみ（区分未設定）の場合はDBから全タイプを取得して補完
+  if(Array.isArray(DOCS_LIST) && DOCS_LIST.length && DOCS_LIST.every(function(d){ return d.t === 'normal'; })){
+    try {
+      var _db = await _loadRequiredDocsFromDB();
+      if(_db && _db.length){ DOCS_LIST = _db; USE_NEW_DOCS = true; }
+    } catch(e){ console.warn('required_docs supplement err:', e); }
+  }
+  // ver.20260616.03: docs/キャッシュが無ければ正本(settings.required_docs_*)をRPCで取得（脱ハードコード）。
+  if(!(Array.isArray(DOCS_LIST) && DOCS_LIST.length)){
+    try { var _db = await _loadRequiredDocsFromDB(); if(_db && _db.length){ DOCS_LIST = _db; USE_NEW_DOCS = true; } }
+    catch(e){ console.warn('required_docs err:', e); }
+  }
+  // それでも取得できなければハードコード辞書を最終フォールバックに（通常は到達しない）。
+  if(!(Array.isArray(DOCS_LIST) && DOCS_LIST.length)){
+    DOCS_LIST = _buildFallbackDocsList();
+    USE_NEW_DOCS = true;
+  }
+  try { await _applyLiveDoneFromCoDocCheck(); } catch(e){ console.warn('live done err:', e); }
+  buildAllFields();
+})();
+
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  // ver.20260525.01: 新ロジックでは window._docLabelMap、旧ロジックでは LARGE/NORMAL/KOJIN_DOCS を結合
+  let allKeys, allDocs;
+  if (USE_NEW_DOCS && window._docLabelMap) {
+    allKeys = Object.keys(window._docLabelMap);
+    allDocs = window._docLabelMap;
+  } else {
+    allKeys = [...LARGE_KEYS, ...NORMAL_KEYS, ...KOJIN_KEYS];
+    allDocs = { ...LARGE_DOCS, ...NORMAL_DOCS, ...KOJIN_DOCS };
+  }
+  const hasAny = allKeys.some(k => fileData[k] && fileData[k].length > 0);
+  if (!hasAny) { alert('少なくとも1つのファイルを選択してください'); return; }
+
+  const submitBtn = document.getElementById('submitBtn');
+  const statusMsg = document.getElementById('statusMsg');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressBar = document.getElementById('progressBar');
+
+  // ver.20261003.01: 送信前チェック（保存先フォルダ・合計サイズ）
+  if (!FOLDER_ID) { statusMsg.className='status-msg error'; statusMsg.style.whiteSpace='pre-line'; statusMsg.textContent='❌ 送信できません\n'+_uplErrReason(new Error('NO_FOLDER')); statusMsg.style.display='block'; return; }
+  submitBtn.disabled = true;
+  statusMsg.style.display = 'none';
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '10%';
+
+  // ver.20261003.02: 1ファイルずつ送信（合計容量の上限なし・失敗したものだけ残して再送可能）
+  const filesPayload = [];
+  allKeys.forEach(key => {
+    const arr = fileData[key] || [];
+    arr.forEach((d, i) => {
+      const ext = d.name.split('.').pop() || 'jpg';
+      const suffix = arr.length > 1 ? '_' + (i + 1) : '';
+      filesPayload.push({
+        key: key, ref: d,
+        name: allDocs[key] + suffix + '.' + ext,   // ver.20261002.03: 回答のファイル名への付記はやめた（回答は doc_note に保存）
+        docLabel: allDocs[key],
+        docNote: _kessanNote(key, allDocs[key]),   // ver.20261002.02
+        mimeType: d.mimeType,
+        data: d.base64,
+      });
+    });
+  });
+
+  const total = filesPayload.length;
+  const failed = [], okList = [];
+  statusMsg.style.display = 'block';
+  statusMsg.className = 'status-msg';
+  for (let i = 0; i < total; i++) {
+    const p = filesPayload[i];
+    statusMsg.textContent = '(' + (i + 1) + '/' + total + ') ' + p.docLabel + ' を送信中…';
+    progressBar.style.width = Math.round((i / total) * 90 + 5) + '%';
+    try {
+      if (Math.floor(String(p.data || '').length * 0.75) > UPL_MAX_FILE_MB * 1024 * 1024) throw new Error('FILE_TOO_LARGE:' + _uplMB(Math.floor(String(p.data || '').length * 0.75)));
+      const res = await _uplFetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ files: [{ name: p.name, mimeType: p.mimeType, data: p.data }], folderId: FOLDER_ID }),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      let json;
+      const _txt = await res.text();
+      try { json = JSON.parse(_txt); } catch (pe) { throw new Error('BAD_RESPONSE ' + String(_txt).slice(0, 60)); }
+      if (!json.success) throw new Error(json.error || 'error');
+      okList.push(p);
+      // ver.20260611.02: 書類ごとにドライブURLを保存
+      try {
+        var _rf = (Array.isArray(json.files) ? json.files[0] : null) || {};
+        var _durl = _rf.url || _rf.webViewLink || _rf.fileUrl || (_rf.id ? ('https://drive.google.com/file/d/' + _rf.id + '/view') : '');
+        if (_durl) _uplRpc('upload_notify', { p_payload: {
+          company_id: COMPANY_ID, company_name: COMPANY_NAME, folder_id: FOLDER_ID, file_count: 1,
+          file_names: p.name, doc_label: p.docLabel, drive_url: _durl,
+          doc_note: p.docNote || '',   // ver.20261002.02: 決算文書の事前確認の回答
+          source: 'company_dataup'
+        } });
+      } catch (e) { console.warn('URL通知保存失敗:', e); }
+    } catch (err) {
+      console.error('アップロード失敗:', p.docLabel, err);
+      failed.push({ docLabel: p.docLabel, reason: _uplErrReason(err) });
+    }
+  }
+  progressBar.style.width = '100%';
+
+  if (okList.length) {
+    notifyUploadToSystem(okList.length, COMPANY_ID, COMPANY_NAME);
+    // ver.20260910.01: 送信できた書類ラベルを記録→再描画で「⏳ 確認中」を表示
+    try {
+      var _subLbls = {};
+      okList.forEach(function(f){ if(f && f.docLabel) _subLbls[f.docLabel] = 1; });
+      _recordSubmittedLabels(Object.keys(_subLbls));
+    } catch(e){ console.warn('record submitted labels err:', e); }
+    // 送信できたファイルだけ選択から外す（失敗分は残して再送できるように）
+    okList.forEach(function(p){
+      var arr = fileData[p.key]; if (!arr) return;
+      var ix = arr.indexOf(p.ref); if (ix >= 0) arr.splice(ix, 1);
+      if (!arr.length) delete fileData[p.key];
+    });
+  }
+  statusMsg.style.whiteSpace = 'pre-line';
+  if (!failed.length) {
+    statusMsg.className = 'status-msg success';
+    statusMsg.textContent = '✅ アップロード完了しました！\n担当者に届きました。';
+  } else {
+    statusMsg.className = 'status-msg error';
+    statusMsg.textContent = (okList.length ? '✅ ' + okList.length + '件 送信完了\n' : '') + '❌ ' + failed.length + '件 送信できませんでした\n\n【送信できなかった理由】\n' + _uplFormatFailures(failed) + '\n\n選んだファイルは残っています。対処後、もう一度「送信」を押してください（送信済みの書類は再送されません）。';
+    submitBtn.disabled = false;
+  }
+  statusMsg.style.display = 'block';
+  buildAllFields();
+  updateSubmitBtn();
+
+  setTimeout(() => {
+    progressWrap.style.display = 'none';
+    progressBar.style.width = '0%';
+  }, 1200);
+});
+// ===== ver.20261109.01: 申請書を入力して作る（納税証明書交付請求書・社会保険料納付記録交付申請書・労働保険料等納付証明書） =====
+//   forms/ の様式（PDF）を pdf.js で描いて、その上に入力した内容を書き、jsPDF で印刷用PDFにする。会社は印刷→押印→郵送。
+//   入力内容はこの端末にだけ残す（localStorage）。サーバーには送らない。
+var SF = { d:{}, sel:{} };
+var SF_FORMS = {
+  zeimu_3:      { file:'forms/zeimu_3_form.pdf',      page:1, label:'納税証明書交付請求書（税務署）',          need:['coName','addr','rep','houjin','zeimusho'] },
+  shakai_hoken: { file:'forms/shakai_hoken_form.pdf', page:1, label:'社会保険料納付記録交付申請書（年金機構）', need:['coName','addr','rep','tel','nenkin','seiri'] },
+  rodo_hoken:   { file:'forms/rodo_hoken_form.pdf',   page:1, label:'労働保険料等納付証明書（労働局）',        need:['coName','addr','rep','roudou','rhNo'] }
+};
+function _sfKey(){ return 'co_sinsei_' + (COMPANY_ID || 'x'); }
+function _sfLoad(){ try{ var v = localStorage.getItem(_sfKey()); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+function _sfSave(){ try{ localStorage.setItem(_sfKey(), JSON.stringify(SF.d)); }catch(e){} }
+function _sfEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _sfDigits(s){ return String(s||'').normalize('NFKC').replace(/[^0-9]/g,''); }
+function _sfToday(){ return new Date(Date.now()+9*3600e3).toISOString().slice(0,10); }
+function openSinseiForm(first){
+  SF.d = _sfLoad() || {};
+  if(!SF.d.coName) SF.d.coName = COMPANY_NAME || '';
+  ['zs','nk','rk'].forEach(function(p){ var v = urlParams.get(p); if(v){ var k = {zs:'zeimusho',nk:'nenkin',rk:'roudou'}[p]; if(!SF.d[k]) SF.d[k] = v; } });
+  SF.sel = {}; SF.sel[first] = true;
+  _sfRender();
+}
+function _sfSet(k, v){ SF.d[k] = v; _sfSave(); }
+function _sfRender(){
+  var old = document.getElementById('sfModal'); if(old) old.remove();
+  var ov = document.createElement('div'); ov.id = 'sfModal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:10px;';
+  var need = {}; Object.keys(SF.sel).forEach(function(k){ if(SF.sel[k]) SF_FORMS[k].need.forEach(function(n){ need[n] = 1; }); });
+  var inp = function(k, lab, ph, note, type){ if(!need[k]) return ''; return '<label style="display:block;margin-bottom:10px;"><span style="display:block;font-size:12px;font-weight:800;color:#1e293b;margin-bottom:3px;">'+lab+'</span><input type="'+(type||'text')+'" value="'+_sfEsc(SF.d[k]||'')+'" placeholder="'+_sfEsc(ph||'')+'" oninput="_sfSet(\''+k+'\',this.value)" style="width:100%;box-sizing:border-box;font-size:14px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;">'+(note?'<span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">'+note+'</span>':'')+'</label>'; };
+  var h = '<div style="background:#fff;border-radius:12px;width:100%;max-width:620px;max-height:96vh;display:flex;flex-direction:column;overflow:hidden;">'
+    + '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#eff6ff;border-bottom:1px solid #bfdbfe;"><b style="font-size:14px;color:#1e3a5f;">✍ 申請書を入力して作る</b><span style="flex:1"></span><button onclick="document.getElementById(\'sfModal\').remove()" style="font-size:12px;font-weight:700;padding:5px 12px;border:1px solid #cbd5e1;background:#fff;border-radius:7px;cursor:pointer;">✕ 閉じる</button></div>'
+    + '<div style="flex:1;overflow:auto;padding:12px 14px;">'
+    + '<div style="font-size:12px;color:#334155;line-height:1.7;margin-bottom:10px;">答えると、入力済みの申請書（PDF）ができます。<b>印刷して代表者印を押し</b>、送り先へ郵送してください（送り先・同封するものは書類の説明をご覧ください）。</div>'
+    + '<div style="font-size:12px;font-weight:800;color:#1e293b;margin-bottom:4px;">作る申請書</div>'
+    + Object.keys(SF_FORMS).map(function(k){ return '<label style="display:flex;gap:7px;align-items:center;font-size:13px;margin:4px 0;"><input type="checkbox" '+(SF.sel[k]?'checked':'')+' onchange="SF.sel[\''+k+'\']=this.checked;_sfRender()">'+_sfEsc(SF_FORMS[k].label)+'</label>'; }).join('')
+    + '<div style="height:8px"></div>'
+    + inp('coName','会社名（法人名）','例：株式会社○○')
+    + inp('kana','会社名のフリガナ','例：カブシキガイシャ○○')
+    + inp('zip','本店の郵便番号','例：144-0052')
+    + inp('addr','本店の所在地','例：東京都大田区蒲田5-11-10')
+    + inp('rep','代表者の役職・氏名','例：代表取締役　国土　太郎')
+    + inp('tel','電話番号','例：03-1234-5678')
+    + inp('houjin','法人番号（13けた）','','国税庁の法人番号公表サイトで調べられます')
+    + inp('zeimusho','送り先の税務署の名前','例：蒲田','「○○税務署」の○○だけ')
+    + inp('nenkin','管轄の年金事務所の名前','例：大田年金事務所')
+    + inp('seiri','事業所整理記号','例：00-アイウ','年金事務所からの通知や保険料の納入告知書に書かれています')
+    + inp('jno','事業所番号','例：1234')
+    + inp('roudou','労働局（都道府県名）','例：東京','「○○労働局長殿」の○○だけ')
+    + inp('rhNo','労働保険番号（14けた）','例：13101123456000','労働保険の申告書の控えに書かれています')
+    + (Object.keys(SF.sel).some(function(k){ return SF.sel[k]; }) ? '<button id="sfMake" onclick="_sfMake()" style="width:100%;font-size:14px;font-weight:800;padding:11px;border:none;border-radius:9px;background:#1a56db;color:#fff;cursor:pointer;margin-top:4px;">📄 申請書（PDF）を作る</button>' : '<div style="font-size:12px;color:#94a3b8;">作る申請書を選んでください。</div>')
+    + '<div style="font-size:11px;color:#64748b;margin-top:6px;line-height:1.6;">入力した内容はこの端末にだけ残ります（次に作るときも使えます）。わからない欄は空けたままでも作れます（印刷してから手で書けます）。</div>'
+    + '</div></div>';
+  ov.innerHTML = h; document.body.appendChild(ov);
+}
+var _sfLibP = null;
+function _sfLoadLibs(){
+  if(_sfLibP) return _sfLibP;
+  var ld = function(src){ return new Promise(function(res, rej){ var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); };
+  _sfLibP = Promise.all([
+    window.pdfjsLib ? null : ld('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'),
+    window.jspdf ? null : ld('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+  ]).then(function(){ window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; });
+  return _sfLibP;
+}
+// 様式の上に書く位置（ポイント・左上から）
+function _sfDraw(key, g, d){
+  var S = 2, F = '"Hiragino Mincho ProN","Yu Mincho","MS Mincho","Noto Serif JP",serif';
+  var t = function(x, y, s, size, align){ if(!s) return; g.font = (size||11)*S + 'px ' + F; g.fillStyle = '#000'; g.textAlign = align||'left'; g.fillText(String(s), x*S, y*S); };
+  var fit = function(x, y, s, maxW, size){ if(!s) return; var z = size||11; g.font = z*S + 'px ' + F; while(z > 6 && g.measureText(String(s)).width > maxW*S){ z -= 0.5; g.font = z*S + 'px ' + F; } t(x, y, s, z); };
+  var boxes = function(x0, y, w, digits, size){ String(digits).split('').forEach(function(c, i){ t(x0 + w*(i+0.5), y, c, size||11, 'center'); }); };
+  var td = (d.date || _sfToday()).split('-'), ry = (+td[0]) - 2018;
+  if(key === 'zeimu_3'){
+    t(88, 83, d.zeimusho, 11, 'right');
+    t(418, 93, '令和'+ry, 10, 'right'); t(460, 93, String(+td[1]), 10, 'right'); t(500, 93, String(+td[2]), 10, 'right');
+    fit(300, 113, (d.zip?'〒'+d.zip+' ':'')+(d.addr||''), 240, 10);
+    fit(300, 133, d.kana, 240, 8);
+    fit(300, 153, d.coName, 210, 11);
+    fit(300, 168, d.rep, 210, 10);
+    var hj = _sfDigits(d.houjin); if(hj.length === 13) boxes(296, 197, 18.8, hj, 11);
+  } else if(key === 'shakai_hoken'){
+    t(433, 147, td[0], 9, 'right'); t(462, 147, String(+td[1]), 9, 'right'); t(490, 147, String(+td[2]), 9, 'right');
+    fit(56, 178, d.nenkin, 92, 10); fit(154, 178, d.seiri, 92, 10); fit(251, 178, d.jno, 92, 10);
+    if(d.zip) t(158, 206, d.zip, 9);
+    fit(150, 222, d.addr, 390, 11);
+    fit(150, 250, d.coName, 390, 11);
+    fit(150, 280, d.rep, 270, 11);
+    fit(150, 309, d.tel, 390, 11);
+  } else if(key === 'rodo_hoken'){
+    t(383, 158, '令和'+ry, 10, 'right'); t(420, 158, String(+td[1]), 10, 'right'); t(458, 158, String(+td[2]), 10, 'right');
+    t(155, 207, d.roudou, 11, 'right');
+    fit(312, 244, (d.zip?'〒'+d.zip+' ':'')+(d.addr||''), 182, 10);
+    fit(312, 268, d.coName, 182, 11);
+    fit(312, 295, d.rep, 182, 11);
+    var rn = _sfDigits(d.rhNo); if(rn.length === 14) boxes(194, 410, 19, rn, 10);
+  }
+}
+async function _sfMake(){
+  var btn = document.getElementById('sfMake'); if(btn){ btn.disabled = true; btn.textContent = '⏳ 作っています…'; }
+  try{
+    await _sfLoadLibs();
+    var pdf = null, keys = Object.keys(SF_FORMS).filter(function(k){ return SF.sel[k]; });
+    for(var i=0;i<keys.length;i++){
+      var f = SF_FORMS[keys[i]];
+      var doc = await window.pdfjsLib.getDocument(new URL(f.file, location.href).href).promise;
+      var page = await doc.getPage(f.page), vp = page.getViewport({ scale:2 });
+      var cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height;
+      var g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+      await page.render({ canvasContext:g, viewport:vp }).promise;
+      _sfDraw(keys[i], g, SF.d);
+      if(!pdf) pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4' }); else pdf.addPage('a4');
+      pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
+    }
+    var name = '申請書_' + String(SF.d.coName||'').replace(/[\\\/:*?"<>|\s　]+/g,'') + '.pdf';
+    pdf.save(name);
+    if(btn){ btn.disabled = false; btn.textContent = '📄 申請書（PDF）を作る'; }
+    alert('申請書（PDF）を保存しました。\n印刷して代表者印を押し、送り先へ郵送してください。\n取れた証明書は、このページからアップロードしてください。');
+  }catch(e){
+    console.error(e); alert('申請書を作れませんでした。通信状態を確かめて、もう一度お試しください。');
+    if(btn){ btn.disabled = false; btn.textContent = '📄 申請書（PDF）を作る'; }
+  }
+}
+
+</script>
+</body>
+</html>

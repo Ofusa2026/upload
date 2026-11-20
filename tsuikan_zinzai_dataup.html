@@ -1,0 +1,2095 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>追加書類のアップロード</title>
+<!-- 画像圧縮・HEIC変換ライブラリ（アップロード失敗対策） -->
+<script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600&family=Noto+Sans:wght@400;600&display=swap');
+  :root{--primary:#1a56db;--primary-dark:#1341a8;--success:#057a55;--success-bg:#f0fdf4;--success-border:#bbf7d0;--error:#9b1c1c;--error-bg:#fef2f2;--error-border:#fecaca;--bg:#f0f4f8;--card:#ffffff;--text:#1a202c;--sub:#718096;--border:#e2e8f0;--hover:#eff6ff;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Noto Sans','Noto Sans JP',sans-serif;background:var(--bg);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px 60px;}
+  .card{background:var(--card);border-radius:20px;padding:28px 20px;max-width:480px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
+  .lang-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px;justify-content:center;}
+  .lang-btn{padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:#fff;color:var(--sub);transition:all 0.15s;font-family:inherit;}
+  .lang-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600;}
+  .header{text-align:center;margin-bottom:28px;}
+  .office-name{font-size:12px;color:var(--sub);margin-bottom:8px;}
+  .page-icon{font-size:36px;margin-bottom:8px;}
+  h1{font-size:20px;font-weight:600;color:var(--text);margin-bottom:6px;}
+  .subtitle{font-size:13px;color:var(--sub);line-height:1.7;white-space:pre-line;}
+  .fields-list{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
+  .field-row{border:1.5px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color 0.2s;}
+  .field-row.has-file{border-color:var(--primary);background:#eff6ff;}
+  .field-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none;gap:8px;}
+  .field-label{font-size:14px;font-weight:600;color:var(--text);flex:1;}
+  .field-status{font-size:12px;color:var(--sub);white-space:nowrap;}
+  .field-status.ready{color:var(--success);font-weight:600;}
+  .chevron{font-size:11px;color:var(--sub);transition:transform 0.2s;flex-shrink:0;}
+  .field-row.open .chevron{transform:rotate(180deg);}
+  .field-body{border-top:1.5px solid var(--border);padding:12px 14px;display:none;}
+  .field-row.open .field-body{display:block;}
+  .field-row.has-file .field-body{border-top-color:var(--primary);}
+  .mini-drop{border:2px dashed #c0cfe0;border-radius:10px;padding:20px 12px;text-align:center;cursor:pointer;position:relative;background:#f8fafc;transition:all 0.2s;}
+  .mini-drop:hover{border-color:var(--primary);background:var(--hover);}
+  .mini-drop input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .mini-drop-text{font-size:13px;color:#4a5568;font-weight:600;}
+  .mini-drop-hint{font-size:11px;color:#a0aec0;margin-top:3px;}
+  .preview-wrap{position:relative;display:block;}
+  .preview-wrap img{width:100%;max-height:180px;object-fit:contain;border-radius:8px;background:#eee;display:block;}
+  .remove-btn{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:50%;width:26px;height:26px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .btn-submit{display:block;width:100%;padding:16px;background:var(--primary);color:#fff;font-family:inherit;font-size:16px;font-weight:600;border:none;border-radius:12px;cursor:pointer;transition:background 0.2s;}
+  .btn-submit:hover:not(:disabled){background:var(--primary-dark);}
+  .btn-submit:disabled{background:#93c5fd;cursor:not-allowed;}
+  .progress-bar-wrap{display:none;margin-top:14px;background:#e2e8f0;border-radius:8px;overflow:hidden;height:8px;}
+  .progress-bar{height:100%;background:var(--primary);width:0%;transition:width 0.4s;}
+  .status-msg{display:none;margin-top:18px;padding:16px;border-radius:12px;font-size:14px;text-align:center;line-height:1.7;white-space:pre-line;}
+  .status-msg.success{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border);}
+  .status-msg.error{text-align:left;background:var(--error-bg);color:var(--error);border:1px solid var(--error-border);}
+  /* 名前確認モーダル */
+  .name-confirm-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;}
+  .name-confirm-modal{background:#fff;border-radius:16px;width:100%;max-width:420px;padding:24px 20px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .name-confirm-modal .nc-title{font-size:16px;font-weight:800;color:#0f2040;text-align:center;margin-bottom:6px;}
+  .name-confirm-modal .nc-subtitle{font-size:12px;color:#64748b;text-align:center;margin-bottom:18px;}
+  .name-confirm-modal .nc-name-box{background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:2px solid #2563eb;border-radius:12px;padding:18px 14px;margin-bottom:16px;text-align:center;}
+  .name-confirm-modal .nc-name-box .nc-label{font-size:11px;color:#2563eb;font-weight:700;margin-bottom:6px;letter-spacing:.5px;}
+  .name-confirm-modal .nc-name-box .nc-name{font-size:24px;font-weight:800;color:#1e3a8a;letter-spacing:.3px;word-break:break-word;line-height:1.3;}
+  .name-confirm-modal .nc-warn{font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 12px;margin-bottom:16px;line-height:1.5;}
+  .name-confirm-modal .nc-buttons{display:flex;flex-direction:column;gap:8px;}
+  .name-confirm-modal .nc-btn-yes{padding:14px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;}
+  .name-confirm-modal .nc-btn-yes:active{background:#15803d;transform:scale(.98);}
+  .name-confirm-modal .nc-btn-no{padding:12px;background:#fff;color:#dc2626;border:2px solid #fca5a5;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .name-confirm-modal .nc-btn-no:active{background:#fef2f2;}
+  /* 名前バナー（確認後・常時表示） */
+  .name-banner{background:#eff6ff;border-radius:10px;padding:12px 14px;margin-bottom:20px;border:1px solid #bfdbfe;text-align:left;}
+  .name-banner .nb-name{display:block;font-size:18px;font-weight:800;color:#1e3a8a;margin-bottom:2px;letter-spacing:.3px;word-break:break-word;}
+  .name-banner .nb-desc{display:block;font-size:11px;color:#2563eb;}
+</style>
+</head>
+<body>
+<div style="position:fixed;top:6px;left:8px;font-size:9px;color:rgba(0,0,0,.3);z-index:9999;pointer-events:none;" id="verBadge"></div>
+
+<!-- 名前確認モーダル -->
+<div id="nameConfirmOverlay" class="name-confirm-overlay" style="display:none;">
+  <div class="name-confirm-modal">
+    <div class="nc-title">🔍 お名前のご確認</div>
+    <div class="nc-subtitle">下記のお名前で間違いありませんか？</div>
+    <div class="nc-name-box">
+      <div class="nc-label">📋 ご依頼者</div>
+      <div class="nc-name" id="nameConfirmName"></div>
+    </div>
+    <div class="nc-warn">※ ご自身のお名前と異なる場合は「いいえ」を押してください。書類のアップロードに進まず、ご連絡先をご案内いたします。</div>
+    <div class="nc-buttons">
+      <button class="nc-btn-yes" onclick="confirmName(true)">✅ はい、私の名前です</button>
+      <button class="nc-btn-no" onclick="confirmName(false)">❌ いいえ、違います</button>
+    </div>
+  </div>
+</div>
+
+<!-- 名前が違う場合の画面 -->
+<div id="nameMismatchScreen" style="display:none;padding:20px;max-width:480px;margin:20px auto;">
+  <div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:12px;padding:16px;">
+    <div style="font-size:14px;font-weight:800;color:#991b1b;margin-bottom:8px;">⚠️ お名前にご相違があります</div>
+    <div style="font-size:12px;color:#7f1d1d;line-height:1.6;margin-bottom:10px;">恐れ入りますが、書類のアップロードは控えていただき、お手数ですが下記までご連絡をお願いいたします。</div>
+    <div style="background:white;border-radius:8px;padding:10px 12px;font-size:12px;color:#374151;line-height:1.7;">
+      <strong style="color:#0f2040;">大房行政書士法人</strong><br>
+      📞 03-6424-8849<br>
+      📧 info@gyosei-cambo.com<br>
+      🏢 〒144-0052 東京都大田区蒲田5-11-10 FUNDES蒲田8階
+    </div>
+  </div>
+</div>
+
+<div class="card" id="mainCard" style="display:none;">
+  <div class="lang-bar" id="langBar"></div>
+  <div class="header">
+    <div class="page-icon">📄</div>
+    <div class="office-name">大房行政書士法人</div>
+    <h1 id="ttlMain"></h1>
+    <p class="subtitle" id="ttlSub"></p>
+  </div>
+  <div class="name-banner" id="nameBanner" style="display:none;">
+    <span class="nb-name" id="nameBannerName"></span>
+    <span class="nb-desc">大房行政書士法人より書類アップロードのご依頼です。</span>
+  </div>
+  <div class="fields-list" id="fieldsList"></div>
+  <button class="btn-submit" id="submitBtn" disabled></button>
+  <div class="progress-bar-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="status-msg" id="statusMsg"></div>
+</div>
+<script>
+const VERSION = 'tsuikan ver.20261119.01'; // 追完専用（入管から追加で求められた書類だけ・理由つき）。もとは zinzai_dataup.html
+console.log('📄 tsuikan_zinzai_dataup.html', VERSION);
+// ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
+const urlParams = new URLSearchParams(window.location.search);
+const FOLDER_ID = urlParams.get('folder') || '';
+const FOLDER_ID2 = urlParams.get('folder2') || '';
+// ===== ver.20261003.01: アップロードできない理由の判定・表示 =====
+var UPL_MAX_FILE_MB = 25;   // 1ファイルの上限目安（送信サーバーの受付量）
+var UPL_MAX_TOTAL_MB = 30;  // 1回でまとめて送る合計の上限目安
+var UPL_TIMEOUT_MS = 180000; // 3分で時間切れ
+function _uplMB(bytes){ return (bytes/1024/1024).toFixed(1)+'MB'; }
+// ファイル選択時のチェック（問題なければ ''）
+function _uplCheckFile(file, compressImages){
+  var name = file && file.name || '', t = file && file.type || '';
+  var isImg = /^image\//.test(t) || /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(name);
+  var isPdf = t === 'application/pdf' || /\.pdf$/i.test(name);
+  if (!isImg && !isPdf) return '「'+name+'」は対応していないファイル形式です（JPG・PNG・PDFのみ）。Word・Excel等はPDFに変換するか、写真に撮ってアップロードしてください。';
+  if (!file.size) return '「'+name+'」は中身が空（0バイト）のため読み込めません。撮影・保存し直してから選んでください。';
+  if (file.size > UPL_MAX_FILE_MB*1024*1024 && !(isImg && compressImages)) return '「'+name+'」は '+_uplMB(file.size)+' あり大きすぎます（1ファイル'+UPL_MAX_FILE_MB+'MBまで）。PDFはページを分けるか圧縮して、写真は解像度を下げてからアップロードしてください。';
+  return '';
+}
+// 送信エラーの理由を日本語で返す
+function _uplErrReason(err){
+  var m = String((err && err.message) || err || '');
+  if (m.indexOf('NO_FOLDER') === 0) return 'このアップロード用URLに保存先フォルダが設定されていません。お手数ですが担当者へご連絡ください（URLが途中で切れている可能性もあります）。';
+  if (m.indexOf('FILE_TOO_LARGE') === 0) return 'ファイルが大きすぎます（'+(m.split(':')[1]||'')+'）。1ファイル'+UPL_MAX_FILE_MB+'MBまでです。PDFはページを分けるか圧縮してください。';
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'インターネットにつながっていません（オフライン）。電波の良い場所かWi-Fiにつないでから、もう一度送信してください。';
+  if ((err && err.name === 'AbortError') || /timeout|時間切れ/i.test(m)) return '送信に時間がかかりすぎて途中で止まりました（ファイルが大きい・通信が遅い）。Wi-Fiにつなぐか、枚数を減らして送信してください。';
+  if (/Failed to fetch|NetworkError|Load failed|network connection/i.test(m)) return '通信エラーで送信できませんでした（電波が弱い・途中で回線が切れた・ファイルが大きすぎる等）。通信状況を確認して、もう一度送信してください。';
+  var hs = m.match(/HTTP (\d{3})/);
+  if (hs) {
+    var c = +hs[1];
+    if (c === 413) return 'ファイルが大きすぎて受け付けられませんでした。枚数を減らすか、分けて送信してください。';
+    if (c === 429 || c >= 500) return 'サーバーが混み合っているか一時的なエラーです（HTTP '+c+'）。少し時間をおいて、もう一度送信してください。';
+    return 'サーバーから想定外の応答がありました（HTTP '+c+'）。時間をおいても続く場合は担当者へご連絡ください。';
+  }
+  if (/folder|フォルダ|not found|権限|permission|access denied|Access/i.test(m)) return '保存先フォルダが見つからないか、アクセス権がありません。お手数ですが担当者へご連絡ください（フォルダの移動・削除の可能性があります）。';
+  if (/Read failed|読み込/i.test(m)) return 'ファイルを読み込めませんでした（破損している・クラウド上にだけあり端末に保存されていない等）。端末に保存し直すか撮り直してから選んでください。';
+  if (/Exceeded|limit|上限|too large|Request Entity/i.test(m)) return 'ファイルサイズが上限を超えています。枚数を減らすか、分けて送信してください。';
+  if (/BAD_RESPONSE|JSON|Unexpected token|Unexpected end/i.test(m)) return 'サーバーの応答を読み取れませんでした（ファイルが大きすぎる・一時的な障害の可能性）。枚数を減らして、もう一度送信してください。';
+  return '原因不明のエラーです（'+m.slice(0,80)+'）。もう一度送信しても失敗する場合は、この画面のスクリーンショットを担当者へお送りください。';
+}
+// タイムアウト付き fetch
+function _uplFetch(url, opts){
+  if (typeof AbortController === 'undefined') return fetch(url, opts);
+  var ac = new AbortController();
+  var tm = setTimeout(function(){ ac.abort(); }, UPL_TIMEOUT_MS);
+  opts = Object.assign({}, opts, { signal: ac.signal });
+  return fetch(url, opts).finally(function(){ clearTimeout(tm); });
+}
+// 失敗一覧を「理由ごと」にまとめた文章にする  list=[{docLabel, reason}]
+function _uplFormatFailures(list){
+  var byReason = {}, order = [];
+  list.forEach(function(f){ if(!byReason[f.reason]){ byReason[f.reason]=[]; order.push(f.reason); } if(byReason[f.reason].indexOf(f.docLabel)<0) byReason[f.reason].push(f.docLabel); });
+  return order.map(function(r){ return '■ ' + byReason[r].join('、') + '\n　→ ' + r; }).join('\n');
+}
+// 選択時に弾いたファイルの理由を表示
+function _uplShowRejected(list){
+  if (!list.length) return;
+  alert('次のファイルは追加できませんでした。\n\n' + list.join('\n\n'));
+}
+
+const CASE_ID = urlParams.get('case') || '';
+// 追完専用: t=追完の記録（tsuikan_upload_log.id）。書類・理由・注意点はここから読む
+const TSUIKAN_ID = urlParams.get('t') || '';
+window._tkMeta = null;   // { deadline, applicant, done }
+window._tkLoadErr = '';
+const APPLICANT_NAME = urlParams.get('name') ? decodeURIComponent(urlParams.get('name')) : '';
+const APP_TYPE = urlParams.get('appType') || '';
+const NATIONALITY = urlParams.get('nationality') || '';
+const IS_RYUGAKU = urlParams.get('ryugaku') === '1';
+// ver.20260821: 推薦票の企業対応（suisen=other）のとき住民票に注記を出す
+const IS_SUISEN_OTHER = urlParams.get('suisen') === 'other';
+// 旧パラメータ（後方互換）
+const SKIP_DOCS_RAW = urlParams.get('skipDocs') || '';
+const SKIP_DOCS = SKIP_DOCS_RAW ? decodeURIComponent(SKIP_DOCS_RAW).split(',').map(s => s.trim()).filter(Boolean) : [];
+// 新パラメータ（ver.20260525.01）: docs=BASE64URL(JSON [{l,r}])
+const DOCS_PARAM = urlParams.get('docs') || '';
+// base64url -> base64 -> UTF-8 文字列 -> JSON
+function _decodeDocsParam(s){
+  if(!s) return null;
+  try {
+    var b64 = s.replace(/-/g,'+').replace(/_/g,'/');
+    while(b64.length % 4) b64 += '=';
+    var bin = atob(b64);
+    var txt = decodeURIComponent(escape(bin));
+    var arr = JSON.parse(txt);
+    if(!Array.isArray(arr)) return null;
+    return arr;
+  } catch(e){
+    console.warn('docs param decode err:', e);
+    return null;
+  }
+}
+// ver.20260525.34: docs パラメータが長すぎてLINEでハイパーリンク化されない問題対応
+//   - docs パラメータが空でも CASE_ID があれば upload_docs_cache から取得する
+//   - これらは初期は null/false、_loadDocsFromCache() で確定
+let DOCS_LIST = _decodeDocsParam(DOCS_PARAM);
+let USE_NEW_DOCS = !!(DOCS_LIST && DOCS_LIST.length);
+
+// Supabaseの upload_docs_cache から書類リストを取得
+const SUPABASE_URL_UPL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
+const SUPABASE_KEY_UPL = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
+function _uplRpc(fn, body){ return fetch(SUPABASE_URL_UPL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY_UPL,'Authorization':'Bearer '+SUPABASE_KEY_UPL}, body: JSON.stringify(body||{}) }); }
+function _loadDocsFromCache(){
+  // ver.20260821: 大使館推薦票は申請人がアップロードしないため、アップロード画面には出さない（二重防御）
+  function _stripEmbassyRec(list){
+    if(!Array.isArray(list)) return list;
+    return list.filter(function(d){
+      var lbl = (d && typeof d === 'object') ? (d.l || d.label || '') : String(d||'');
+      return lbl.indexOf('大使館推薦票') < 0;
+    });
+  }
+  return new Promise(function(resolve){
+    // 追完専用: 追完の記録から書類と理由を読む（docs パラメータ・書類キャッシュは使わない）
+    if(!TSUIKAN_ID){ window._tkLoadErr='nolink'; DOCS_LIST=[]; USE_NEW_DOCS=true; resolve(DOCS_LIST); return; }
+    _uplRpc('tsuikan_upload_items_get', { p_id: TSUIKAN_ID, p_target: 'person' })
+    .then(function(r){ return r.ok ? r.json() : null; }).then(function(o){
+      if(!o || !Array.isArray(o.items)){ window._tkLoadErr='notfound'; DOCS_LIST=[]; USE_NEW_DOCS=true; resolve(DOCS_LIST); return; }
+      window._tkMeta = { deadline:o.deadline||'', applicant:o.applicant||'', done:!!o.done };
+      DOCS_LIST = o.items.filter(function(it){ return it && it.doc; }).map(function(it){
+        return { l:String(it.doc), r:1, done:!!it.done, note:it.note||'', tips:Array.isArray(it.tips)?it.tips:[], kind:it.kind||'', year:it.year||'', scope:it.scope||'', sashi:it.sashimodoshi||'', forms:Array.isArray(it.forms)?it.forms:[] };
+      });
+      USE_NEW_DOCS = true;
+      resolve(DOCS_LIST);
+    }).catch(function(e){ console.warn('tsuikan items rpc err:', e); window._tkLoadErr='network'; DOCS_LIST=[]; USE_NEW_DOCS=true; resolve(DOCS_LIST); });
+    return;
+    if(USE_NEW_DOCS){ resolve(_stripEmbassyRec(DOCS_LIST)); return; }  // URLパラメータ優先
+    if(!CASE_ID){ resolve(null); return; }
+    _uplRpc('upload_docs_cache_get', { p_case_id: CASE_ID, p_kind: 'person' })
+    .then(function(r){ return r.ok ? r.json() : null; }).then(function(docs){
+      if(docs && Array.isArray(docs) && docs.length){
+        DOCS_LIST = _stripEmbassyRec(docs);
+        USE_NEW_DOCS = true;
+        resolve(DOCS_LIST);
+      } else {
+        resolve(null);
+      }
+    }).catch(function(e){
+      console.warn('upload_docs_cache rpc err:', e);
+      resolve(null);
+    });
+  });
+}
+console.log('📋 USE_NEW_DOCS:', USE_NEW_DOCS, 'DOCS_LIST:', DOCS_LIST, 'SKIP_DOCS:', SKIP_DOCS);
+
+// 多言語翻訳辞書（日本語ラベル → 各言語 + ruby: 日本語表示用ふりがな付きHTML）
+// マッチしない書類は日本語のまま表示
+const DOC_TRANSLATIONS = {
+  // ── 人材書類（基本） ──
+  '顔写真':                      {ruby:'<ruby>顔写真<rt>かおじゃしん</rt></ruby>',en:'Photo',vi:'Ảnh',id:'Foto',my:'ဓာတ်ပုံ',ko:'사진',ne:'फोटो',zh:'照片',th:'รูปถ่าย',km:'រូបថត',mn:'Зураг',si:'ඡායාරූපය'},
+  // ── 家族滞在 書類（ver.20260824）──
+  '身分関係を証する文書':        {ruby:'<ruby>身分関係<rt>みぶんかんけい</rt></ruby>を<ruby>証<rt>しょう</rt></ruby>する<ruby>文書<rt>ぶんしょ</rt></ruby>',en:'Document proving family relationship',vi:'Giấy tờ chứng minh quan hệ nhân thân',id:'Dokumen bukti hubungan keluarga',my:'ဆွေမျိုးတော်စပ်ကြောင်း အထောက်အထား',ko:'신분관계 증명 서류',ne:'नाता प्रमाणित गर्ने कागजात',zh:'证明身份关系的文件',th:'เอกสารพิสูจน์ความสัมพันธ์',km:'ឯកសារបញ្ជាក់ទំនាក់ទំនងគ្រួសារ',mn:'Гэр бүлийн харилцааг батлах баримт',si:'පවුල් සම්බන්ධතාව සනාථ කරන ලේඛනය'},
+  '扶養者の在留カードまたはパスポート': {ruby:'<ruby>扶養者<rt>ふようしゃ</rt></ruby>の<ruby>在留<rt>ざいりゅう</rt></ruby>カードまたはパスポート',en:"Supporter's Residence Card or Passport",vi:'Thẻ cư trú hoặc hộ chiếu của người bảo lãnh',id:'Kartu Izin Tinggal atau Paspor penanggung',my:'ထောက်ပံ့သူ၏ နေထိုင်ခွင့်ကတ် သို့မဟုတ် နိုင်ငံကူးလက်မှတ်',ko:'부양자의 재류카드 또는 여권',ne:'पालनकर्ताको आवास कार्ड वा राहदानी',zh:'抚养人的居留卡或护照',th:'บัตรถิ่นที่อยู่หรือหนังสือเดินทางของผู้อุปการะ',km:'កាតស្នាក់នៅ ឬលិខិតឆ្លងដែនរបស់អ្នកឧបត្ថម្ភ',mn:'Тэжээгчийн оршин суух карт эсвэл паспорт',si:'පෝෂකයාගේ පදිංචිකාර්ඩ් හෝ ගමන් බලපත්‍රය'},
+  '扶養者の収入証明書類':        {ruby:'<ruby>扶養者<rt>ふようしゃ</rt></ruby>の<ruby>収入証明書類<rt>しゅうにゅうしょうめいしょるい</rt></ruby>',en:"Supporter's Proof of Income",vi:'Giấy chứng minh thu nhập của người bảo lãnh',id:'Bukti penghasilan penanggung',my:'ထောက်ပံ့သူ၏ ဝင်ငွေ အထောက်အထား',ko:'부양자의 수입 증명 서류',ne:'पालनकर्ताको आय प्रमाण',zh:'抚养人的收入证明',th:'หลักฐานรายได้ของผู้อุปการะ',km:'ភស្តុតាងចំណូលរបស់អ្នកឧបត្ថម្ភ',mn:'Тэжээгчийн орлогын гэрчилгээ',si:'පෝෂකයාගේ ආදායම් සාක්ෂිය'},
+  '戸籍謄本':                    {ruby:'<ruby>戸籍謄本<rt>こせきとうほん</rt></ruby>',en:'Family Register (Koseki Tohon)',vi:'Bản sao hộ tịch',id:'Akta Keluarga (Koseki)',my:'အိမ်ထောင်စုမှတ်တမ်း',ko:'호적등본',ne:'पारिवारिक अभिलेख',zh:'户籍谤本',th:'ทะเบียนครอบครัว',km:'បញ្ជីគ្រួសារ',mn:'Ургийн бичиг',si:'පවුල් ලේඛනය'},
+  '出生証明書':                  {ruby:'<ruby>出生証明書<rt>しゅっしょうしょうめいしょ</rt></ruby>',en:'Birth Certificate',vi:'Giấy khai sinh',id:'Akta Kelahiran',my:'မွေးစာရင်း',ko:'출생증명서',ne:'जन्म प्रमाणपत्र',zh:'出生证明书',th:'สูติบัตร',km:'សំបុត្រកំណើត',mn:'Төрсний гэрчилгээ',si:'උපන් සහතිකය'},
+  '親の在留カード表':            {ruby:'<ruby>親<rt>おや</rt></ruby>の<ruby>在留<rt>ざいりゅう</rt></ruby>カード<ruby>表<rt>おもて</rt></ruby>',en:"Parent's Residence Card (Front)",vi:'Thẻ cư trú của cha mẹ (Mặt trước)',id:'Kartu Izin Tinggal orang tua (Depan)',my:'မိဘ၏ နေထိုင်ခွင့်ကတ် (ရှေ့)',ko:'부모의 재류카드 (앞면)',ne:'अभिभावकको आवास कार्ड (अगाडि)',zh:'父母的居留卡（正面）',th:'บัตรถิ่นที่อยู่ของผู้ปกครอง (ด้านหน้า)',km:'កាតស្នាក់នៅរបស់ឪពុកម្តាយ (មុខ)',mn:'Эцэг эхийн оршин суух карт (нүүр)',si:'දෙමාපියන්ගේ පදිංචිකාර්ඩ් (ඉදිරිපස)'},
+  '親の在留カード裏':            {ruby:'<ruby>親<rt>おや</rt></ruby>の<ruby>在留<rt>ざいりゅう</rt></ruby>カード<ruby>裏<rt>うら</rt></ruby>',en:"Parent's Residence Card (Back)",vi:'Thẻ cư trú của cha mẹ (Mặt sau)',id:'Kartu Izin Tinggal orang tua (Belakang)',my:'မိဘ၏ နေထိုင်ခွင့်ကတ် (နောက်)',ko:'부모의 재류카드 (뒷면)',ne:'अभिभावकको आवास कार्ड (पछाडि)',zh:'父母的居留卡（背面）',th:'บัตรถิ่นที่อยู่ของผู้ปกครอง (ด้านหลัง)',km:'កាតស្នាក់នៅរបស់ឪពុកម្តាយ (ក្រោយ)',mn:'Эцэг эхийн оршин суух карт (ар)',si:'දෙමාපියන්ගේ පදිංචිකාර්ඩ් (පිටුපස)'},
+  '親のパスポート':              {ruby:'<ruby>親<rt>おや</rt></ruby>のパスポート',en:"Parent's Passport",vi:'Hộ chiếu của cha mẹ',id:'Paspor orang tua',my:'မိဘ၏ နိုင်ငံကူးလက်မှတ်',ko:'부모의 여권',ne:'अभिभावकको राहदानी',zh:'父母的护照',th:'หนังสือเดินทางของผู้ปกครอง',km:'លិខិតឆ្លងដែនរបស់ឪពុកម្តាយ',mn:'Эцэг эхийн паспорт',si:'දෙමාපියන්ගේ ගමන් බලපත්‍රය'},
+  '親の在職証明書':              {ruby:'<ruby>親<rt>おや</rt></ruby>の<ruby>在職証明書<rt>ざいしょくしょうめいしょ</rt></ruby>',en:"Parent's Certificate of Employment",vi:'Giấy xác nhận công tác của cha mẹ',id:'Surat Keterangan Kerja orang tua',my:'မိဘ၏ အလုပ်လုပ်ကိုင်ကြောင်း လက်မှတ်',ko:'부모의 재직증명서',ne:'अभिभावकको रोजगारी प्रमाणपत्र',zh:'父母的在职证明书',th:'หนังสือรับรองการทำงานของผู้ปกครอง',km:'វិញ្ញាបនបត្រការងាររបស់ឪពុកម្តាយ',mn:'Эцэг эхийн ажлын газрын тодорхойлолт',si:'දෙමාපියන්ගේ සේවා සහතිකය'},
+  '親の課税証明書（直近1年分）':  {ruby:'<ruby>親<rt>おや</rt></ruby>の<ruby>課税証明書<rt>かぜいしょうめいしょ</rt></ruby>（<ruby>直近<rt>ちょっきん</rt></ruby>1<ruby>年分<rt>ねんぶん</rt></ruby>）',en:"Parent's Taxation Certificate (Latest 1 year)",vi:'Giấy chứng nhận thuế của cha mẹ (1 năm gần nhất)',id:'Surat Keterangan Pajak orang tua (1 tahun terakhir)',my:'မိဘ၏ အခွန်သက်သေခံ (နောက်ဆုံး ၁ နှစ်)',ko:'부모의 과세증명서 (최근 1년분)',ne:'अभिभावकको कर प्रमाणपत्र (पछिल्लो १ वर्ष)',zh:'父母的课税证明书（最近1年）',th:'ใบรับรองภาษีของผู้ปกครอง (1 ปีล่าสุด)',km:'វិញ្ញាបនបត្រពន្ធរបស់ឪពុកម្តាយ (១ឆ្នាំចុងក្រោយ)',mn:'Эцэг эхийн татварын гэрчилгээ (сүүлийн 1 жил)',si:'දෙමාපියන්ගේ බදු සහතිකය (පසුගිය වසර 1)'},
+  '親の納税証明書（直近1年分）':  {ruby:'<ruby>親<rt>おや</rt></ruby>の<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>（<ruby>直近<rt>ちょっきん</rt></ruby>1<ruby>年分<rt>ねんぶん</rt></ruby>）',en:"Parent's Tax Payment Certificate (Latest 1 year)",vi:'Giấy chứng nhận nộp thuế của cha mẹ (1 năm gần nhất)',id:'Bukti Pembayaran Pajak orang tua (1 tahun terakhir)',my:'မိဘ၏ အခွန်ပေးဆောင်မှုသက်သေခံ (နောက်ဆုံး ၁ နှစ်)',ko:'부모의 납세증명서 (최근 1년분)',ne:'अभिभावकको कर भुक्तानी प्रमाणपत्र (पछिल्लो १ वर्ष)',zh:'父母的纳税证明书（最近1年）',th:'ใบรับรองการชำระภาษีของผู้ปกครอง (1 ปีล่าสุด)',km:'វិញ្ញាបនបត្របង់ពន្ធរបស់ឪពុកម្តាយ (១ឆ្នាំចុងក្រោយ)',mn:'Эцэг эхийн татвар төлсөн гэрчилгээ (сүүлийн 1 жил)',si:'දෙමාපියන්ගේ බදු ගෙවීම් සහතිකය (පසුගිය වසර 1)'},
+  'パスポート':                  {ruby:'パスポート',en:'Passport',vi:'Hộ chiếu',id:'Paspor',my:'နိုင်ငံကူးလက်မှတ်',ko:'여권',ne:'राहदानी',zh:'护照',th:'หนังสือเดินทาง',km:'លិខិតឆ្លងដែន',mn:'Паспорт',si:'ගමන් බලපත්‍රය'},
+  '在留カード':                  {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード',en:'Residence Card',vi:'Thẻ cư trú',id:'Kartu Izin Tinggal',my:'နေထိုင်ခွင့်ကတ်',ko:'재류카드',ne:'आवास कार्ड',zh:'居留卡',th:'บัตรถิ่นที่อยู่',km:'កាតស្នាក់នៅ',mn:'Оршин суух карт',si:'පදිංචිකාර්ඩ්'},
+  '在留カード（表）':             {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード（<ruby>表<rt>おもて</rt></ruby>）',en:'Residence Card (Front)',vi:'Thẻ cư trú (Mặt trước)',id:'Kartu Izin Tinggal (Depan)',my:'နေထိုင်ခွင့်ကတ်(ရှေ့)',ko:'재류카드 (앞면)',ne:'आवास कार्ड (अगाडि)',zh:'居留卡（正面）',th:'บัตรถิ่นที่อยู่ (ด้านหน้า)',km:'កាតស្នាក់នៅ(មុខ)',mn:'Оршин суух карт (нүүр)',si:'පදිංචිකාර්ඩ් (ඉදිරිපස)'},
+  '在留カード（裏）':             {ruby:'<ruby>在留<rt>ざいりゅう</rt></ruby>カード（<ruby>裏<rt>うら</rt></ruby>）',en:'Residence Card (Back)',vi:'Thẻ cư trú (Mặt sau)',id:'Kartu Izin Tinggal (Belakang)',my:'နေထိုင်ခွင့်ကတ်(နောက်)',ko:'재류카드 (뒷면)',ne:'आवास कार्ड (पछाडि)',zh:'居留卡（背面）',th:'บัตรถิ่นที่อยู่ (ด้านหลัง)',km:'កាតស្នាក់នៅ(ក្រោយ)',mn:'Оршин суух карт (ар)',si:'පදිංචිකාර්ඩ් (පිටුපස)'},
+  '健康診断票':                  {ruby:'<ruby>健康診断票<rt>けんこうしんだんひょう</rt></ruby>',en:'Medical Examination Certificate',vi:'Giấy khám sức khỏe',id:'Sertifikat Pemeriksaan Kesehatan',my:'ကျန်းမာရေးစစ်ဆေးမှုလက်မှတ်',ko:'건강진단서',ne:'स्वास्थ्य परीक्षण प्रमाणपत्र',zh:'健康诊断书',th:'ใบรับรองตรวจสุขภาพ',km:'វិញ្ញាបនបត្រពិនិត្យសុខភាព',mn:'Эрүүл мэндийн үзлэгийн дүгнэлт',si:'සෞඛ්‍ය පරීක්ෂණ සහතිකය'},
+  '健康診断証':                  {ruby:'<ruby>健康診断証<rt>けんこうしんだんしょう</rt></ruby>',en:'Medical Certificate',vi:'Giấy khám sức khỏe',id:'Sertifikat Kesehatan',ko:'건강진단서',zh:'健康诊断证',th:'ใบรับรองสุขภาพ',km:'វិញ្ញាបនបត្រសុខភាព'},
+  // ── 試験合格証 ──
+  '合格証（技能）':               {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>技能<rt>ぎのう</rt></ruby>）',en:'Certificate (Skills Test)',vi:'Chứng chỉ (Kỳ thi kỹ năng)',id:'Sertifikat (Uji Keterampilan)',my:'အောင်လက်မှတ်(ကျွမ်းကျင်မှု)',ko:'합격증 (기능시험)',ne:'प्रमाणपत्र (सीप परीक्षा)',zh:'合格证（技能考试）',th:'ใบรับรอง (ทักษะ)',km:'វិញ្ញាបនបត្រ (ជំនាញ)',mn:'Гэрчилгээ (ур чадварын)',si:'සහතිකය (කුසලතා)'},
+  '合格証（技能試験）':           {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>技能試験<rt>ぎのうしけん</rt></ruby>）',en:'Certificate (Skills Test)',vi:'Chứng chỉ (Kỳ thi kỹ năng)',id:'Sertifikat (Uji Keterampilan)',ko:'합격증 (기능시험)',zh:'合格证（技能考试）',th:'ใบรับรอง (สอบทักษะ)',km:'វិញ្ញាបនបត្រ (ប្រឡងជំនាញ)'},
+  '合格証（日本語）':             {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>日本語<rt>にほんご</rt></ruby>）',en:'Certificate (Japanese)',vi:'Chứng chỉ (Tiếng Nhật)',id:'Sertifikat (Bahasa Jepang)',my:'အောင်လက်မှတ်(ဂျပန်ဘာသာ)',ko:'합격증 (일본어)',ne:'प्रमाणपत्र (जापानी भाषा)',zh:'合格证（日语）',th:'ใบรับรอง (ภาษาญี่ปุ่น)',km:'វិញ្ញាបនបត្រ (ភាសាជប៉ុន)',mn:'Гэрчилгээ (япон хэл)',si:'සහතිකය (ජපන් භාෂාව)'},
+  '合格証（専門級・3級）':       {ruby:'<ruby>合格証<rt>ごうかくしょう</rt></ruby>（<ruby>専門級<rt>せんもんきゅう</rt></ruby>・3<ruby>級<rt>きゅう</rt></ruby>）',en:'Certificate (Specialist/Level 3)',vi:'Chứng chỉ (Chuyên ngành/Cấp 3)',id:'Sertifikat (Spesialis/Level 3)',ko:'합격증 (전문급·3급)',zh:'合格证（专项级·3级）',th:'ใบรับรอง (เฉพาะทาง/ระดับ 3)',km:'វិញ្ញាបនបត្រ (កម្រិតឯកទេស/កម្រិត3)'},
+  '専門級':                      {ruby:'<ruby>専門級<rt>せんもんきゅう</rt></ruby>',en:'Specialist Level',vi:'Cấp chuyên ngành',id:'Tingkat Spesialis',my:'အထူးပြုအဆင့်',ko:'전문급',ne:'विशेष तह',zh:'专项级',th:'ระดับเฉพาะทาง',km:'កម្រិតឯកទេស',mn:'Мэргэжлийн зэрэг',si:'විශේෂඥ මට්ටම'},
+  '技能実習の合格証':             {ruby:'<ruby>技能実習<rt>ぎのうじっしゅう</rt></ruby>の<ruby>合格証<rt>ごうかくしょう</rt></ruby>',en:'Technical Intern Training Certificate',vi:'Chứng chỉ thực tập kỹ năng',id:'Sertifikat Pemagangan Teknis',ko:'기능실습 합격증',zh:'技能实习合格证',th:'ใบรับรองฝึกงานทักษะ',km:'វិញ្ញាបនបត្រកម្មសិក្សាជំនាញ'},
+  // ── 税関係 ──
+  '所得・課税証明書':             {ruby:'<ruby>所得<rt>しょとく</rt></ruby>・<ruby>課税証明書<rt>かぜいしょうめいしょ</rt></ruby>',en:'Income/Taxation Certificate',vi:'Giấy chứng nhận thu nhập/thuế',id:'Surat Keterangan Penghasilan/Pajak',my:'ဝင်ငွေ/အခွန်လက်မှတ်',ko:'소득·과세증명서',ne:'आय/कर प्रमाणपत्र',zh:'收入·课税证明',th:'ใบรับรองรายได้/ภาษี',km:'វិញ្ញាបនបត្រប្រាក់ចំណូល/ពន្ធ',mn:'Орлого/татварын тодорхойлолт',si:'ආදායම්/බදු සහතිකය'},
+  '課税証明書':                  {ruby:'<ruby>課税証明書<rt>かぜいしょうめいしょ</rt></ruby>',en:'Taxation Certificate',vi:'Giấy chứng nhận thuế',id:'Surat Keterangan Pajak',ko:'과세증명서',zh:'课税证明',th:'ใบรับรองภาษี',km:'វិញ្ញាបនបត្រពន្ធ'},
+  '納税証明書':                  {ruby:'<ruby>納税証明書<rt>のうぜいしょうめいしょ</rt></ruby>',en:'Tax Payment Certificate',vi:'Giấy chứng nhận nộp thuế',id:'Bukti Pembayaran Pajak',my:'အခွန်ပေးဆောင်ပြီးကြောင်းလက်မှတ်',ko:'납세증명서',ne:'कर तिर्ने प्रमाणपत्र',zh:'纳税证明',th:'ใบรับรองการชำระภาษี',km:'វិញ្ញាបនបត្របង់ពន្ធ',mn:'Татвар төлсний тодорхойлолт',si:'බදු ගෙවීමේ සහතිකය'},
+  '源泉徴収票':                  {ruby:'<ruby>源泉徴収票<rt>げんせんちょうしゅうひょう</rt></ruby>',en:'Withholding Tax Statement',vi:'Phiếu khấu trừ thuế',id:'Slip Pemotongan Pajak',my:'အခွန်ဖြတ်တောက်လွှာ',ko:'원천징수영수증',ne:'स्रोत कर कट्टी विवरण',zh:'扣缴凭证',th:'ใบหักภาษี ณ ที่จ่าย',km:'របាយការណ៍ដកពន្ធទុក',mn:'Татварын суутгалын баримт',si:'උපුටාගත් බදු ප්‍රකාශය'},
+  // ── 保険・年金関係 ──
+  '健康保険証':                  {ruby:'<ruby>健康保険証<rt>けんこうほけんしょう</rt></ruby>',en:'Health Insurance Card',vi:'Thẻ bảo hiểm y tế',id:'Kartu Asuransi Kesehatan',ko:'건강보험증',zh:'健康保险证',th:'บัตรประกันสุขภาพ',km:'កាតធានារ៉ាប់រងសុខភាព'},
+  '国民健康保険被保険者証':       {ruby:'<ruby>国民健康保険被保険者証<rt>こくみんけんこうほけんひほけんしゃしょう</rt></ruby>',en:'National Health Insurance Card',vi:'Thẻ bảo hiểm y tế quốc dân',id:'Kartu Asuransi Kesehatan Nasional',ko:'국민건강보험증',zh:'国民健康保险被保险者证',th:'บัตรประกันสุขภาพแห่งชาติ',km:'កាតធានារ៉ាប់រងសុខភាពជាតិ'},
+  '国民健康保険料納付証明書':     {ruby:'<ruby>国民健康保険料納付証明書<rt>こくみんけんこうほけんりょうのうふしょうめいしょ</rt></ruby>',en:'National Health Insurance Payment Certificate',vi:'Giấy chứng nhận đóng bảo hiểm y tế quốc dân',id:'Bukti Pembayaran Asuransi Kesehatan Nasional',ko:'국민건강보험료 납부증명서',zh:'国民健康保险费缴费证明',th:'ใบรับรองการชำระค่าประกันสุขภาพแห่งชาติ',km:'វិញ្ញាបនបត្របង់ប្រាក់ធានារ៉ាប់រងសុខភាពជាតិ'},
+  '国民健康保険料（税）納付証明書':{ruby:'<ruby>国民健康保険料<rt>こくみんけんこうほけんりょう</rt></ruby>（<ruby>税<rt>ぜい</rt></ruby>）<ruby>納付証明書<rt>のうふしょうめいしょ</rt></ruby>',en:'National Health Insurance Premium (Tax) Payment Certificate',vi:'Giấy chứng nhận nộp phí (thuế) bảo hiểm y tế quốc dân',id:'Bukti Pembayaran Iuran (Pajak) Asuransi Kesehatan Nasional',ko:'국민건강보험료(세) 납부증명서',zh:'国民健康保险费(税)缴费证明',th:'ใบรับรองการชำระค่า(ภาษี)ประกันสุขภาพแห่งชาติ',km:'វិញ្ញាបនបត្របង់ប្រាក់(ពន្ធ)ធានារ៉ាប់រងសុខភាពជាតិ'},
+  '年金手帳':                    {ruby:'<ruby>年金手帳<rt>ねんきんてちょう</rt></ruby>',en:'Pension Booklet',vi:'Sổ hưu trí',id:'Buku Pensiun',my:'အငြိမ်းစားလက်စွဲ',ko:'연금수첩',ne:'पेन्सन पुस्तिका',zh:'养老金手册',th:'สมุดบำนาญ',km:'សៀវភៅសោធននិវត្តន៍',mn:'Тэтгэврийн дэвтэр',si:'විශ්‍රාම වැටුප් පොත'},
+  '資格確認書':                  {ruby:'<ruby>資格確認書<rt>しかくかくにんしょ</rt></ruby>',en:'Qualification Confirmation Document',vi:'Giấy xác nhận tư cách',id:'Surat Konfirmasi Kualifikasi',ko:'자격확인서',zh:'资格确认书',th:'หนังสือยืนยันคุณสมบัติ',km:'លិខិតបញ្ជាក់សិទ្ធិ'},
+  '被保険者記録照会回答票':       {ruby:'<ruby>被保険者記録照会回答票<rt>ひほけんしゃきろくしょうかいかいとうひょう</rt></ruby>',en:'Insured Person Record Inquiry Response',vi:'Phiếu trả lời tra cứu hồ sơ người được bảo hiểm',id:'Tanggapan Permintaan Catatan Tertanggung',ko:'피보험자 기록조회 회답표',zh:'被保险人记录查询回答表',th:'แบบตอบสอบถามบันทึกผู้เอาประกัน',km:'លិខិតឆ្លើយតបការសាកសួរកំណត់ត្រាអ្នកត្រូវបានធានារ៉ាប់រង'},
+  '被保険者記録照会回答表':       {ruby:'<ruby>被保険者記録照会回答表<rt>ひほけんしゃきろくしょうかいかいとうひょう</rt></ruby>',en:'Insured Person Record Inquiry Response',vi:'Bảng trả lời tra cứu hồ sơ người được bảo hiểm',id:'Tabel Tanggapan Catatan Tertanggung',ko:'피보험자 기록조회 회답표',zh:'被保险人记录查询回答表',th:'ตารางตอบสอบถามบันทึกผู้เอาประกัน',km:'តារាងឆ្លើយតបការសាកសួរកំណត់ត្រាអ្នកធានារ៉ាប់រង'},
+  '被保険者記録照会（納付Ⅱ）':   {ruby:'<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>（<ruby>納付<rt>のうふ</rt></ruby>Ⅱ）',en:'Insured Person Record Inquiry (Payment II)',vi:'Tra cứu hồ sơ người được bảo hiểm (Thanh toán II)',id:'Permintaan Catatan Tertanggung (Pembayaran II)',ko:'피보험자 기록조회 (납부Ⅱ)',zh:'被保险人记录查询(缴付Ⅱ)',th:'การสอบถามบันทึกผู้เอาประกัน (ชำระII)',km:'ការសាកសួរកំណត់ត្រាអ្នកធានារ៉ាប់រង(បង់Ⅱ)'},
+  '被保険者記録照会(納付Ⅱ)':     {ruby:'<ruby>被保険者記録照会<rt>ひほけんしゃきろくしょうかい</rt></ruby>(<ruby>納付<rt>のうふ</rt></ruby>Ⅱ)',en:'Insured Person Record Inquiry (Payment II)',vi:'Tra cứu hồ sơ người được bảo hiểm (Thanh toán II)',ko:'피보험자 기록조회(납부Ⅱ)',zh:'被保险人记录查询(缴付Ⅱ)',km:'ការសាកសួរកំណត់ត្រាអ្នកធានារ៉ាប់រង(បង់Ⅱ)'},
+  // ── 学歴関係 ──
+  '卒業証明書':                  {ruby:'<ruby>卒業証明書<rt>そつぎょうしょうめいしょ</rt></ruby>',en:'Graduation Certificate',vi:'Bằng tốt nghiệp',id:'Ijazah',my:'ဘွဲ့လက်မှတ်',ko:'졸업증명서',ne:'स्नातक प्रमाणपत्र',zh:'毕业证明书',th:'ใบรับรองจบการศึกษา',km:'វិញ្ញាបនបត្របញ្ចប់ការសិក្សា',mn:'Төгссөн тухай гэрчилгээ',si:'උපාධි සහතිකය'},
+  '卒業証明書（または卒業見込証明書）':{ruby:'<ruby>卒業証明書<rt>そつぎょうしょうめいしょ</rt></ruby>（または<ruby>卒業見込証明書<rt>そつぎょうみこみしょうめいしょ</rt></ruby>）',en:'Graduation Certificate (or Expected Graduation Certificate)',vi:'Bằng tốt nghiệp (hoặc Giấy chứng nhận sắp tốt nghiệp)',id:'Ijazah (atau Surat Keterangan Akan Lulus)',ko:'졸업증명서 (또는 졸업예정증명서)',zh:'毕业证明书（或预计毕业证明书）',th:'ใบรับรองจบการศึกษา (หรือใบคาดว่าจะจบ)',km:'វិញ្ញាបនបត្របញ្ចប់ការសិក្សា (ឬរំពឹងបញ្ចប់)'},
+  '成績証明書':                  {ruby:'<ruby>成績証明書<rt>せいせきしょうめいしょ</rt></ruby>',en:'Academic Transcript',vi:'Bảng điểm',id:'Transkrip Nilai',my:'အမှတ်လက်မှတ်',ko:'성적증명서',ne:'अंकपत्र',zh:'成绩单',th:'ใบรับรองผลการเรียน',km:'សន្លឹកពិន្ទុ',mn:'Үнэлгээний тодорхойлолт',si:'ශාස්ත්‍රීය පිටපත'},
+  '出席証明書':                  {ruby:'<ruby>出席証明書<rt>しゅっせきしょうめいしょ</rt></ruby>',en:'Attendance Certificate',vi:'Giấy chứng nhận đi học',id:'Surat Keterangan Kehadiran',ko:'출석증명서',zh:'出席证明书',th:'ใบรับรองการเข้าเรียน',km:'វិញ្ញាបនបត្រវត្តមាន'},
+  // ── 推薦関係 ──
+  '大使館推薦票':                {ruby:'<ruby>大使館推薦票<rt>たいしかんすいせんひょう</rt></ruby>',en:'Embassy Recommendation Letter',vi:'Giấy giới thiệu của Đại sứ quán',id:'Surat Rekomendasi Kedutaan',ko:'대사관 추천서',zh:'大使馆推荐书',th:'หนังสือแนะนำสถานทูต',km:'លិខិតណែនាំស្ថានទូត'},
+  '推薦状（送出機関）':          {ruby:'<ruby>推薦状<rt>すいせんじょう</rt></ruby>（<ruby>送出機関<rt>そうしゅつきかん</rt></ruby>）',en:'Recommendation Letter (Sending Agency)',vi:'Giấy giới thiệu (Cơ quan phái cử)',id:'Surat Rekomendasi (Lembaga Pengirim)',ko:'추천장 (송출기관)',zh:'推荐书（派遣机构）',th:'หนังสือแนะนำ (หน่วยงานส่งออก)',km:'លិខិតណែនាំ (ស្ថាប័នបញ្ជូន)'},
+  '推薦票':                      {ruby:'<ruby>推薦票<rt>すいせんひょう</rt></ruby>',en:'Recommendation',vi:'Phiếu giới thiệu',id:'Rekomendasi',ko:'추천표',zh:'推荐票',km:'សន្លឹកណែនាំ'},
+  '無犯罪証明書（カンボジア）':  {ruby:'<ruby>無犯罪証明書<rt>むはんざいしょうめいしょ</rt></ruby>（カンボジア）',en:'Police Clearance Certificate (Cambodia)',vi:'Lý lịch tư pháp (Campuchia)',id:'SKCK (Kamboja)',ko:'무범죄증명서 (캄보디아)',zh:'无犯罪证明书（柬埔寨）',km:'លិខិតបញ្ជាក់គ្មានបទល្មើស (កម្ពុជា)'},
+  '無犯罪証明書（ミャンマー）':  {ruby:'<ruby>無犯罪証明書<rt>むはんざいしょうめいしょ</rt></ruby>（ミャンマー）',en:'Police Clearance Certificate (Myanmar)',vi:'Lý lịch tư pháp (Myanmar)',id:'SKCK (Myanmar)',ko:'무범죄증명서 (미얀마)',zh:'无犯罪证明书（缅甸）',my:'ပြစ်မှုကင်းရှင်းကြောင်းလက်မှတ်(မြန်မာ)',km:'លិខិតបញ្ជាក់គ្មានបទល្មើស (មីយ៉ាន់ម៉ា)'},
+  // ── その他人材書類 ──
+  '住民票':                      {ruby:'<ruby>住民票<rt>じゅうみんひょう</rt></ruby>',en:'Residence Certificate',vi:'Giấy chứng nhận cư trú',id:'Surat Keterangan Domisili',my:'နေထိုင်ခွင့်လက်မှတ်',ko:'주민표',ne:'बसोबास प्रमाणपत्र',zh:'住民票',th:'ทะเบียนบ้าน',km:'លិខិតបញ្ជាក់ទីលំនៅ',mn:'Оршин суугчийн гэрчилгээ',si:'පදිංචිකරුවා සහතිකය'},
+  '技能者ID':                    {ruby:'<ruby>建設<rt>けんせつ</rt></ruby>キャリアアップシステム<ruby>技能者<rt>ぎのうしゃ</rt></ruby>カード',en:'CCUS Technician Card',vi:'Thẻ kỹ năng viên CCUS',id:'Kartu CCUS Teknisi',ko:'CCUS 기능자 카드',zh:'建设职业能力提升系统技能者卡',th:'บัตรช่างเทคนิค CCUS',km:'កាតជ្រើសរើសកម្មករ CCUS'},
+  'その他':                      {ruby:'その<ruby>他<rt>た</rt></ruby>',en:'Other',vi:'Khác',id:'Lainnya',my:'အခြား',ko:'기타',ne:'अन्य',zh:'其他',th:'อื่นๆ',km:'ផ្សេងទៀត',mn:'Бусад',si:'වෙනත්'}
+};
+
+// ver.20260824: 家族滞在の書類注記（申請人が何を出せばよいか案内）
+const DOC_KAZOKU_HINTS = {
+  '身分関係を証する文書': {
+    ja: '戸籍謄本／婚姻届受理証明書／結婚証明書写し／出生証明書写し のいずれか1通',
+    en: 'Any one of: Family Register / Marriage Acceptance Certificate / copy of Marriage Certificate / copy of Birth Certificate',
+    vi: 'Một trong các giấy tờ: Bản sao hộ tịch / Giấy chứng nhận đăng ký kết hôn / Bản sao giấy chứng nhận kết hôn / Bản sao giấy khai sinh',
+    id: 'Salah satu dari: Akta Keluarga / Surat Penerimaan Pernikahan / salinan Akta Nikah / salinan Akta Kelahiran',
+    my: 'အောက်ပါတို့မှ တစ်ခု - အိမ်ထောင်စုမှတ်တမ်း / အိမ်ထောင်ရေးမှတ်ပုံတင်လက်မှတ် / လက်ထပ်စာချုပ်မိတ္တူ / မွေးစာရင်းမိတ္တူ',
+    ko: '다음 중 1통: 호적등본 / 혼인신고 수리증명서 / 결혼증명서 사본 / 출생증명서 사본',
+    ne: 'निम्नमध्ये कुनै एक: पारिवारिक अभिलेख / विवाह दर्ता प्रमाणपत्र / विवाह प्रमाणपत्रको प्रतिलिपि / जन्म प्रमाणपत्रको प्रतिलिपि',
+    zh: '以下任选一份：户籍谤本／结婚登记受理证明书／结婚证明书复印件／出生证明书复印件',
+    th: 'อย่างใดอย่างหนึ่ง: ทะเบียนครอบครัว / ใบรับจดทะเบียนสมรส / สำเนาใบสมรส / สำเนาสูติบัตร',
+    km: 'មួយក្នុងចំណោម៖ បញ្ជីគ្រួសារ / វិញ្ញាបនបត្រទទួលចុះបញ្ជីអាពាហ៍ពិពាហ៍ / ច្បាប់ចម្លងវិញ្ញាបនបត្រអាពាហ៍ពិពាហ៍ / ច្បាប់ចម្លងសំបុត្រកំណើត',
+    mn: 'Дараахаас аль нэг: Ургийн бичиг / Гэрлэлт бүртгэсэн гэрчилгээ / Гэрлэлтийн гэрчилгээний хуулбар / Төрсний гэрчилгээний хуулбар',
+    si: 'පහත එකක්: පවුල් ලේඛනය / විවාහ පිළිගැනීමේ සහතිකය / විවාහ සහතිකයේ පිටපත / උපන් සහතිකයේ පිටපත'
+  },
+  '扶養者の収入証明書類': {
+    ja: '就労・事業の場合：在職証明書または営業許可書の写し＋住民税の課税(非課税)証明書・納税証明書\n それ以外：預金残高証明書または奨学金給付証明書',
+    en: 'If employed/self-employed: Certificate of Employment or copy of business license + Municipal Tax (Taxation/Exemption) Certificate & Tax Payment Certificate\nOtherwise: Bank Balance Certificate or Scholarship Award Certificate',
+    vi: 'Nếu đi làm/kinh doanh: Giấy xác nhận công tác hoặc bản sao giấy phép kinh doanh + Giấy chứng nhận thuế cư trú (nộp/miễn) & Giấy nộp thuế\nTrường hợp khác: Giấy chứng nhận số dư ngân hàng hoặc giấy chứng nhận học bổng',
+    id: 'Jika bekerja/wirausaha: Surat Keterangan Kerja atau salinan izin usaha + Surat Keterangan Pajak Daerah (kena/bebas pajak) & Bukti Pembayaran Pajak\nSelain itu: Surat Keterangan Saldo Bank atau Sertifikat Beasiswa',
+    my: 'အလုပ်လုပ်/စီးပွားရေး - အလုပ်လက်မှတ် သို့မဟုတ် လုပ်ငန်းလိုင်စင်မိတ္တူ + နေထိုင်မှုအခွန်သက်သေခံ & အခွန်ပေးဆောင်မှုသက်သေခံ\nအခြား - ဘဏ်လက်ကျန်ငွေသက်သေခံ သို့မဟုတ် ပညာသင်ဆုသက်သေခံ',
+    ko: '취업・사업의 경우: 재직증명서 또는 영업허가서 사본＋주민세 과세(비과세)증명서・납세증명서\n그 외: 예금잔액증명서 또는 장학금 급부증명서',
+    ne: 'रोजगारी/व्यवसायको हकमा: रोजगारी प्रमाणपत्र वा व्यवसाय इजाजतको प्रतिलिपि + बसोबास कर प्रमाणपत्र र कर भुक्तानी प्रमाणपत्र\nअन्यथा: बैंक ब्यालेन्स प्रमाणपत्र वा छात्रवृत्ति प्रमाणपत्र',
+    zh: '就业・经营者：在职证明书或营业许可证复印件＋居民税课税(非课税)证明书・纳税证明书\n其他：存款余额证明书或奖学金给付证明书',
+    th: 'กรณีทำงาน/ธุรกิจ: หนังสือรับรองการทำงานหรือสำเนาใบอนุญาตประกอบธุรกิจ + ใบรับรองภาษีที่อยู่อาศัย & ใบรับรองการชำระภาษี\nกรณีอื่น: ใบรับรองยอดเงินฝากหรือใบรับรองทุนการศึกษา',
+    km: 'ករណីធ្វើការ/អាជីវកម្ម៖ វិញ្ញាបនបត្រការងារ ឬច្បាប់ចម្លងអាជ្ញាប័ណ្ណអាជីវកម្ម + វិញ្ញាបនបត្រពន្ធរស់នៅ និងវិញ្ញាបនបត្របង់ពន្ធ\nផ្សេងទៀត៖ វិញ្ញាបនបត្រសមតុល្យធនាគារ ឬវិញ្ញាបនបត្រអាហារូបករណ៍',
+    mn: 'Ажил/бизнесийн хувьд: Ажлын газрын тодорхойлолт эсвэл бизнесийн зөвшөөрлийн хуулбар + Оршин суугчийн татварын гэрчилгээ, татвар төлсөн гэрчилгээ\nБусад: Банкны үлдэгдлийн гэрчилгээ эсвэл тэтгэлгийн гэрчилгээ',
+    si: 'රැකියාව/ව්‍යාපාරය නම්: සේවා සහතිකය හෝ ව්‍යාපාර බලපත්‍රයේ පිටපත + පදිංචි බදු සහතිකය සහ බදු ගෙවීම් සහතිකය\nඅනෙකුත්: බැංකු ශේෂ සහතිකය හෝ ශිෂ්‍යත්ව සහතිකය'
+  }
+};
+
+// 旧ロジック用（USE_NEW_DOCS=false のときだけ使用）
+const ALL_DOCS = [
+  {key:'zairyu_front',tags:['在留カード']},
+  {key:'zairyu_back',tags:['在留カード']},
+  {key:'passport',tags:['パスポート']},
+  {key:'cert_jp',tags:['合格証（日本語）']},
+  {key:'cert_skill',tags:['合格証（技能）']},
+  {key:'cert_specialist',tags:['合格証（専門級・3級）']},
+  {key:'tax_cert',tags:['所得・課税証明書']},
+  {key:'tax_payment',tags:['納税証明書']},
+  {key:'withholding',tags:['源泉徴収票']},
+  {key:'medical',tags:['健康診断票']},
+  {key:'mugshot',tags:['顔写真']},
+  {key:'health_ins',tags:['健康保険証']},
+  {key:'health_ins_cert',tags:['国民健康保険料納付証明書']},
+  {key:'graduation',tags:['卒業証明書']},
+  {key:'transcript',tags:['成績証明書']},
+  {key:'nenkin',tags:['年金手帳']},
+  {key:'embassy_rec',tags:['大使館推薦票']},
+  {key:'juminhyo',tags:['住民票']},
+  {key:'other',tags:[]},
+];
+const REQUIRED_RULES = {
+  '更新':['顔写真','所得・課税証明書','納税証明書','源泉徴収票','在留カード','パスポート','合格証（技能）','合格証（日本語）'],
+  '変更':['顔写真','所得・課税証明書','納税証明書','源泉徴収票','在留カード','パスポート','合格証（技能）','合格証（日本語）','健康診断票'],
+  '認定':['顔写真','パスポート','合格証（技能）','合格証（日本語）','健康診断票'],
+};
+const RYUGAKU_RULES = {
+  '更新':[],
+  '変更':['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帳'],
+  '認定':['健康保険証','国民健康保険料納付証明書','卒業証明書','成績証明書','年金手帳'],
+};
+function isDocSkipped(doc) {
+  if (!SKIP_DOCS.length || !doc.tags.length) return false;
+  return doc.tags.some(tag => SKIP_DOCS.some(s => s.indexOf(tag) >= 0 || tag.indexOf(s) >= 0));
+}
+function getDocPattern() {
+  const at = APP_TYPE;
+  if (at === '更新') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'optional',cert_skill:'optional',cert_specialist:'hidden',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:'hidden',health_ins_cert:'hidden',graduation:'hidden',transcript:'hidden',nenkin:'hidden',embassy_rec:'hidden',juminhyo:'optional',other:'optional'};
+  if (at === '変更') return {zairyu_front:'required',zairyu_back:'required',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'required',tax_payment:'required',withholding:'required',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'hidden',juminhyo:'optional',other:'optional'};
+  if (at === '認定') return {zairyu_front:'hidden',zairyu_back:'hidden',passport:'required',cert_jp:'required',cert_skill:'required',cert_specialist:'optional',tax_cert:'hidden',tax_payment:'hidden',withholding:'hidden',medical:'required',mugshot:'required',health_ins:IS_RYUGAKU?'required':'hidden',health_ins_cert:IS_RYUGAKU?'required':'hidden',graduation:IS_RYUGAKU?'required':'hidden',transcript:IS_RYUGAKU?'required':'hidden',nenkin:IS_RYUGAKU?'required':'hidden',embassy_rec:'hidden',juminhyo:'optional',other:'optional'};
+  return Object.fromEntries(ALL_DOCS.map(d => [d.key,'optional']));
+}
+function getRequiredTags() {
+  if (!APP_TYPE) return null;
+  return (REQUIRED_RULES[APP_TYPE]||[]).concat(IS_RYUGAKU?(RYUGAKU_RULES[APP_TYPE]||[]):[]);
+}
+function getDocKeys() {
+  const required = getRequiredTags();
+  const pattern = APP_TYPE ? getDocPattern() : null;
+  if (!required) return ALL_DOCS.filter(doc => !isDocSkipped(doc)).map(d => d.key);
+  return ALL_DOCS.filter(doc => {
+    if (doc.key === 'other') return true;
+    if (!doc.tags.length) return false;
+    if (isDocSkipped(doc)) return false;
+    // patternでoptionalのものも表示
+    if (pattern && pattern[doc.key] === 'optional') return true;
+    // hiddenは除外
+    if (pattern && pattern[doc.key] === 'hidden') return false;
+    return doc.tags.some(tag => required.some(r => r.indexOf(tag) >= 0 || tag.indexOf(r) >= 0));
+  }).map(d => d.key);
+}
+// ver.20260525.01: docs パラメータがあれば新ロジック、なければ旧ロジック
+// ver.20260525.34: DBキャッシュから取得した場合も新ロジックを使う（_initDocKeys を _loadDocsFromCache 完了後に呼ぶ）
+let DOC_KEYS, DOC_LABELS_JA, DOC_REQUIRED, DOC_DONE;
+function _initDocKeys(){
+  if (USE_NEW_DOCS) {
+    // 新ロジック: DOCS_LIST = [{l: '書類名', r: 1}, ...]
+    DOC_KEYS = DOCS_LIST.map(function(d, i){ return 'd' + i; });
+    DOC_LABELS_JA = {};
+    DOC_REQUIRED = {};
+    DOC_DONE = {};
+    DOCS_LIST.forEach(function(d, i){
+      var key = 'd' + i;
+      // docs要素が文字列（['書類名',...]）の場合も書類名として扱う（後方互換: d0/d1表示防止）
+      if (typeof d === 'string') { d = { l: d, r: 1 }; }
+      DOC_LABELS_JA[key] = d.l || '';
+      DOC_REQUIRED[key] = !!d.r;
+      DOC_DONE[key] = !!d.done;
+      if(!window._tkInfo) window._tkInfo = {};
+      window._tkInfo[key] = { note:d.note||'', tips:d.tips||[], kind:d.kind||'', year:d.year||'', scope:d.scope||'', sashi:d.sashi||'', forms:d.forms||[] };
+    });
+  } else {
+    // 旧ロジック
+    DOC_KEYS = getDocKeys();
+    DOC_LABELS_JA = null;  // 旧ロジックは LANGS[].docs[key] を使う
+    DOC_REQUIRED = null;
+    // ver.20260611.03: 旧モードでも doc_check の取得済み/不要をグレーアウト反映
+    var _ds = window._liveDoneSet || null;
+    if(_ds && typeof LANGS!=='undefined' && LANGS.ja && LANGS.ja.docs){
+      var _norm = function(s){ return String(s||'').replace(/[\s　_().（）\/・]/g,'').toLowerCase(); };
+      var _dsNorm = {}; Object.keys(_ds).forEach(function(n){ _dsNorm[_norm(n)] = true; });
+      DOC_DONE = {};
+      DOC_KEYS.forEach(function(key){
+        var ja = LANGS.ja.docs[key] || '';
+        if(!ja) return;
+        if(_ds[ja] || _dsNorm[_norm(ja)]) DOC_DONE[key] = true;
+        else {
+          // 部分一致（ラベル揺れ対策）
+          var nk=_norm(ja);
+          for(var dn in _dsNorm){ if(dn && nk && (dn.indexOf(nk)>=0 || nk.indexOf(dn)>=0)){ DOC_DONE[key]=true; break; } }
+        }
+      });
+    } else {
+      DOC_DONE = null;
+    }
+  }
+}
+_initDocKeys();
+
+const LANGS = {
+  ja:{label:'日本語',title:'書類アップロード',subtitle:'必要な書類の写真をアップロードしてください\n（不要な項目はスキップできます）',tapToAdd:'📷 タップして写真を追加',hint:'JPG / PNG / PDF',btnSubmit:'送信する',noFile:'未選択',selected:'選択済み ✓',msgSuccess:'✅ アップロード完了しました！\n担当者に届きました。',msgError:'❌ 送信に失敗しました。\nもう一度お試しください。',msgNoFile:'少なくとも1枚の写真を選択してください',docs:{zairyu_front:'在留カード（表）',zairyu_back:'在留カード（裏）',passport:'パスポート',cert_jp:'合格証（日本語）',cert_skill:'合格証（技能試験）',cert_specialist:'合格証（専門級・3級）',tax_payment:'納税証明書',tax_cert:'課税証明書',withholding:'源泉徴収票',medical:'健康診断証',mugshot:'顔写真',health_ins:'健康保険証',health_ins_cert:'国民健康保険料納付証明書',graduation:'卒業証明書',transcript:'成績証明書',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'その他'}},
+  en:{label:'English',title:'Document Upload',subtitle:'Please upload photos of required documents\n(You can skip items that are not needed)',tapToAdd:'📷 Tap to add photo',hint:'JPG / PNG / PDF',btnSubmit:'Submit',noFile:'Not selected',selected:'Selected ✓',msgSuccess:'✅ Upload complete!\nYour documents have been received.',msgError:'❌ Upload failed.\nPlease try again.',msgNoFile:'Please select at least one photo',docs:{zairyu_front:'Residence Card (Front)',zairyu_back:'Residence Card (Back)',passport:'Passport',cert_jp:'Certificate (Japanese)',cert_skill:'Certificate (Skills Test)',cert_specialist:'Certificate (Specialist/Level 3)',tax_payment:'Tax Payment Certificate',tax_cert:'Taxation Certificate',withholding:'Withholding Tax Statement',medical:'Medical Certificate',mugshot:'Photo',health_ins:'Health Insurance Card',health_ins_cert:'National Health Insurance Payment Certificate',graduation:'Graduation Certificate',transcript:'Academic Transcript',nenkin:'Pension Booklet',embassy_rec:'Embassy Recommendation Letter',juminhyo:'住民票',other:'Other'}},
+  vi:{label:'Tiếng Việt',title:'Tải lên tài liệu',subtitle:'Vui lòng tải ảnh các tài liệu cần thiết\n(Có thể bỏ qua các mục không cần thiết)',tapToAdd:'📷 Nhấn để thêm ảnh',hint:'JPG / PNG / PDF',btnSubmit:'Gửi',noFile:'Chưa chọn',selected:'Đã chọn ✓',msgSuccess:'✅ Tải lên thành công!\nTài liệu của bạn đã được nhận.',msgError:'❌ Tải lên thất bại.\nVui lòng thử lại.',msgNoFile:'Vui lòng chọn ít nhất một ảnh',docs:{zairyu_front:'Thẻ cư trú (Mặt trước)',zairyu_back:'Thẻ cư trú (Mặt sau)',passport:'Hộ chiếu',cert_jp:'Chứng chỉ (Tiếng Nhật)',cert_skill:'Chứng chỉ (Kỳ thi kỹ năng)',cert_specialist:'Chứng chỉ (Chuyên ngành/Cấp 3)',tax_payment:'Giấy chứng nhận nộp thuế',tax_cert:'Giấy chứng nhận thuế',withholding:'Phiếu khấu trừ thuế',medical:'Giấy khám sức khỏe',mugshot:'Ảnh',health_ins:'Thẻ bảo hiểm y tế',health_ins_cert:'Chứng nhận đóng bảo hiểm y tế',graduation:'Bằng tốt nghiệp',transcript:'Bảng điểm',nenkin:'Sổ hưu trí',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'Khác'}},
+  id:{label:'Indonesia',title:'Unggah Dokumen',subtitle:'Silakan unggah foto dokumen yang diperlukan\n(Item yang tidak diperlukan dapat dilewati)',tapToAdd:'📷 Ketuk untuk menambah foto',hint:'JPG / PNG / PDF',btnSubmit:'Kirim',noFile:'Belum dipilih',selected:'Dipilih ✓',msgSuccess:'✅ Unggah berhasil!\nDokumen Anda telah diterima.',msgError:'❌ Unggah gagal.\nSilakan coba lagi.',msgNoFile:'Silakan pilih setidaknya satu foto',docs:{zairyu_front:'Kartu Izin Tinggal (Depan)',zairyu_back:'Kartu Izin Tinggal (Belakang)',passport:'Paspor',cert_jp:'Sertifikat (Bahasa Jepang)',cert_skill:'Sertifikat (Uji Keterampilan)',cert_specialist:'Sertifikat (Spesialis/Level 3)',tax_payment:'Bukti Pembayaran Pajak',tax_cert:'Surat Keterangan Pajak',withholding:'Slip Pemotongan Pajak',medical:'Sertifikat Kesehatan',mugshot:'Foto',health_ins:'Kartu Asuransi Kesehatan',health_ins_cert:'Sertifikat Pembayaran Asuransi Kesehatan',graduation:'Ijazah',transcript:'Transkrip Nilai',nenkin:'Buku Pensiun',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'Lainnya'}},
+  my:{label:'မြန်မာ',title:'စာရွက်စာတမ်းတင်ရန်',subtitle:'လိုအပ်သောစာရွက်စာတမ်းများ၏ဓာတ်ပုံတင်ပါ\n(မလိုအပ်သောအရာများကိုကျော်နိုင်သည်)',tapToAdd:'📷 ဓာတ်ပုံထည့်ရန်နှိပ်ပါ',hint:'JPG / PNG / PDF',btnSubmit:'ပေးပို့ရန်',noFile:'မရွေးချယ်ရသေး',selected:'ရွေးချယ်ပြီး ✓',msgSuccess:'✅ တင်ခြင်းအောင်မြင်သည်!\nသင့်စာရွက်စာတမ်းကိုလက်ခံရရှိပြီ။',msgError:'❌ တင်ခြင်းမအောင်မြင်ပါ။\nထပ်မံကြိုးစားပါ။',msgNoFile:'ဓာတ်ပုံတစ်ပုံရွေးချယ်ပါ',docs:{zairyu_front:'နေထိုင်ခွင့်ကတ် (ရှေ့ဘက်)',zairyu_back:'နေထိုင်ခွင့်ကတ် (နောက်ဘက်)',passport:'နိုင်ငံကူးလက်မှတ်',cert_jp:'လက်မှတ် (ဂျပန်ဘာသာ)',cert_skill:'လက်မှတ် (ကျွမ်းကျင်မှုစာမေးပွဲ)',cert_specialist:'လက်မှတ် (ကျွမ်းကျင်ရည်မှန်း/အဆင့် 3)',tax_payment:'အခွန်ပေးဆောင်မှုသက်သေခံ',tax_cert:'အခွန်သက်သေခံလက်မှတ်',withholding:'အခွန်နုတ်ယူသည့်ဖော်ပြချက်',medical:'ကျန်းမာရေးသက်သေခံ',mugshot:'ဒာတ်ပုံ',health_ins:'ကျန်မာရေးကာတ်',health_ins_cert:'မှတ်တမ်',graduation:'ဘွဲ့လက်မှတ်',transcript:'ကျောင်းမှတ်တမ်း',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'အခြား'}},
+  ko:{label:'한국어',title:'서류 업로드',subtitle:'필요한 서류의 사진을 업로드해 주세요\n(불필요한 항목은 건너뛸 수 있습니다)',tapToAdd:'📷 탭하여 사진 추가',hint:'JPG / PNG / PDF',btnSubmit:'제출',noFile:'미선택',selected:'선택됨 ✓',msgSuccess:'✅ 업로드 완료!\n담당자에게 전달되었습니다.',msgError:'❌ 업로드 실패.\n다시 시도해 주세요.',msgNoFile:'사진을 최소 한 장 선택해 주세요',docs:{zairyu_front:'재류카드 (앞면)',zairyu_back:'재류카드 (뒷면)',passport:'여권',cert_jp:'합격증 (일본어)',cert_skill:'합격증 (기능시험)',cert_specialist:'합격증 (전문급·3급)',tax_payment:'납세증명서',tax_cert:'과세증명서',withholding:'원천징수영수증',medical:'건강진단서',mugshot:'사진',health_ins:'건강보험증',health_ins_cert:'국민건강보험료 납부증명서',graduation:'졸업증명서',transcript:'성적증명서',nenkin:'연금수첩',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'기타'}},
+  ne:{label:'नेपाली',title:'कागजात अपलोड',subtitle:'आवश्यक कागजातको फोटो अपलोड गर्नुहोस्\n(अनावश्यक वस्तुहरू छोड्न सकिन्छ)',tapToAdd:'📷 फोटो थप्न थिच्नुहोस्',hint:'JPG / PNG / PDF',btnSubmit:'पेश गर्नुहोस्',noFile:'छनोट गरिएको छैन',selected:'छनोट भयो ✓',msgSuccess:'✅ अपलोड सफल भयो!\nतपाईंको कागजात प्राप्त भयो।',msgError:'❌ अपलोड असफल भयो।\nपुनः प्रयास गर्नुहोस्।',msgNoFile:'कम्तीमा एउटा फोटो छनोट गर्नुहोस्',docs:{zairyu_front:'आवास कार्ड (अगाडि)',zairyu_back:'आवास कार्ड (पछाडि)',passport:'राहदानी',cert_jp:'प्रमाणपत्र (जापानी भाषा)',cert_skill:'प्रमाणपत्र (सीप परीक्षण)',cert_specialist:'प्रमाणपत्र (विशेषज्ञ/स्तर ३)',tax_payment:'कर तिरेको प्रमाणपत्र',tax_cert:'कर प्रमाणपत्र',withholding:'स्रोतमा कर कटौती विवरण',medical:'स्वास्थ्य परीक्षण प्रमाणपत्र',mugshot:'फोटो',health_ins:'स्वास्थ्य बिमा कार्ड',health_ins_cert:'राष्ट्रिय स्वास्थ्य बिमा भुक्तानी प्रमाणपत्र',graduation:'उपाधि',transcript:'अङ्कतालिका',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'अन्य'}},
+  zh:{label:'中文',title:'文件上传',subtitle:'请上传所需文件的照片\n（不需要的项目可以跳过）',tapToAdd:'📷 点击添加照片',hint:'JPG / PNG / PDF',btnSubmit:'提交',noFile:'未选择',selected:'已选择 ✓',msgSuccess:'✅ 上传成功！\n您的文件已收到。',msgError:'❌ 上传失败。\n请重试。',msgNoFile:'请至少选择一张照片',docs:{zairyu_front:'居留卡（正面）',zairyu_back:'居留卡（背面）',passport:'护照',cert_jp:'合格证（日语）',cert_skill:'合格证（技能考试）',cert_specialist:'合格证（专项级·3级）',tax_payment:'纳税证明',tax_cert:'课税证明',withholding:'扣缴凭证',medical:'健康诊断证明',mugshot:'照片',health_ins:'健康保险证',health_ins_cert:'国民健康保险缴费证明',graduation:'毕业证明书',transcript:'成绩单',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'其他'}},
+  th:{label:'ไทย',title:'อัปโหลดเอกสาร',subtitle:'กรุณาอัปโหลดรูปภาพเอกสารที่จำเป็น\n(สามารถข้ามรายการที่ไม่จำเป็นได้)',tapToAdd:'📷 แตะเพื่อเพิ่มรูปภาพ',hint:'JPG / PNG / PDF',btnSubmit:'ส่ง',noFile:'ยังไม่ได้เลือก',selected:'เลือกแล้ว ✓',msgSuccess:'✅ อัปโหลดสำเร็จ!\nได้รับเอกสารของคุณแล้ว',msgError:'❌ อัปโหลดล้มเหลว\nกรุณาลองใหม่อีกครั้ง',msgNoFile:'กรุณาเลือกรูปภาพอย่างน้อยหนึ่งภาพ',docs:{zairyu_front:'บัตรถิ่นที่อยู่ (ด้านหน้า)',zairyu_back:'บัตรถิ่นที่อยู่ (ด้านหลัง)',passport:'หนังสือเดินทาง',cert_jp:'ใบรับรอง (ภาษาญี่ปุ่น)',cert_skill:'ใบรับรอง (การสอบทักษะ)',cert_specialist:'ใบรับรอง (ผู้เชี่ยวชาญ/ระดับ 3)',tax_payment:'ใบรับรองการชำระภาษี',tax_cert:'ใบรับรองภาษี',withholding:'ใบหักภาษี ณ ที่จ่าย',medical:'ใบรับรองสุขภาพ',mugshot:'รูปถ่าย',health_ins:'บัตรประกันสุขภาพ',health_ins_cert:'ใบรับรองการชำระประกันสุขภาพ',graduation:'ใบประกาศนียบัตร',transcript:'ผลการเรียน',nenkin:'สมุดบัญชีเงินบำนาญชรา',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'อื่นๆ'}},
+  km:{label:'ខ្មែរ',title:'បង្ហោះឯកសារ',subtitle:'សូមបង្ហោះរូបថតឯកសារដែលត្រូវការ\n(អ្នកអាចរំលងធាតុដែលមិនចាំបាច់)',tapToAdd:'📷 ចុចដើម្បីបន្ថែមរូបថត',hint:'JPG / PNG / PDF',btnSubmit:'បញ្ជូន',noFile:'មិនទាន់ជ្រើសរើស',selected:'បានជ្រើសរើស ✓',msgSuccess:'✅ បង្ហោះបានជោគជ័យ!\nឯកសាររបស់អ្នកត្រូវបានទទួល។',msgError:'❌ បង្ហោះបានបរាជ័យ។\nសូមព្យាយាមម្តងទៀត។',msgNoFile:'សូមជ្រើសរើសរូបថតយ៉ាងហោចណាស់មួយ',docs:{zairyu_front:'កាតស្នាក់នៅ (ខាងមុខ)',zairyu_back:'កាតស្នាក់នៅ (ខាងក្រោយ)',passport:'លិខិតឆ្លងដែន',cert_jp:'វិញ្ញាបនបត្រ (ភាសាជប៉ុន)',cert_skill:'វិញ្ញាបនបត្រ (ការប្រឡងជំនាញ)',cert_specialist:'វិញ្ញាបនបត្រ (ថ្នាក់ជំនាញ/កម្រិត 3)',tax_payment:'វិញ្ញាបនបត្របង់ពន្ធ',tax_cert:'វិញ្ញាបនបត្រពន្ធ',withholding:'លិខិតកាត់ពន្ធ',medical:'វិញ្ញាបនបត្រសុខភាព',mugshot:'រូបថត',health_ins:'កាតប្រកញសុខភាព',health_ins_cert:'វិញ្ញាបនបត្របង់ប្រកញសុខ',graduation:'សញ្ញាបត្រ',transcript:'លត្តផល',nenkin:'年金手帳',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'ផ្សេងទៀត'}},
+  mn:{label:'Монгол',title:'Баримт бичиг байршуулах',subtitle:'Шаардлагатай баримт бичгийн зургийг байршуулна уу\n(Шаардлагагүй зүйлийг алгасаж болно)',tapToAdd:'📷 Зураг нэмэхийн тулд дарна уу',hint:'JPG / PNG / PDF',btnSubmit:'Илгээх',noFile:'Сонгоогүй',selected:'Сонгосон ✓',msgSuccess:'✅ Байршуулалт амжилттай!\nТаны баримт бичиг хүлээн авагдлаа.',msgError:'❌ Илгээхэд алдаа гарлаа.\nДахин оролдоно уу.',msgNoFile:'Дор хаяж нэг зураг сонгоно уу',docs:{zairyu_front:'Оршин суух карт (Урд тал)',zairyu_back:'Оршин суух карт (Арын тал)',passport:'Паспорт',cert_jp:'Гэрчилгээ (Япон хэл)',cert_skill:'Гэрчилгээ (Ур чадварын шалгалт)',cert_specialist:'Гэрчилгээ (Мэргэжлийн/3-р түвшин)',tax_payment:'Татвар төлсний гэрчилгээ',tax_cert:'Татварын гэрчилгээ',withholding:'Татварын тодорхойлолт',medical:'Эрүүл мэндийн гэрчилгээ',mugshot:'Зураг',health_ins:'Даатгалын карт',health_ins_cert:'Даатгалын төлбөрийн тодорхойлолт',graduation:'Дипломын гэрчилгээ',transcript:'Дүнгийн гэрчилгээ',nenkin:'Тэтгэврийн дэвтэр',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'Бусад'}},
+  si:{label:'සිංහල',title:'ලේඛන උඩුගත කිරීම',subtitle:'අවශ්‍ය ලේඛනවල ඡායාරූප උඩුගත කරන්න\n(අනවශ්‍ය අයිතම මඟ හැරිය හැකිය)',tapToAdd:'📷 ඡායාරූප එකතු කිරීමට තට්ටු කරන්න',hint:'JPG / PNG / PDF',btnSubmit:'යොමු කරන්න',noFile:'තෝරා නැත',selected:'තෝරා ඇත ✓',msgSuccess:'✅ උඩුගත කිරීම සාර්ථකයි!\nඔබේ ලේඛන ලැබී ඇත.',msgError:'❌ උඩුගත කිරීම අසාර්ථකයි.\nනැවත උත්සාහ කරන්න.',msgNoFile:'අවම වශයෙන් ඡායාරූපයක් තෝරන්න',docs:{zairyu_front:'පදිංචිකාර්ඩ් (ඉදිරිපස)',zairyu_back:'පදිංචිකාර්ඩ් (පිටුපස)',passport:'ගමන් බලපත්‍රය',cert_jp:'සහතිකය (ජපන් භාෂාව)',cert_skill:'සහතිකය (කුසලතා විභාගය)',cert_specialist:'සහතිකය (විශේෂඥ/මට්ටම 3)',tax_payment:'බදු ගෙවීමේ සහතිකය',tax_cert:'බදු සහතිකය',withholding:'රඳවා ගත් බදු ප්‍රකාශය',medical:'වෛද්‍ය සහතිකය',mugshot:'ජායාරූපය',health_ins:'සෞඛ්‍ය රක්ෂණ කාඩ්පත',health_ins_cert:'ජාතික සෞඛ්‍ය රක්ෂණ ගෙවීම් සහතිකය',graduation:'උපාධි සහතිකය',transcript:'ශ්‍රේණි ලිපිය',nenkin:'විශ්‍රාම වේතන පොත',embassy_rec:'大使館推薦票',juminhyo:'住民票',other:'වෙනත්'}},
+};
+const LANG_ORDER = ['ja','en','vi','id','my','ko','ne','zh','th','km','mn','si'];
+let currentLang = 'ja';
+const fileData = {};
+const langBar = document.getElementById('langBar');
+const fieldsList = document.getElementById('fieldsList');
+const submitBtn = document.getElementById('submitBtn');
+const progressWrap = document.getElementById('progressWrap');
+const progressBar = document.getElementById('progressBar');
+const statusMsg = document.getElementById('statusMsg');
+
+LANG_ORDER.forEach(code => {
+  if (!LANGS[code]) return;
+  const btn = document.createElement('button');
+  btn.className = 'lang-btn' + (code === 'ja' ? ' active' : '');
+  btn.textContent = LANGS[code].label;
+  btn.addEventListener('click', () => setLang(code));
+  langBar.appendChild(btn);
+});
+
+// ===== サンプル画像（💡見本ボタン用、URLはダミー、本番用は後で差し替え） =====
+// 全書類17種類分のサンプル画像URLマップ。多言語の補足説明＋取得場所も含む。
+// 本番運用時は GitHub Pages 配下に samples/ ディレクトリを作って差し替える。
+const DOC_SAMPLES = {
+  mugshot: {
+    image: 'samples/mugshot_sample.jpg',
+    help: {
+      ja: '正面・無背景・縦4cm×横3cm（パスポートサイズ）',
+      en: 'Front view, plain background, 4x3cm (passport size)',
+      vi: 'Nhìn thẳng, nền trắng, 4x3cm (cỡ hộ chiếu)',
+      id: 'Tampak depan, latar polos, 4x3cm (ukuran paspor)',
+      ko: '정면·무배경·세로4cm×가로3cm (여권 사이즈)',
+      zh: '正面·无背景·4cm×3cm（护照尺寸）'
+    },
+    where: {
+      ja: '📷 出どころ：スマートフォンで撮影した写真で問題ございません。\n📋 規格：6か月以内に撮影したもの\n✅ 良い例：正面を向き、無帽、背景・影なし、顔がはっきり写っている\n❌ ダメな例：横向き、帽子、背景に影、ピンボケ、加工・美白した写真\n（出典：出入国在留管理庁「提出写真の規格」）',
+      en: '📷 Source: A photo taken with a smartphone is fine.\n📋 Spec: Taken within the last 6 months\n✅ Good: Facing front, no hat, no background/shadow, clear face\n❌ Bad: Side view, hat, shadow in background, blurry, edited/whitened photos\n(Source: Immigration Services Agency of Japan, "Photo Standards")',
+      vi: '📷 Nguồn: Ảnh chụp bằng điện thoại thông minh cũng được.\n📋 Quy cách: Chụp trong vòng 6 tháng\n✅ Đúng: Nhìn thẳng, không đội mũ, không nền/bóng, khuôn mặt rõ\n❌ Sai: Nhìn nghiêng, đội mũ, có bóng nền, mờ, ảnh chỉnh sửa/làm trắng\n(Nguồn: Cục Quản lý Xuất nhập cảnh Nhật Bản "Quy cách ảnh nộp")',
+      id: '📷 Sumber: Foto yang diambil dengan smartphone tidak masalah.\n📋 Spesifikasi: Diambil dalam 6 bulan terakhir\n✅ Baik: Menghadap depan, tanpa topi, tanpa latar/bayangan, wajah jelas\n❌ Buruk: Menyamping, bertopi, ada bayangan, buram, foto diedit/diputihkan\n(Sumber: Badan Imigrasi Jepang "Standar Foto")',
+      ko: '📷 발급처: 스마트폰으로 촬영한 사진도 괜찮습니다.\n📋 규격: 6개월 이내 촬영\n✅ 좋은 예: 정면, 무모, 배경·그림자 없음, 얼굴이 선명\n❌ 나쁜 예: 옆모습, 모자, 배경 그림자, 흐림, 보정·미백한 사진\n(출처: 일본 출입국재류관리청 「제출 사진 규격」)',
+      zh: '📷 出处：用智能手机拍摄的照片也没问题。\n📋 规格：6个月以内拍摄\n✅ 好例：正面、无帽、无背景·阴影、面部清晰\n❌ 坏例：侧脸、戴帽、背景有阴影、模糊、加工·美白照片\n（出处：日本出入国在留管理厅「提出照片规格」）'
+    }
+  },
+  zairyu_front: {
+    image: 'samples/zairyu_front_sample.jpg',
+    help: {
+      ja: '在留カードの表面（顔写真がある面）',
+      en: 'Front side of Residence Card (with photo)',
+      vi: 'Mặt trước Thẻ cư trú (có ảnh)',
+      id: 'Sisi depan Kartu Izin Tinggal (dengan foto)',
+      ko: '재류카드 앞면 (사진이 있는 면)',
+      zh: '在留卡正面（有照片的一面）'
+    },
+    where: {
+      ja: '💳 ご自身でお持ちのカードです。両面を写真に撮ってください',
+      en: '💳 The card you carry. Please take photos of both sides',
+      vi: '💳 Thẻ bạn mang theo. Vui lòng chụp cả 2 mặt',
+      id: '💳 Kartu yang Anda bawa. Mohon foto kedua sisi',
+      ko: '💳 본인이 소지한 카드입니다. 양면을 사진 찍어주세요',
+      zh: '💳 您本人持有的卡片。请拍摄正反两面'
+    }
+  },
+  zairyu_back: {
+    image: 'samples/zairyu_back_sample.jpg',
+    help: {
+      ja: '在留カードの裏面',
+      en: 'Back side of Residence Card',
+      vi: 'Mặt sau Thẻ cư trú',
+      id: 'Sisi belakang Kartu Izin Tinggal',
+      ko: '재류카드 뒷면',
+      zh: '在留卡背面'
+    },
+    where: {
+      ja: '💳 在留カードの裏側です。住所が書いてあります',
+      en: '💳 Back of Residence Card. Your address is written here',
+      vi: '💳 Mặt sau Thẻ cư trú. Có ghi địa chỉ',
+      id: '💳 Sisi belakang Kartu Izin Tinggal. Berisi alamat',
+      ko: '💳 재류카드 뒷면. 주소가 기재되어 있습니다',
+      zh: '💳 在留卡背面，记载有地址'
+    }
+  },
+  passport: {
+    image: 'samples/passport_sample.png',
+    help: {
+      ja: '顔写真と名前が載っているページ',
+      en: 'Page with your photo and name',
+      vi: 'Trang có ảnh và tên',
+      id: 'Halaman dengan foto dan nama',
+      ko: '사진과 이름이 있는 페이지',
+      zh: '有照片和姓名的页面'
+    },
+    where: {
+      ja: '📘 ご自身のパスポート。顔写真ページを撮ってください',
+      en: '📘 Your own passport. Please take a photo of the page with your photo',
+      vi: '📘 Hộ chiếu của bạn. Vui lòng chụp trang có ảnh',
+      id: '📘 Paspor Anda. Mohon foto halaman dengan foto Anda',
+      ko: '📘 본인의 여권. 사진 페이지를 찍어주세요',
+      zh: '📘 您本人的护照。请拍摄照片页'
+    }
+  },
+  cert_jp: {
+    image: 'samples/cert_jp_sample.png',
+    help: {
+      ja: '日本語能力試験の合格証',
+      en: 'Certificate of Japanese language proficiency test',
+      vi: 'Chứng chỉ kỳ thi năng lực tiếng Nhật',
+      id: 'Sertifikat ujian kemampuan bahasa Jepang',
+      ko: '일본어능력시험 합격증',
+      zh: '日语能力测试合格证'
+    },
+    where: {
+      ja: '🎓 試験に合格した時にもらった紙です。なくした場合は試験団体（JLPT/JFT等）に再発行を依頼',
+      en: '🎓 The certificate you received when you passed the test. If lost, request reissue from test organizer (JLPT/JFT etc.)',
+      vi: '🎓 Giấy bạn nhận khi đỗ kỳ thi. Nếu mất, yêu cầu cấp lại từ tổ chức thi (JLPT/JFT)',
+      id: '🎓 Sertifikat yang Anda terima saat lulus ujian. Jika hilang, minta penerbitan ulang ke penyelenggara (JLPT/JFT)',
+      ko: '🎓 시험에 합격했을 때 받은 증서. 분실 시 시험 주관 기관(JLPT/JFT 등)에 재발급 요청',
+      zh: '🎓 通过考试时获得的证书。遗失时请向考试机构（JLPT/JFT等）申请补发'
+    }
+  },
+  cert_skill: {
+    image: 'samples/cert_skill_sample.png',
+    help: {
+      ja: '特定技能評価試験の合格証',
+      en: 'Certificate of Specified Skills Evaluation Test',
+      vi: 'Chứng chỉ kỳ thi đánh giá kỹ năng đặc định',
+      id: 'Sertifikat Ujian Evaluasi Keterampilan Khusus',
+      ko: '특정기능 평가시험 합격증',
+      zh: '特定技能评价测试合格证'
+    },
+    where: {
+      ja: '🎓 試験に合格した時にもらった紙です。分野ごとに発行団体が異なります',
+      en: '🎓 The certificate you received when you passed. Issuing organization differs by field',
+      vi: '🎓 Giấy bạn nhận khi đỗ. Tổ chức cấp khác nhau theo lĩnh vực',
+      id: '🎓 Sertifikat yang Anda terima saat lulus. Lembaga penerbit berbeda tergantung bidang',
+      ko: '🎓 시험에 합격했을 때 받은 증서. 분야별로 발급 기관이 다릅니다',
+      zh: '🎓 通过考试时获得的证书。各领域发证机构不同'
+    }
+  },
+  cert_specialist: {
+    image: 'samples/cert_specialist_sample.png',
+    help: {
+      ja: '技能実習の専門級・3級の合格証',
+      en: 'Certificate of Technical Intern (Specialist / Level 3)',
+      vi: 'Chứng chỉ thực tập kỹ năng (Chuyên ngành/Cấp 3)',
+      id: 'Sertifikat Pemagangan (Spesialis/Level 3)',
+      ko: '기능실습 (전문급/3급) 합격증',
+      zh: '技能实习专项级·3级合格证'
+    },
+    where: {
+      ja: '🎓 技能実習で合格した時にもらった紙。なくした場合は監理団体または所属企業へ\n⚠️ 不合格だった場合は評価調書を提出してください。',
+      en: '🎓 Certificate from technical intern training. If lost, ask supervising org or employer\n⚠️ If you failed the test, please submit an evaluation report instead.',
+      vi: '🎓 Giấy nhận từ thực tập kỹ năng. Nếu mất, hỏi tổ chức quản lý hoặc công ty\n⚠️ Nếu không đỗ, vui lòng nộp bản đánh giá (hyouka chousho).',
+      id: '🎓 Sertifikat dari pemagangan teknis. Jika hilang, tanya organisasi pengawas atau perusahaan\n⚠️ Jika tidak lulus, mohon serahkan laporan evaluasi (hyouka chousho).',
+      ko: '🎓 기능실습 합격 시 받은 증서. 분실 시 감리단체 또는 소속 기업에 문의\n⚠️ 불합격한 경우에는 평가조서를 제출해 주세요.',
+      zh: '🎓 技能实习合格时获得的证书。遗失时请联系监理团体或所属企业\n⚠️ 如未合格，请提交评价调书。'
+    }
+  },
+  tax_payment: {
+    image: 'samples/tax_payment_sample.png',
+    help: {
+      ja: '市役所・区役所で発行する納税証明書（令和7年度）',
+      en: 'Tax Payment Certificate issued by City Hall (FY 2025 / Reiwa 7)',
+      vi: 'Giấy chứng nhận nộp thuế do tòa thị chính cấp (Năm 2025)',
+      id: 'Bukti Pembayaran Pajak dari Balai Kota (Tahun 2025)',
+      ko: '시청·구청에서 발급한 납세증명서 (2025년도)',
+      zh: '市役所·区役所发放的纳税证明（令和7年度）'
+    },
+    where: {
+      ja: '🏛️ 出どころ：市役所・区役所（住民登録のある自治体）\n📋 取得方法：窓口またはコンビニ（マイナンバーカードがあれば）で発行\n💴 費用：200〜400円程度\n📅 持ち物：在留カード\n📍 2025年1月1日時点でお住まいだった市役所にて発行をお願いします\n💡 補足：「住民税を払った」ことを証明する書類です。給与から自動で引かれている人も発行できます',
+      en: '🏛️ Source: City/Ward Office (where you are registered)\n📋 How to get: Counter or convenience store (with My Number Card)\n💴 Cost: ~200-400 yen\n📅 Bring: Residence Card\n📍 Please obtain it from the city office where you lived as of January 1, 2025\n💡 Note: Proves you have paid resident tax. Available even if tax is auto-deducted from salary',
+      vi: '🏛️ Nguồn: Tòa thị chính/Văn phòng quận (nơi đăng ký cư trú)\n📋 Cách lấy: Tại quầy hoặc cửa hàng tiện lợi (nếu có thẻ My Number)\n💴 Chi phí: Khoảng 200-400 yên\n📅 Mang theo: Thẻ cư trú\n📍 Vui lòng lấy tại tòa thị chính nơi bạn cư trú vào ngày 1/1/2025\n💡 Ghi chú: Chứng minh đã nộp thuế cư trú. Có thể lấy ngay cả khi thuế bị trừ tự động từ lương',
+      id: '🏛️ Sumber: Balai Kota/Kantor Distrik (tempat Anda terdaftar)\n📋 Cara: Counter atau minimarket (jika punya My Number Card)\n💴 Biaya: Sekitar 200-400 yen\n📅 Bawa: Kartu Izin Tinggal\n📍 Mohon ambil di Balai Kota tempat Anda tinggal per 1 Januari 2025\n💡 Catatan: Membuktikan pembayaran pajak penduduk. Tersedia meski pajak otomatis dipotong dari gaji',
+      ko: '🏛️ 발급처: 시청·구청 (주민등록된 자치단체)\n📋 취득 방법: 창구 또는 편의점 (마이넘버 카드 소지 시)\n💴 비용: 200~400엔 정도\n📅 지참물: 재류카드\n📍 2025년 1월 1일 시점에 거주하던 시청에서 발급받아 주세요\n💡 보충: 주민세를 납부했음을 증명하는 서류. 급여에서 자동공제되는 사람도 발급 가능',
+      zh: '🏛️ 出处：市役所·区役所（户籍所在地）\n📋 取得方法：窗口或便利店（持有My Number卡时）\n💴 费用：约200~400日元\n📅 携带物：在留卡\n📍 请在2025年1月1日时居住地的市役所办理\n💡 补充：证明已缴纳住民税的文件。即使是从工资中自动扣除的人也可以申请'
+    }
+  },
+  tax_cert: {
+    image: 'samples/tax_cert_sample.png',
+    help: {
+      ja: '市役所・区役所で発行する課税証明書（令和7年度）',
+      en: 'Taxation Certificate issued by City Hall (FY 2025 / Reiwa 7)',
+      vi: 'Giấy chứng nhận thuế do tòa thị chính cấp (Năm 2025)',
+      id: 'Surat Keterangan Pajak dari Balai Kota (Tahun 2025)',
+      ko: '시청·구청에서 발급한 과세증명서 (2025년도)',
+      zh: '市役所·区役所发放的课税证明（令和7年度）'
+    },
+    where: {
+      ja: '🏛️ 出どころ：市役所・区役所（住民登録のある自治体）\n📋 取得方法：窓口またはコンビニ（マイナンバーカードがあれば）で発行\n💴 費用：200〜400円程度\n📅 持ち物：在留カード\n📍 2025年1月1日時点でお住まいだった市役所にて発行をお願いします\n💡 補足：「いくら所得があって、いくら住民税がかかったか」を証明する書類です。納税証明書とセットで「所得・課税証明書」として1枚で発行される場合もあります',
+      en: '🏛️ Source: City/Ward Office (where you are registered)\n📋 How to get: Counter or convenience store (with My Number Card)\n💴 Cost: ~200-400 yen\n📅 Bring: Residence Card\n📍 Please obtain it from the city office where you lived as of January 1, 2025\n💡 Note: Proves your income and resident tax amount. Sometimes issued together with Tax Payment Certificate as one document',
+      vi: '🏛️ Nguồn: Tòa thị chính/Văn phòng quận\n📋 Cách lấy: Tại quầy hoặc cửa hàng tiện lợi (nếu có thẻ My Number)\n💴 Chi phí: Khoảng 200-400 yên\n📅 Mang theo: Thẻ cư trú\n📍 Vui lòng lấy tại tòa thị chính nơi bạn cư trú vào ngày 1/1/2025\n💡 Ghi chú: Chứng minh thu nhập và số thuế cư trú. Đôi khi cấp chung với Giấy chứng nhận nộp thuế thành một tờ',
+      id: '🏛️ Sumber: Balai Kota/Kantor Distrik\n📋 Cara: Counter atau minimarket (jika punya My Number Card)\n💴 Biaya: Sekitar 200-400 yen\n📅 Bawa: Kartu Izin Tinggal\n📍 Mohon ambil di Balai Kota tempat Anda tinggal per 1 Januari 2025\n💡 Catatan: Membuktikan penghasilan dan pajak penduduk. Kadang diterbitkan bersama Bukti Pembayaran Pajak sebagai 1 dokumen',
+      ko: '🏛️ 발급처: 시청·구청\n📋 취득 방법: 창구 또는 편의점 (마이넘버 카드 소지 시)\n💴 비용: 200~400엔 정도\n📅 지참물: 재류카드\n📍 2025년 1월 1일 시점에 거주하던 시청에서 발급받아 주세요\n💡 보충: 소득액과 주민세액을 증명하는 서류. 납세증명서와 함께 1장으로 발급되는 경우도 있음',
+      zh: '🏛️ 出处：市役所·区役所\n📋 取得方法：窗口或便利店（持有My Number卡时）\n💴 费用：约200~400日元\n📅 携带物：在留卡\n📍 请在2025年1月1日时居住地的市役所办理\n💡 补充：证明收入金额和住民税额的文件。有时与纳税证明合并为「所得·课税证明书」一份发放'
+    }
+  },
+  withholding: {
+    image: 'samples/withholding_sample.png',
+    help: {
+      ja: '会社が年末（12月〜1月）に発行する小さな紙です（令和6年分）',
+      en: 'A small slip your company issues at year-end (Dec-Jan), Year 2024',
+      vi: 'Phiếu nhỏ công ty cấp vào cuối năm (tháng 12-1), Năm 2025',
+      id: 'Lembar kecil dari perusahaan akhir tahun (Des-Jan), Tahun 2025',
+      ko: '회사가 연말(12월~1월)에 발급하는 작은 종이 (2024년분)',
+      zh: '公司在年末（12月-1月）发放的小纸条（令和6年分）'
+    },
+    where: {
+      ja: '🏢 出どころ：勤務先の会社（経理・人事担当）\n📋 取得方法：会社から年末調整後に配布されます\n💴 費用：無料\n💡 補足：1年間の給与と差し引かれた所得税が書かれています。なくした場合は会社に再発行を依頼してください。普通12月〜1月に配布されますが、転職などで途中で退職した場合はその時点で発行されます',
+      en: '🏢 Source: Your company (accounting/HR dept)\n📋 How to get: Distributed by your company after year-end tax adjustment\n💴 Cost: Free\n💡 Note: Shows your annual salary and income tax withheld. If lost, ask company for reissue. Usually given in Dec-Jan, but issued at the time of resignation if you quit mid-year',
+      vi: '🏢 Nguồn: Công ty làm việc (kế toán/nhân sự)\n📋 Cách lấy: Công ty phát sau khi điều chỉnh thuế cuối năm\n💴 Chi phí: Miễn phí\n💡 Ghi chú: Ghi lương cả năm và thuế thu nhập đã khấu trừ. Nếu mất, yêu cầu công ty cấp lại. Thường phát vào tháng 12-1, nhưng cấp ngay khi nghỉ việc nếu nghỉ giữa năm',
+      id: '🏢 Sumber: Perusahaan tempat kerja (akuntansi/HR)\n📋 Cara: Dibagikan perusahaan setelah penyesuaian pajak akhir tahun\n💴 Biaya: Gratis\n💡 Catatan: Berisi gaji tahunan dan pajak pendapatan yang dipotong. Jika hilang, minta penerbitan ulang ke perusahaan. Biasanya dibagikan Des-Jan, atau saat resign jika berhenti di tengah tahun',
+      ko: '🏢 발급처: 근무처 회사 (경리/인사 담당)\n📋 취득 방법: 회사가 연말정산 후 배부\n💴 비용: 무료\n💡 보충: 1년간 급여와 차감된 소득세가 기재됨. 분실 시 회사에 재발급 요청. 보통 12~1월에 배부되지만, 연도 중 퇴직 시에는 그 시점에 발급됨',
+      zh: '🏢 出处：工作的公司（财务/人事部门）\n📋 取得方法：年末调整后由公司发放\n💴 费用：免费\n💡 补充：记载1年的工资和扣缴的所得税。遗失时请向公司申请补发。通常在12月~1月发放，但年中离职时则在离职时发放'
+    }
+  },
+  medical: {
+    image: 'samples/medical_sample.png',
+    help: {
+      ja: '健康診断の結果が書かれた紙',
+      en: 'Document with health checkup results',
+      vi: 'Giấy ghi kết quả khám sức khỏe',
+      id: 'Dokumen hasil pemeriksaan kesehatan',
+      ko: '건강검진 결과가 적힌 종이',
+      zh: '健康检查结果证明'
+    },
+    where: {
+      ja: '🏥 病院・クリニックで健康診断を受けて発行してもらいます。担当者に専用の用紙をもらってから受診してください\n📅 認定申請の場合：3ヶ月以内に受診した結果\n📅 変更・更新申請の場合：1年以内に受診した結果',
+      en: '🏥 Get from hospital/clinic after a health checkup. Get the form from your contact first\n📅 For Certification application: results from within the last 3 months\n📅 For Change/Renewal application: results from within the last 1 year',
+      vi: '🏥 Khám sức khỏe tại bệnh viện/phòng khám. Hãy lấy mẫu giấy chuyên dụng từ người phụ trách trước\n📅 Đơn xin chứng nhận (nintei): kết quả khám trong vòng 3 tháng\n📅 Đơn xin thay đổi/gia hạn: kết quả khám trong vòng 1 năm',
+      id: '🏥 Pemeriksaan kesehatan di rumah sakit/klinik. Ambil formulir khusus dari penanggung jawab dulu\n📅 Untuk permohonan sertifikasi (nintei): hasil dalam 3 bulan terakhir\n📅 Untuk permohonan perubahan/perpanjangan: hasil dalam 1 tahun terakhir',
+      ko: '🏥 병원·클리닉에서 건강검진 후 발급. 담당자에게 전용 양식을 받은 후 검진받으세요\n📅 인정 신청의 경우: 3개월 이내에 받은 검진 결과\n📅 변경·갱신 신청의 경우: 1년 이내에 받은 검진 결과',
+      zh: '🏥 在医院/诊所接受健康检查后发放。请先从负责人处获取专用表格\n📅 认定申请时：3个月以内的体检结果\n📅 变更·更新申请时：1年以内的体检结果'
+    }
+  },
+  health_ins: {
+    image: 'samples/health_ins_sample.png',
+    help: {
+      ja: '健康保険証（プラスチックカード）',
+      en: 'Health Insurance Card (plastic card)',
+      vi: 'Thẻ bảo hiểm y tế (thẻ nhựa)',
+      id: 'Kartu Asuransi Kesehatan (kartu plastik)',
+      ko: '건강보험증 (플라스틱 카드)',
+      zh: '健康保险证（塑料卡）'
+    },
+    where: {
+      ja: '💳 ご自身でお持ちの保険証カード。会社の社会保険または国民健康保険',
+      en: '💳 The insurance card you have. Company social insurance or National Health Insurance',
+      vi: '💳 Thẻ bảo hiểm bạn có. Bảo hiểm xã hội công ty hoặc bảo hiểm y tế quốc dân',
+      id: '💳 Kartu asuransi yang Anda miliki. Asuransi sosial perusahaan atau Asuransi Kesehatan Nasional',
+      ko: '💳 본인이 소지한 보험증 카드. 회사 사회보험 또는 국민건강보험',
+      zh: '💳 您本人持有的保险证卡。公司社会保险或国民健康保险'
+    }
+  },
+  // ver.20261020.01: 資格確認書（マイナポータルの資格情報 or 資格確認書）見本2枚を横並び表示
+  shikaku_kakunin: {
+    images: [
+      {src:'samples/shikaku_kakunin_sample1.png', label:{ja:'① マイナポータルの資格情報',en:'① My Number Portal insurance info',vi:'① Thông tin BH trên My Number Portal',id:'① Info asuransi di My Number Portal',ko:'① 마이나포털 자격정보',zh:'① 个人编号门户的资格信息',my:'① My Number Portal အချက်အလက်',km:'① ព័ត៌មានធានារ៉ាប់រងនៅ My Number Portal'}},
+      {src:'samples/shikaku_kakunin_sample2.png', label:{ja:'② 資格確認書（カード型の例）',en:'② Qualification Confirmation (card example)',vi:'② Giấy xác nhận tư cách (mẫu thẻ)',id:'② Surat Konfirmasi (contoh kartu)',ko:'② 자격확인서 (카드형 예)',zh:'② 资格确认书（卡片型示例）',my:'② 資格確認書 (ကတ်ပုံစံ)',km:'② លិខិតបញ្ជាក់សិទ្ធិ (គំរូកាត)'}}
+    ],
+    help: {
+      ja: 'マイナポータルの「医療保険の資格情報」または資格確認書のいずれか1つ',
+      en: 'Either the "Medical Insurance Qualification Info" from My Number Portal, or the Qualification Confirmation Document'
+    },
+    where: {
+      ja: '以下のいずれか1つを提出してください。\n① マイナポータルからダウンロードした「医療保険の資格情報」（PDF）\n② 資格確認書の写し（保険者から届いたカードやはがき）',
+      en: 'Please submit ONE of the following.\n① "Medical Insurance Qualification Info" (PDF) downloaded from My Number Portal\n② A copy of the Qualification Confirmation Document (card or postcard sent by your insurer)',
+      vi: 'Vui lòng nộp MỘT trong các giấy tờ sau.\n① "Thông tin tư cách bảo hiểm y tế" (PDF) tải từ My Number Portal\n② Bản sao Giấy xác nhận tư cách (thẻ hoặc bưu thiếp do bên bảo hiểm gửi)',
+      id: 'Silakan serahkan SALAH SATU dari berikut.\n① "Info Kualifikasi Asuransi Kesehatan" (PDF) yang diunduh dari My Number Portal\n② Salinan Surat Konfirmasi Kualifikasi (kartu atau kartu pos dari penyelenggara asuransi)',
+      ko: '다음 중 하나를 제출해 주세요.\n① 마이나포털에서 다운로드한 「의료보험 자격정보」(PDF)\n② 자격확인서 사본 (보험자로부터 받은 카드 또는 엽서)',
+      zh: '请提交以下任意一项。\n① 从个人编号门户（My Number Portal）下载的「医疗保险资格信息」（PDF）\n② 资格确认书的复印件（保险机构寄来的卡片或明信片）',
+      km: 'សូមដាក់ស្នើឯកសារមួយក្នុងចំណោមខាងក្រោម។\n① "ព័ត៌មានសិទ្ធិធានារ៉ាប់រងសុខភាព" (PDF) ដែលទាញយកពី My Number Portal\n② ច្បាប់ចម្លងលិខិតបញ្ជាក់សិទ្ធិ (កាត ឬកាតប៉ុស្តាល់ដែលក្រុមហ៊ុនធានារ៉ាប់រងផ្ញើមក)'
+    }
+  },
+  health_ins_cert: {
+    image: 'samples/health_ins_cert_sample.png',
+    help: {
+      ja: '国民健康保険料を払った証明書',
+      en: 'Certificate that National Health Insurance has been paid',
+      vi: 'Giấy chứng nhận đã đóng bảo hiểm y tế quốc dân',
+      id: 'Sertifikat pembayaran Asuransi Kesehatan Nasional',
+      ko: '국민건강보험료를 낸 증명서',
+      zh: '国民健康保险费已缴纳证明'
+    },
+    where: {
+      ja: '🏛️ お住まいの市役所・区役所の国民健康保険課で発行（在留カード持参）',
+      en: '🏛️ Issued at the NHI section of your city/ward office (bring Residence Card)',
+      vi: '🏛️ Cấp tại phòng bảo hiểm y tế quốc dân của tòa thị chính (mang Thẻ cư trú)',
+      id: '🏛️ Diterbitkan di bagian Asuransi Kesehatan Nasional di Balai Kota (bawa Kartu Izin Tinggal)',
+      ko: '🏛️ 거주지 시청·구청 국민건강보험과에서 발급 (재류카드 지참)',
+      zh: '🏛️ 在居住地的市役所/区役所国民健康保险科办理（携带在留卡）'
+    }
+  },
+  graduation: {
+    image: 'samples/graduation_sample.png',
+    help: {
+      ja: '学校の卒業を証明する書類',
+      en: 'Document certifying graduation from school',
+      vi: 'Giấy chứng nhận tốt nghiệp',
+      id: 'Dokumen kelulusan dari sekolah',
+      ko: '학교 졸업을 증명하는 서류',
+      zh: '学校毕业证明文件'
+    },
+    where: {
+      ja: '🎓 卒業した学校に依頼して発行してもらいます（日本語学校の場合は学校事務局へ）',
+      en: '🎓 Request from your graduated school (if Japanese language school, contact the school office)',
+      vi: '🎓 Yêu cầu từ trường đã tốt nghiệp (trường tiếng Nhật: liên hệ văn phòng trường)',
+      id: '🎓 Minta dari sekolah tempat Anda lulus (untuk sekolah bahasa Jepang, hubungi kantor sekolah)',
+      ko: '🎓 졸업한 학교에 발급 요청 (일본어학교의 경우 학교 사무국)',
+      zh: '🎓 向毕业学校申请发放（日语学校请联系学校事务局）'
+    }
+  },
+  transcript: {
+    image: 'samples/transcript_sample.png',
+    help: {
+      ja: '学校の成績証明書',
+      en: 'Academic transcript from school',
+      vi: 'Bảng điểm trường học',
+      id: 'Transkrip nilai sekolah',
+      ko: '학교 성적증명서',
+      zh: '学校成绩单'
+    },
+    where: {
+      ja: '🎓 通っていた学校に依頼して発行してもらいます',
+      en: '🎓 Request from the school you attended',
+      vi: '🎓 Yêu cầu từ trường bạn đã học',
+      id: '🎓 Minta dari sekolah yang Anda hadiri',
+      ko: '🎓 다녔던 학교에 발급 요청',
+      zh: '🎓 向就读过的学校申请发放'
+    }
+  },
+  nenkin: {
+    image: 'samples/nenkin_sample.png',
+    help: {
+      ja: '年金手帳（青色の手帳）',
+      en: 'Pension Booklet (blue booklet)',
+      vi: 'Sổ hưu trí (sổ màu xanh)',
+      id: 'Buku Pensiun (buku biru)',
+      ko: '연금수첩 (파란색 수첩)',
+      zh: '年金手帳（蓝色手册）'
+    },
+    where: {
+      ja: '📒 ご自身で保管している青色の手帳です。なくした場合は年金事務所で再発行（無料）',
+      en: '📒 The blue booklet you keep. If lost, reissue at Pension Office (free)',
+      vi: '📒 Sổ màu xanh bạn giữ. Nếu mất, cấp lại miễn phí tại Văn phòng hưu trí',
+      id: '📒 Buku biru yang Anda simpan. Jika hilang, dapat dicetak ulang gratis di Kantor Pensiun',
+      ko: '📒 본인이 보관하는 파란색 수첩. 분실 시 연금사무소에서 무료 재발급',
+      zh: '📒 您本人保管的蓝色手册。遗失时可在年金事务所免费补发'
+    }
+  },
+  juminhyo: {
+    image: 'samples/juminhyo_sample.png',
+    help: {
+      ja: '世帯全員が記載された住民票（マイナンバーの記載は不要）',
+      en: 'Certificate of Residence listing all household members (without My Number)',
+      vi: 'Giấy chứng nhận cư trú ghi đầy đủ thành viên hộ gia đình (không có My Number)',
+      id: 'Surat Keterangan Domisili yang mencantumkan seluruh anggota keluarga (tanpa My Number)',
+      ko: '세대 전원이 기재된 주민표 (마이넘버 미기재)',
+      zh: '记载全体家庭成员的住民票（无需记载My Number）'
+    },
+    where: {
+      ja: '🏛️ 市区町村の役所、またはマイナンバーカードでコンビニで取得できます。発行から3か月以内のもの。',
+      en: '🏛️ Obtain at your city/ward office, or at a convenience store with a My Number card. Issued within the last 3 months.',
+      vi: '🏛️ Lấy tại văn phòng quận/thành phố, hoặc tại cửa hàng tiện lợi bằng thẻ My Number. Cấp trong vòng 3 tháng.',
+      id: '🏛️ Diperoleh di kantor kota/distrik, atau di minimarket dengan kartu My Number. Diterbitkan dalam 3 bulan terakhir.',
+      ko: '🏛️ 시구정촌 관공서, 또는 마이넘버 카드로 편의점에서 발급. 발행 후 3개월 이내.',
+      zh: '🏛️ 可在市区町村政府办公室，或持My Number卡在便利店获取。需为3个月以内开具。'
+    }
+  },
+  ccus_card: {
+    image: 'samples/ccus_card_sample.jpg',
+    help: {
+      ja: '建設キャリアアップシステム（CCUS）の技能者カード',
+      en: 'Construction Career Up System (CCUS) Technician Card',
+      vi: 'Thẻ kỹ năng viên Hệ thống Nâng cao Nghề nghiệp Xây dựng (CCUS)',
+      id: 'Kartu Teknisi Sistem Peningkatan Karir Konstruksi (CCUS)',
+      ko: '건설 커리어업 시스템(CCUS) 기능자 카드',
+      zh: '建设职业能力提升系统（CCUS）技能者卡'
+    },
+    where: {
+      ja: '💳 建設キャリアアップシステムに登録した際に発行されるICカードです。\n📋 カードの表面に顔写真・氏名・技能者ID・有効期限が記載されています。\n💡 紛失した場合は建設キャリアアップシステム（CCUS）サポートセンターへご連絡ください。\n🌐 https://ccus.jp/',
+      en: '💳 An IC card issued when you register with the Construction Career Up System (CCUS).\n📋 The front of the card shows your photo, name, technician ID, and expiry date.\n💡 If lost, contact the CCUS support center.\n🌐 https://ccus.jp/',
+      vi: '💳 Thẻ IC được cấp khi đăng ký vào Hệ thống Nâng cao Nghề nghiệp Xây dựng (CCUS).\n📋 Mặt trước thẻ ghi ảnh, tên, ID kỹ năng viên và ngày hết hạn.\n💡 Nếu mất thẻ, hãy liên hệ trung tâm hỗ trợ CCUS.\n🌐 https://ccus.jp/',
+      id: '💳 Kartu IC yang diterbitkan saat mendaftar ke Sistem Peningkatan Karir Konstruksi (CCUS).\n📋 Bagian depan kartu menampilkan foto, nama, ID teknisi, dan tanggal kedaluwarsa.\n💡 Jika hilang, hubungi pusat dukungan CCUS.\n🌐 https://ccus.jp/',
+      ko: '💳 건설 커리어업 시스템(CCUS)에 등록할 때 발급되는 IC카드입니다.\n📋 카드 앞면에 사진·이름·기능자ID·유효기간이 기재되어 있습니다.\n💡 분실한 경우 CCUS 지원센터에 연락하세요.\n🌐 https://ccus.jp/',
+      zh: '💳 注册建设职业能力提升系统（CCUS）时发行的IC卡。\n📋 卡片正面印有照片、姓名、技能者ID和有效期。\n💡 若遗失，请联系CCUS支持中心。\n🌐 https://ccus.jp/'
+    }
+  },
+};
+
+// 書類名(日本語ラベル) → サンプルキー 変換。新ロジックでは key が 'd0','d1'... なので
+// DOC_LABELS_JA[key] の日本語ラベルから DOC_SAMPLES のキーを引き当てる。
+const DOC_NAME2KEY = {
+ 'パスポート':'passport',
+ '在留カード（表）':'zairyu_front','在留カード（裏）':'zairyu_back','在留カード':'zairyu_front',
+ '顔写真':'mugshot',
+ '健康診断票':'medical','健康診断証':'medical','健康診断書':'medical',
+ '合格証（技能）':'cert_skill','合格証（技能試験）':'cert_skill',
+ '合格証（日本語）':'cert_jp',
+ '専門級':'cert_specialist','合格証（専門級・3級）':'cert_specialist','合格証（専門級）':'cert_specialist',
+ '所得・課税証明書':'tax_cert','課税証明書':'tax_cert',
+ '納税証明書':'tax_payment',
+ '源泉徴収票':'withholding',
+ '健康保険証':'health_ins',
+ '資格確認書':'shikaku_kakunin',
+ '国民健康保険料納付証明書':'health_ins_cert','国民健康保険料納付証明':'health_ins_cert','国民健康保険料（税）納付証明書':'health_ins_cert',   // ver.20261105.01: 案シスの書類名（国保の4書類・留学生の追加書類）に合わせて見本を表示
+ '卒業証明書':'graduation','成績証明書':'transcript','年金手帳':'nenkin','大使館推薦票':'embassy_rec','住民票':'juminhyo',
+ '技能者ID':'ccus_card','建設キャリアアップシステム技能者カード':'ccus_card','キャリアアップシステム技能者カード':'ccus_card','CCUSカード':'ccus_card'
+};
+function _sampleKey(key){
+  if (DOC_SAMPLES[key]) return key; // 旧ロジック: 既にサンプルキー
+  var ja = (DOC_LABELS_JA && DOC_LABELS_JA[key]) ? DOC_LABELS_JA[key]
+         : ((typeof LANGS!=='undefined' && LANGS.ja && LANGS.ja.docs && LANGS.ja.docs[key]) ? LANGS.ja.docs[key] : key);
+  return DOC_NAME2KEY[ja] || DOC_NAME2KEY[String(ja).replace(/[（(].*$/,'').trim()] || null;
+}
+
+// 💡見本ボタンクリック時にモーダル表示
+function showDocSample(docKey) {
+  const sample = DOC_SAMPLES[docKey];
+  if (!sample) {
+    alert('準備中 / Coming soon');
+    return;
+  }
+  const L = LANGS[currentLang];
+  // ver.20260527.test.07: DOC_LABELS_JAがnull(旧ロジック時)でも動くようにフォールバック
+  let labelJa = docKey;
+  if (typeof DOC_LABELS_JA !== 'undefined' && DOC_LABELS_JA && DOC_LABELS_JA[docKey]) {
+    labelJa = DOC_LABELS_JA[docKey];
+  } else if (L && L.docs && L.docs[docKey]) {
+    labelJa = L.docs[docKey];
+  }
+  const tr = (typeof DOC_TRANSLATIONS !== 'undefined') ? DOC_TRANSLATIONS[labelJa] : null;
+  let displayLabel = labelJa;
+  if (tr && tr[currentLang]) {
+    displayLabel = tr[currentLang].replace(/<[^>]+>/g, ''); // タグ除去
+  } else if (L && L.docs && L.docs[docKey]) {
+    displayLabel = L.docs[docKey];
+  }
+  const helpText = sample.help[currentLang] || sample.help.en || sample.help.ja || '';
+  // ver.20260527.test.09: 取得場所・出どころ・補足を「📝 説明」セクションにまとめる
+  const whereText = sample.where ? (sample.where[currentLang] || sample.where.en || sample.where.ja || '') : '';
+  // セクション見出しの多言語化
+  const whereLabels = {
+    ja: '📝 説明（取得方法・出どころ）',
+    en: '📝 Description (How to get / Source)',
+    vi: '📝 Mô tả (Cách lấy / Nguồn)',
+    id: '📝 Penjelasan (Cara mendapatkan / Sumber)',
+    my: '📝 ရှင်းပြချက် (ရယူပုံ / ရင်းမြစ်)',
+    ko: '📝 설명 (취득 방법 / 발급처)',
+    ne: '📝 विवरण (कसरी पाउने / स्रोत)',
+    zh: '📝 说明（取得方法・出处）',
+    th: '📝 คำอธิบาย (วิธีรับ / แหล่งที่มา)',
+    km: '📝 ការពិពណ៌នា (របៀបទទួល / ប្រភព)',
+    mn: '📝 Тайлбар (Авах арга / Гарал үүсэл)',
+    si: '📝 විස්තරය (ලබා ගන්නා ආකාරය / මූලාශ්‍රය)'
+  };
+  const whereLabel = whereLabels[currentLang] || whereLabels.en;
+  
+  // モーダル生成
+  const overlay = document.createElement('div');
+  overlay.id = 'docSampleOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  
+  const box = document.createElement('div');
+  box.style.cssText = 'background:white;border-radius:12px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;padding:20px;';
+  
+  box.innerHTML = 
+    '<div style="font-size:15px;font-weight:800;margin-bottom:12px;color:#1f2937;">💡 ' + displayLabel + '</div>' +
+    '<div style="background:#f9fafb;border-radius:8px;padding:8px;margin-bottom:12px;text-align:center;">' +
+    '<img src="' + (sample.image || (sample.images && sample.images[0] && sample.images[0].src) || '') + '" alt="sample" style="max-width:100%;max-height:50vh;border-radius:4px;" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<div style=&quot;padding:40px;color:#9ca3af;font-size:13px;&quot;>📷 サンプル画像準備中<br>Sample image coming soon</div>\';">' +
+    '</div>' +
+    (whereText ? '<div style="background:#dbeafe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#1e40af;line-height:1.6;white-space:pre-line;"><div style="font-weight:700;margin-bottom:6px;">' + whereLabel + '</div>' + whereText + '</div>' : '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#92400e;line-height:1.5;">' + helpText + '</div>') +
+    '<button id="docSampleCloseBtn" style="width:100%;padding:12px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">OK</button>';
+  
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  
+  const closeFn = () => overlay.remove();
+  document.getElementById('docSampleCloseBtn').addEventListener('click', closeFn);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFn(); });
+}
+
+// ver.20260616.02: 説明文（取得方法）にふりがな自動付与（ja表示時のみ・最長一致・絵文字保持）
+var FZ_EXP={
+ '出入国在留管理庁':'しゅつにゅうこくざいりゅうかんりちょう','特定技能評価試験':'とくていぎのうひょうかしけん','日本語能力試験':'にほんごのうりょくしけん',
+ '国民健康保険料':'こくみんけんこうほけんりょう','国民健康保険課':'こくみんけんこうほけんか','国民健康保険':'こくみんけんこうほけん',
+ '納税証明書':'のうぜいしょうめいしょ','課税証明書':'かぜいしょうめいしょ','年末調整後':'ねんまつちょうせいご','健康保険証':'けんこうほけんしょう',
+ '日本語学校':'にほんごがっこう','学校事務局':'がっこうじむきょく','成績証明書':'せいせきしょうめいしょ','年金事務所':'ねんきんじむしょ',
+ '取得方法':'しゅとくほうほう','技能実習':'ぎのうじっしゅう','住民登録':'じゅうみんとうろく','健康診断':'けんこうしんだん','提出写真':'ていしゅつしゃしん',
+ '試験団体':'しけんだんたい','発行団体':'はっこうだんたい','監理団体':'かんりだんたい','所属企業':'しょぞくきぎょう','評価調書':'ひょうかちょうしょ',
+ '人事担当':'じんじたんとう','認定申請':'にんていしんせい','更新申請':'こうしんしんせい','社会保険':'しゃかいほけん','年金手帳':'ねんきんてちょう',
+ '世帯全員':'せたいぜんいん','市区町村':'しくちょうそん','ヶ月以内':'かげついない','市役所':'しやくしょ','区役所':'くやくしょ',
+ '顔写真':'かおじゃしん','合格証':'ごうかくしょう','再発行':'さいはっこう','自治体':'じちたい','円程度':'えんていど','住民税':'じゅうみんぜい',
+ '無背景':'むはいけい','専門級':'せんもんきゅう','不合格':'ふごうかく','勤務先':'きんむさき','所得税':'しょとくぜい','担当者':'たんとうしゃ',
+ '年以内':'ねんいない','月以内':'げついない','保険証':'ほけんしょう','証明書':'しょうめいしょ','住民票':'じゅうみんひょう','役所':'やくしょ',
+ '発行':'はっこう','場合':'ばあい','在留':'ざいりゅう','会社':'かいしゃ','自身':'じしん','依頼':'いらい','学校':'がっこう','写真':'しゃしん',
+ '合格':'ごうかく','令和':'れいわ','費用':'ひよう','補足':'ほそく','証明':'しょうめい','書類':'しょるい','結果':'けっか','受診':'じゅしん',
+ '正面':'しょうめん','撮影':'さつえい','規格':'きかく','背景':'はいけい','試験':'しけん','年度':'ねんど','窓口':'まどぐち','給与':'きゅうよ',
+ '所得':'しょとく','配布':'はいふ','無料':'むりょう','卒業':'そつぎょう','青色':'あおいろ','手帳':'てちょう','記載':'きさい','問題':'もんだい',
+ '無帽':'むぼう','横向':'よこむ','帽子':'ぼうし','加工':'かこう','美白':'びはく','出典':'しゅってん','表面':'ひょうめん','両面':'りょうめん',
+ '裏面':'うらめん','裏側':'うらがわ','住所':'じゅうしょ','名前':'なまえ','分野':'ぶんや','提出':'ていしゅつ','自動':'じどう','年末':'ねんまつ',
+ '年分':'ねんぶん','経理':'けいり','年間':'ねんかん','普通':'ふつう','転職':'てんしょく','途中':'とちゅう','退職':'たいしょく','時点':'じてん',
+ '病院':'びょういん','専用':'せんよう','用紙':'ようし','変更':'へんこう','持参':'じさん','保管':'ほかん','不要':'ふよう','取得':'しゅとく',
+ '年':'ねん','紙':'かみ','出':'で','持':'も','書':'か','時':'とき','住':'す','例':'れい','影':'かげ','撮':'と','物':'もの','願':'ねが',
+ '払':'はら','引':'ひ','縦':'たて','横':'よこ','良':'よ','向':'む','顔':'かお','写':'うつ','面':'めん','載':'の','等':'など','異':'こと',
+ '級':'きゅう','人':'ひと','枚':'まい','差':'さ','受':'う','方':'かた'
+};
+var FZ_EXP_KEYS=Object.keys(FZ_EXP).sort(function(a,b){return Array.from(b).length-Array.from(a).length;});
+function _escFz(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fzExp(text){
+  if(text==null) return '';
+  text=String(text);
+  var chars=Array.from(text), out='', i=0, n=chars.length;
+  while(i<n){
+    var matched=false;
+    for(var k=0;k<FZ_EXP_KEYS.length;k++){
+      var key=FZ_EXP_KEYS[k], kc=Array.from(key), kl=kc.length;
+      if(i+kl<=n && chars.slice(i,i+kl).join('')===key){
+        out+='<ruby>'+_escFz(key)+'<rt>'+_escFz(FZ_EXP[key])+'</rt></ruby>'; i+=kl; matched=true; break;
+      }
+    }
+    if(!matched){ out+=_escFz(chars[i]); i++; }
+  }
+  return out;
+}
+
+// ver.20261020.01: 見本画像の拡大表示
+function _openSampleZoom(src){
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px;';
+  ov.innerHTML='<img src="'+src+'" style="max-width:100%;max-height:100%;background:#fff;border-radius:6px;">';
+  ov.addEventListener('click',function(){ov.remove();});
+  document.body.appendChild(ov);
+}
+function buildSampleInline(docKey){
+  const sample = DOC_SAMPLES[docKey];
+  if (!sample) return null;
+  const whereText = sample.where ? (sample.where[currentLang] || sample.where.en || sample.where.ja || '') : '';
+  const helpText = sample.help ? (sample.help[currentLang] || sample.help.en || sample.help.ja || '') : '';
+  const whereLabels = {
+    ja: '📝 説明（取得方法・出どころ）',
+    en: '📝 Description (How to get / Source)',
+    vi: '📝 Mô tả (Cách lấy / Nguồn)',
+    id: '📝 Penjelasan (Cara mendapatkan / Sumber)',
+    my: '📝 ရှင်းပြချက် (ရယူပုံ / ရင်းမြစ်)',
+    ko: '📝 설명 (취득 방법 / 발급처)',
+    ne: '📝 विवरण (कसरी पाउने / स्रोत)',
+    zh: '📝 说明（取得方法・出处）',
+    th: '📝 คำอธิบาย (วิธีรับ / แหล่งที่มา)',
+    km: '📝 ការពិពណ៌នា (របៀបទទួល / ប្រភព)',
+    mn: '📝 Тайлбар (Авах арга / Гарал үүсэл)',
+    si: '📝 විස්තරය (ලබා ගන්නා ආකාරය / මූලාශ්‍රය)'
+  };
+  const whereLabel = whereLabels[currentLang] || whereLabels.en;
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-bottom:10px;';
+  let html = '';
+  if (sample.images && sample.images.length) {
+    // ver.20261020.01: 複数見本を横並び表示（タップで拡大）
+    html += '<div style="display:flex;gap:8px;margin-bottom:4px;">' + sample.images.map(function(im){
+      var lb = im.label ? (im.label[currentLang] || im.label.en || im.label.ja || '') : '';
+      return '<div style="flex:1 1 0;min-width:0;background:#f9fafb;border-radius:8px;padding:6px;text-align:center;">' +
+        (lb ? '<div style="font-size:11px;font-weight:700;color:#1e40af;margin:2px 0 6px;line-height:1.3;">' + lb + '</div>' : '') +
+        '<img src="' + im.src + '" alt="sample" loading="lazy" style="width:100%;height:auto;border-radius:4px;cursor:zoom-in;" onclick="_openSampleZoom(this.src)" onerror="this.parentElement.style.display=\'none\';"></div>';
+    }).join('') + '</div>';
+    var zt = {ja:'画像をタップすると大きく表示されます',en:'Tap an image to enlarge',vi:'Nhấn vào ảnh để phóng to',id:'Ketuk gambar untuk memperbesar',ko:'이미지를 탭하면 크게 표시됩니다',zh:'点击图片可放大',km:'ចុចលើរូបភាពដើម្បីពង្រីក'};
+    html += '<div style="font-size:11px;color:#718096;text-align:center;margin-bottom:8px;">' + (zt[currentLang] || zt.en) + '</div>';
+  } else {
+    html += '<div style="background:#f9fafb;border-radius:8px;padding:6px;margin-bottom:8px;text-align:center;"><img src="' + sample.image + '" alt="sample" loading="lazy" style="max-width:100%;max-height:40vh;border-radius:4px;" onerror="this.parentElement.style.display=\'none\';"></div>';
+  }
+  if (whereText) {
+    const wt = (currentLang === 'ja') ? fzExp(whereText) : whereText;
+    html += '<div style="background:#dbeafe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 12px;font-size:13px;color:#1e40af;line-height:1.9;white-space:pre-line;"><div style="font-weight:700;margin-bottom:6px;">' + whereLabel + '</div>' + wt + '</div>';
+  } else if (helpText) {
+    const ht = (currentLang === 'ja') ? fzExp(helpText) : helpText;
+    html += '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 12px;font-size:13px;color:#92400e;line-height:1.8;">' + ht + '</div>';
+  }
+  wrap.innerHTML = html;
+  return wrap;
+}
+
+// ver.20261008.02: 合格証（技能）は「合格証である（合格通知書ではない）」ことを確認しないとアップロードできない
+let certSkillConfirmed = false;
+const CERT_SKILL_CONFIRM_LABEL = {
+  ja:'⚠️ ビルクリーニング・宿泊・運送業・自動車整備 の分野は、「合格通知書」ではなく「合格証」が必要です。',
+  en:'⚠️ For Building Cleaning, Accommodation, Transportation, and Automobile Maintenance, a "Certificate (合格証)" is required — NOT a "Notice of Passing (合格通知書)".',
+  vi:'⚠️ Với các lĩnh vực Vệ sinh tòa nhà, Lưu trú, Vận tải, Bảo dưỡng ô tô: cần "Chứng chỉ (合格証)", KHÔNG phải "Giấy báo đỗ (合格通知書)".',
+  id:'⚠️ Untuk bidang Pembersihan Gedung, Akomodasi, Transportasi, dan Perawatan Mobil: diperlukan "Sertifikat (合格証)", BUKAN "Pemberitahuan Kelulusan (合格通知書)".',
+  my:'⚠️ အဆောက်အအုံသန့်ရှင်းရေး၊ တည်းခိုရေး၊ သယ်ယူပို့ဆောင်ရေး၊ ကားပြုပြင်ထိန်းသိမ်းရေး နယ်ပယ်များတွင် "合格通知書" မဟုတ်ဘဲ "合格証" လိုအပ်သည်။',
+  ko:'⚠️ 빌딩 청소·숙박·운송업·자동차 정비 분야는 "합격통지서"가 아니라 "합격증"이 필요합니다.',
+  ne:'⚠️ भवन सरसफाइ, आवास, ढुवानी, अटो मर्मत क्षेत्रमा "合格通知書" होइन "合格証" आवश्यक छ।',
+  zh:'⚠️ 楼宇清洁・住宿・运输业・汽车维修 领域需要「合格证」，而不是「合格通知书」。',
+  th:'⚠️ สาขาทำความสะอาดอาคาร ที่พัก ขนส่ง และซ่อมบำรุงรถยนต์ ต้องใช้ "ใบรับรอง(合格証)" ไม่ใช่ "ใบแจ้งผลสอบผ่าน(合格通知書)"',
+  km:'⚠️ វិស័យសម្អាតអគារ ស្នាក់នៅ ដឹកជញ្ជូន និងថែទាំរថយន្ត ត្រូវការ "合格証" មិនមែន "合格通知書" ទេ។',
+  mn:'⚠️ Барилга цэвэрлэгээ, зочид буудал, тээвэр, автомашины засвар чиглэлд "合格通知書" биш "合格証" шаардлагатай.',
+  si:'⚠️ ගොඩනැගිලි පිරිසිදු කිරීම, නවාතැන්, ප්‍රවාහන, වාහන නඩත්තු ක්ෂේත්‍රවලට "合格通知書" නොව "合格証" අවශ්‍යයි.'
+};
+// ver.20260730.01: 顔写真アップロード前の確認モーダル（在留カード流用防止・6か月以内チェック）
+let mugshotConfirmed = false;
+function showMugshotConfirm(onConfirm) {
+  const T = {
+    ja:{title:'📷 顔写真アップロード前の確認',note:'下の2つを確認してチェックしてください',c1:'今つかっている在留カードと同じ写真は使えません（別の写真を用意しました）',c2:'6か月以内に撮った写真です',ok:'続ける',cancel:'キャンセル'},
+    en:{title:'📷 Check before uploading your photo',note:'Please check both items below',c1:'I will not use the same photo as my current Residence Card (I have prepared a different photo)',c2:'This photo was taken within the last 6 months',ok:'Continue',cancel:'Cancel'},
+    vi:{title:'📷 Xác nhận trước khi tải ảnh lên',note:'Vui lòng xác nhận và tích cả hai mục dưới đây',c1:'Tôi sẽ không dùng ảnh giống ảnh trên Thẻ cư trú hiện tại (đã chuẩn bị ảnh khác)',c2:'Ảnh này được chụp trong vòng 6 tháng gần đây',ok:'Tiếp tục',cancel:'Hủy'},
+    id:{title:'📷 Konfirmasi sebelum mengunggah foto',note:'Mohon centang kedua item di bawah ini',c1:'Saya tidak akan memakai foto yang sama dengan Kartu Izin Tinggal saat ini (sudah menyiapkan foto lain)',c2:'Foto ini diambil dalam 6 bulan terakhir',ok:'Lanjutkan',cancel:'Batal'},
+    ko:{title:'📷 사진 업로드 전 확인',note:'아래 두 항목을 확인하고 체크해 주세요',c1:'현재 사용 중인 재류카드와 같은 사진은 사용할 수 없습니다 (다른 사진을 준비했습니다)',c2:'6개월 이내에 촬영한 사진입니다',ok:'계속',cancel:'취소'},
+    zh:{title:'📷 上传照片前的确认',note:'请确认并勾选以下两项',c1:'不能使用与现在在留卡相同的照片（已准备其他照片）',c2:'这是6个月以内拍摄的照片',ok:'继续',cancel:'取消'}
+  };
+  const t = T[currentLang] || T.en;
+  const overlay = document.createElement('div');
+  overlay.id = 'mugshotConfirmOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:16px;width:100%;max-width:420px;padding:22px 20px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:90vh;overflow-y:auto;';
+  box.innerHTML =
+    '<div style="font-size:16px;font-weight:800;color:#0f2040;text-align:center;margin-bottom:6px;">' + t.title + '</div>' +
+    '<div style="font-size:12px;color:#64748b;text-align:center;margin-bottom:16px;">' + t.note + '</div>' +
+    '<label style="display:flex;gap:10px;align-items:flex-start;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:12px;margin-bottom:10px;cursor:pointer;font-size:13px;color:#7c2d12;line-height:1.5;font-weight:600;">' +
+      '<input type="checkbox" id="mgChk1" style="width:20px;height:20px;flex:0 0 auto;margin-top:1px;cursor:pointer;"><span>' + t.c1 + '</span></label>' +
+    '<label style="display:flex;gap:10px;align-items:flex-start;background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;padding:12px;margin-bottom:16px;cursor:pointer;font-size:13px;color:#1e3a8a;line-height:1.5;font-weight:600;">' +
+      '<input type="checkbox" id="mgChk2" style="width:20px;height:20px;flex:0 0 auto;margin-top:1px;cursor:pointer;"><span>' + t.c2 + '</span></label>' +
+    '<button id="mgOkBtn" disabled style="width:100%;padding:14px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;opacity:.45;transition:opacity .15s;">' + t.ok + '</button>' +
+    '<button id="mgCancelBtn" style="width:100%;padding:11px;margin-top:8px;background:#fff;color:#64748b;border:2px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">' + t.cancel + '</button>';
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  const chk1 = box.querySelector('#mgChk1');
+  const chk2 = box.querySelector('#mgChk2');
+  const okBtn = box.querySelector('#mgOkBtn');
+  const sync = () => { const ok = chk1.checked && chk2.checked; okBtn.disabled = !ok; okBtn.style.opacity = ok ? '1' : '.45'; };
+  chk1.addEventListener('change', sync);
+  chk2.addEventListener('change', sync);
+  const close = () => overlay.remove();
+  okBtn.addEventListener('click', () => { if (chk1.checked && chk2.checked) { close(); onConfirm(); } });
+  box.querySelector('#mgCancelBtn').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+}
+function attachMugshotGate(input) {
+  input.addEventListener('click', function(e) {
+    if (mugshotConfirmed) return;
+    e.preventDefault();
+    showMugshotConfirm(function(){ mugshotConfirmed = true; input.click(); });
+  });
+}
+// ver.20261008.02: 合格証（技能）のアップロードゲート（チェック未確認なら選択させない＋チェック欄を強調）
+function attachCertSkillGate(input) {
+  input.addEventListener('click', function(e) {
+    if (certSkillConfirmed) return;
+    e.preventDefault();
+    _flashCertSkillChk();
+  });
+}
+function _flashCertSkillChk() {
+  var cb = document.getElementById('certSkillChk');
+  if (!cb) return;
+  var w = cb.parentNode;
+  try {
+    w.style.boxShadow = '0 0 0 3px #fca5a5';
+    w.scrollIntoView({ behavior:'smooth', block:'center' });
+    setTimeout(function(){ try { w.style.boxShadow = 'none'; } catch(e){} }, 1600);
+  } catch(e){}
+}
+function _applyCertSkillLock(md) {
+  if (!md) return;
+  if (certSkillConfirmed) {
+    md.style.opacity = '1'; md.style.pointerEvents = 'auto'; md.style.filter = 'none';
+  } else {
+    md.style.opacity = '0.5'; md.style.pointerEvents = 'none'; md.style.filter = 'grayscale(1)';
+  }
+}
+// 共通ローダ：files配列をfileData[key]へ読み込み、完了後onDoneを呼ぶ
+function loadFilesInto(key, files, onDone) {
+  if (!files.length) return;
+  // ver.20261003.01: 追加できないファイルは理由を表示して除外（以前は無言で読み込み待ちのまま止まることがあった）
+  var rejected = [];
+  files = files.filter(function(file){ var why = _uplCheckFile(file, true); if (why) { rejected.push(why); return false; } return true; });
+  if (!files.length) { _uplShowRejected(rejected); return; }
+  if (!fileData[key]) fileData[key] = [];
+  let loaded = 0;
+  function _done(){ loaded++; if (loaded === files.length) { _uplShowRejected(rejected); onDone(); } }
+  files.forEach(function(file){
+    const r = new FileReader();
+    r.onload = function(ev){
+      fileData[key].push({dataUrl:ev.target.result,name:file.name,mimeType:file.type,base64:ev.target.result.split(',')[1],isPdf:file.type==='application/pdf'});
+      _done();
+    };
+    r.onerror = function(){
+      rejected.push('「'+file.name+'」を読み込めませんでした（破損している・クラウド上にだけあり端末に保存されていない等）。端末に保存し直すか撮り直してから選んでください。');
+      _done();
+    };
+    r.readAsDataURL(file);
+  });
+}
+// change経由（クリック選択もドラッグ&ドロップも通る）で顔写真をゲート
+function gatedLoad(key, e, onDone) {
+  const files = Array.from(e.target.files);
+  e.target.value = '';
+  if (!files.length) return;
+  if (key === 'mugshot' && !mugshotConfirmed) {
+    showMugshotConfirm(function(){ mugshotConfirmed = true; loadFilesInto(key, files, onDone); });
+    return;
+  }
+  // ver.20261008.02: 合格証（技能）はチェック未確認ならドラッグ&ドロップ等も受け付けない
+  if (_sampleKey(key) === 'cert_skill' && !certSkillConfirmed) {
+    _flashCertSkillChk();
+    return;
+  }
+  loadFilesInto(key, files, onDone);
+}
+
+// ver.20260803.03: 課税・納税証明書の窓口案内カード（更新・変更でtax行が出るとき、その直前に表示）
+// 年度は6月切替で最新の令和年度を自動計算（課税証明書は毎年6月ごろ新年度分が発行）
+function _latestKazeiReiwa() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const greg = (m >= 6) ? y : (y - 1);
+  return greg - 2019; // 課税証明書の年度表記（例: 2026年6月以降 = 令和7年度）
+}
+// ver.20261113.01: 課税・納税証明書の質問カードも、上の言語ボタンに合わせて訳す（日本語はそのまま）
+//   役所の人に見せる「書類名（日本語）」と見出しは日本語のまま残し、その下に本人向けの訳を小さく付ける
+const TAX_I18N = {
+  en:{q:'Were you living in Japan on January 1, {Y}?',yes:'Yes',no:'No',noSub:'(Entered Japan in {Y} or later)',nn1:'Not needed if you entered Japan in {Y} or later.',nn2:'The 3 documents (tax certificate, tax payment certificate, withholding tax slip) are not required (the items below are greyed out).',hdr:'Show this screen (in Japanese) to the staff at the city office counter.',list:'(Income/tax certificate and tax payment certificate, 1 copy each)',where:'Get them at the city office of the city/ward/town where you lived on January 1, {Y}',n1:'If you have moved since then, request them by mail from the city office of your previous address (some offices accept online requests).',n2:'Bring: residence card',n3:'Fee: about 300 yen each',n4:'If you have a My Number Card, you may be able to get them at a convenience store.'},
+  vi:{q:'Vào ngày 1 tháng 1 năm {Y}, bạn có sống ở Nhật Bản không?',yes:'Có',no:'Không',noSub:'(Nhập cảnh từ năm {Y} trở đi)',nn1:'Nếu bạn nhập cảnh Nhật Bản từ năm {Y} trở đi thì không cần.',nn2:'Không cần nộp 3 giấy tờ: giấy chứng nhận thuế, giấy chứng nhận nộp thuế, phiếu khấu trừ thuế tại nguồn (các mục bên dưới đã chuyển sang màu xám).',hdr:'Hãy cho nhân viên tại quầy của tòa thị chính xem màn hình này (tiếng Nhật).',list:'(Giấy chứng nhận thu nhập/thuế và giấy chứng nhận nộp thuế, mỗi loại 1 bản)',where:'Lấy tại tòa thị chính nơi bạn sống vào ngày 1 tháng 1 năm {Y}',n1:'Nếu đã chuyển nhà sau đó, hãy xin gửi qua bưu điện từ tòa thị chính của địa chỉ cũ (một số nơi có thể làm trực tuyến).',n2:'Mang theo: thẻ cư trú',n3:'Lệ phí: khoảng 300 yên mỗi loại',n4:'Nếu có thẻ My Number, có thể lấy tại cửa hàng tiện lợi.'},
+  id:{q:'Apakah Anda tinggal di Jepang pada tanggal 1 Januari {Y}?',yes:'Ya',no:'Tidak',noSub:'(Masuk Jepang tahun {Y} atau setelahnya)',nn1:'Tidak diperlukan jika Anda masuk Jepang tahun {Y} atau setelahnya.',nn2:'3 dokumen (surat keterangan pajak, bukti pembayaran pajak, slip pemotongan pajak) tidak perlu diserahkan (item di bawah menjadi abu-abu).',hdr:'Tunjukkan layar ini (bahasa Jepang) kepada petugas di loket kantor kota.',list:'(Surat keterangan penghasilan/pajak dan bukti pembayaran pajak, masing-masing 1 lembar)',where:'Ambil di kantor kota/kecamatan tempat Anda tinggal pada tanggal 1 Januari {Y}',n1:'Jika sudah pindah sejak itu, mintalah lewat pos ke kantor kota alamat lama (sebagian bisa online).',n2:'Bawa: kartu izin tinggal (zairyu card)',n3:'Biaya: sekitar 300 yen per dokumen',n4:'Jika punya Kartu My Number, mungkin bisa dicetak di minimarket (konbini).'},
+  my:{q:'{Y} ခုနှစ် ဇန်နဝါရီ ၁ ရက်နေ့တွင် ဂျပန်၌ နေထိုင်ခဲ့ပါသလား။',yes:'ဟုတ်ကဲ့',no:'မဟုတ်ပါ',noSub:'({Y} ခုနှစ် နောက်ပိုင်း ဂျပန်သို့ ဝင်ရောက်)',nn1:'{Y} ခုနှစ် နောက်ပိုင်း ဂျပန်သို့ ဝင်ရောက်သူများ မလိုအပ်ပါ။',nn2:'အခွန်လက်မှတ်၊ အခွန်ပေးဆောင်ပြီးကြောင်း လက်မှတ်၊ အခွန်ဖြတ်တောက်စာရွက် ၃ မျိုး တင်ရန် မလိုပါ (အောက်ပါ အချက်များ မီးခိုးရောင် ဖြစ်နေပါသည်)။',hdr:'ဤမျက်နှာပြင် (ဂျပန်ဘာသာ) ကို မြို့နယ်ရုံး ကောင်တာရှိ ဝန်ထမ်းအား ပြပါ။',list:'(ဝင်ငွေ/အခွန် လက်မှတ်နှင့် အခွန်ပေးဆောင်ပြီးကြောင်း လက်မှတ်၊ တစ်မျိုးလျှင် ၁ စောင်)',where:'{Y} ခုနှစ် ဇန်နဝါရီ ၁ ရက်နေ့တွင် နေထိုင်ခဲ့သော မြို့နယ်ရုံး၌ ရယူပါ',n1:'ထို့နောက် အိမ်ပြောင်းခဲ့ပါက ယခင်လိပ်စာ၏ ရုံးသို့ စာတိုက်မှ တောင်းယူပါ (အချို့ အွန်လိုင်းဖြင့် ရနိုင်)။',n2:'ယူလာရန်: နေထိုင်ခွင့်ကတ် (ဇိုင်ရူးကတ်)',n3:'ကြေး: တစ်စောင်လျှင် ယန်း ၃၀၀ ခန့်',n4:'My Number ကတ် ရှိပါက convenience store တွင် ထုတ်ယူနိုင်ပါသည်။'},
+  ko:{q:'{Y}년 1월 1일에 일본에 살고 있었습니까?',yes:'예',no:'아니요',noSub:'({Y}년 이후 입국)',nn1:'{Y}년 이후에 입국한 분은 필요 없습니다.',nn2:'과세증명서·납세증명서·원천징수표 3가지는 제출할 필요가 없습니다(아래 항목은 회색으로 표시됩니다).',hdr:'이 화면(일본어)을 시청·구청 창구 직원에게 보여 주세요.',list:'(소득·과세증명서, 납세증명서 각 1통)',where:'{Y}년 1월 1일에 살던 시·구·정·촌의 관공서에서 발급',n1:'그 후 이사한 경우에는 이전 주소의 관공서에 우편으로 신청하세요(일부 온라인 가능).',n2:'준비물: 재류카드',n3:'수수료: 각 300엔 정도',n4:'마이넘버카드가 있으면 편의점에서 발급할 수 있는 경우도 있습니다.'},
+  ne:{q:'{Y} जनवरी १ मा तपाईं जापानमा बस्नुहुन्थ्यो?',yes:'हो',no:'होइन',noSub:'({Y} वा त्यसपछि जापान आएको)',nn1:'{Y} वा त्यसपछि जापान आउनुभएको भए आवश्यक छैन।',nn2:'कर प्रमाणपत्र, कर भुक्तानी प्रमाणपत्र र स्रोत कर कट्टी स्लिप — यी ३ वटा बुझाउनु पर्दैन (तलका वस्तुहरू खैरो देखिन्छन्)।',hdr:'यो स्क्रिन (जापानी भाषामा) नगरपालिका कार्यालयको काउन्टरमा कर्मचारीलाई देखाउनुहोस्।',list:'(आय/कर प्रमाणपत्र र कर भुक्तानी प्रमाणपत्र, प्रत्येक १ प्रति)',where:'{Y} जनवरी १ मा बसेको नगरपालिकाको कार्यालयबाट लिनुहोस्',n1:'त्यसपछि बसाइँ सर्नुभएको भए, पुरानो ठेगानाको कार्यालयबाट हुलाकमार्फत मगाउनुहोस् (केही ठाउँमा अनलाइन पनि)।',n2:'लैजाने: रेसिडेन्स कार्ड (जाइर्यु कार्ड)',n3:'शुल्क: प्रत्येक करिब ३०० येन',n4:'माइ नम्बर कार्ड भए कन्भिनियन्स स्टोरबाट पनि लिन सकिन्छ।'},
+  zh:{q:'{Y}年1月1日您是否住在日本？',yes:'是',no:'否',noSub:'（{Y}年以后入境）',nn1:'{Y}年以后入境的人不需要。',nn2:'课税证明书、纳税证明书、源泉征收票这3份不需要提交（下面的项目已变为灰色）。',hdr:'请把这个画面（日语）给市区町村政府窗口的工作人员看。',list:'（所得・课税证明书、纳税证明书 各1份）',where:'在{Y}年1月1日居住的市区町村政府办理',n1:'如果之后搬家了，请向原住址的政府邮寄申请（部分地区可在线办理）。',n2:'携带：在留卡',n3:'手续费：每份约300日元',n4:'如有个人编号卡（My Number卡），有时可在便利店领取。'},
+  th:{q:'วันที่ 1 มกราคม {Y} คุณอาศัยอยู่ในญี่ปุ่นหรือไม่?',yes:'ใช่',no:'ไม่ใช่',noSub:'(เข้าประเทศญี่ปุ่นตั้งแต่ปี {Y} เป็นต้นไป)',nn1:'ไม่จำเป็นสำหรับผู้ที่เข้าประเทศญี่ปุ่นตั้งแต่ปี {Y} เป็นต้นไป',nn2:'ไม่ต้องส่งเอกสาร 3 อย่าง (หนังสือรับรองภาษี หนังสือรับรองการชำระภาษี ใบหักภาษี ณ ที่จ่าย) (รายการด้านล่างเป็นสีเทา)',hdr:'กรุณาแสดงหน้าจอนี้ (ภาษาญี่ปุ่น) ให้เจ้าหน้าที่ที่เคาน์เตอร์สำนักงานเทศบาลดู',list:'(หนังสือรับรองรายได้/ภาษี และหนังสือรับรองการชำระภาษี อย่างละ 1 ฉบับ)',where:'ขอได้ที่สำนักงานเทศบาลของเมืองที่คุณอาศัยอยู่ในวันที่ 1 มกราคม {Y}',n1:'หากย้ายบ้านหลังจากนั้น ให้ขอทางไปรษณีย์จากสำนักงานเทศบาลของที่อยู่เดิม (บางแห่งทำออนไลน์ได้)',n2:'สิ่งที่ต้องนำไป: บัตรไซริวการ์ด',n3:'ค่าธรรมเนียม: ประมาณฉบับละ 300 เยน',n4:'หากมีบัตรมายนัมเบอร์ อาจขอได้ที่ร้านสะดวกซื้อ'},
+  km:{q:'នៅថ្ងៃទី 1 ខែមករា ឆ្នាំ {Y} តើអ្នករស់នៅប្រទេសជប៉ុនឬទេ?',yes:'បាទ/ចាស',no:'ទេ',noSub:'(ចូលប្រទេសជប៉ុនចាប់ពីឆ្នាំ {Y})',nn1:'មិនចាំបាច់ទេ ប្រសិនបើអ្នកចូលប្រទេសជប៉ុនចាប់ពីឆ្នាំ {Y}។',nn2:'មិនចាំបាច់ដាក់ឯកសារ 3 (លិខិតបញ្ជាក់ពន្ធ លិខិតបញ្ជាក់ការបង់ពន្ធ ប័ណ្ណកាត់ពន្ធ) ទេ (ធាតុខាងក្រោមប្រែជាពណ៌ប្រផេះ)។',hdr:'សូមបង្ហាញអេក្រង់នេះ (ភាសាជប៉ុន) ដល់បុគ្គលិកនៅបញ្ជរសាលាក្រុង។',list:'(លិខិតបញ្ជាក់ប្រាក់ចំណូល/ពន្ធ និងលិខិតបញ្ជាក់ការបង់ពន្ធ មួយៗ 1 ច្បាប់)',where:'ទទួលនៅសាលាក្រុងនៃទីកន្លែងដែលអ្នករស់នៅថ្ងៃទី 1 ខែមករា ឆ្នាំ {Y}',n1:'ប្រសិនបើបានផ្លាស់ទីលំនៅបន្ទាប់ពីនោះ សូមស្នើសុំតាមប្រៃសណីយ៍ពីសាលាក្រុងនៃអាសយដ្ឋានចាស់ (ខ្លះអាចធ្វើតាមអនឡាញ)។',n2:'យកមកជាមួយ៖ ប័ណ្ណស្នាក់នៅ (Zairyu Card)',n3:'ថ្លៃសេវា៖ ប្រហែល 300 យ៉េន ក្នុងមួយច្បាប់',n4:'ប្រសិនបើមានប័ណ្ណ My Number អាចទទួលបាននៅហាងលក់ទំនិញ (convenience store)។'},
+  mn:{q:'{Y} оны 1-р сарын 1-нд та Японд амьдарч байсан уу?',yes:'Тийм',no:'Үгүй',noSub:'({Y} оноос хойш Японд ирсэн)',nn1:'{Y} оноос хойш Японд ирсэн бол шаардлагагүй.',nn2:'Татварын тодорхойлолт, татвар төлсөн тодорхойлолт, суутгалын хуудас гэсэн 3 бичгийг өгөх шаардлагагүй (доорх зүйлс саарал болсон).',hdr:'Энэ дэлгэцийг (япон хэлээр) хотын захиргааны цонхны ажилтанд үзүүлнэ үү.',list:'(Орлого/татварын тодорхойлолт, татвар төлсөн тодорхойлолт тус бүр 1 хувь)',where:'{Y} оны 1-р сарын 1-нд амьдарч байсан хот/дүүргийн захиргаанаас авна',n1:'Түүнээс хойш нүүсэн бол өмнөх хаягийн захиргаанаас шуудангаар захиална уу (зарим нь онлайнаар боломжтой).',n2:'Авчрах зүйл: оршин суух үнэмлэх (Zairyu card)',n3:'Хураамж: тус бүр ойролцоогоор 300 иен',n4:'My Number карттай бол дэлгүүрээс (convenience store) авах боломжтой.'},
+  si:{q:'{Y} ජනවාරි 1 වන දින ඔබ ජපානයේ ජීවත් වුණාද?',yes:'ඔව්',no:'නැත',noSub:'({Y} හෝ ඉන් පසු ජපානයට පැමිණි)',nn1:'{Y} හෝ ඉන් පසු ජපානයට පැමිණියේ නම් අවශ්‍ය නැත.',nn2:'බදු සහතිකය, බදු ගෙවීම් සහතිකය සහ ප්‍රභවයේදී අඩු කළ බදු පත්‍රිකාව යන ලේඛන 3 ඉදිරිපත් කිරීම අවශ්‍ය නැත (පහත අයිතම අළු පැහැයෙන් පෙන්වයි).',hdr:'මෙම තිරය (ජපන් භාෂාවෙන්) නගර කාර්යාලයේ කවුළුවේ සේවකයාට පෙන්වන්න.',list:'(ආදායම්/බදු සහතිකය සහ බදු ගෙවීම් සහතිකය, එක් එක් පිටපත් 1)',where:'{Y} ජනවාරි 1 වන දින ඔබ ජීවත් වූ නගරයේ කාර්යාලයෙන් ලබා ගන්න',n1:'ඉන් පසු පදිංචිය වෙනස් කළේ නම්, පැරණි ලිපිනයේ කාර්යාලයෙන් තැපෑලෙන් ඉල්ලා ගන්න (සමහර ස්ථාන ඔන්ලයින්).',n2:'රැගෙන එන්න: පදිංචි කාඩ්පත (Zairyu card)',n3:'ගාස්තුව: එක් එකකට යෙන් 300 පමණ',n4:'My Number කාඩ්පතක් ඇත්නම් convenience store එකකින් ලබා ගත හැකි විය හැක.'}
+};
+function _taxT(k){
+  if (typeof currentLang === 'undefined' || currentLang === 'ja') return null;
+  const t = TAX_I18N[currentLang] || TAX_I18N.en;
+  return String(t[k] || TAX_I18N.en[k] || '').replace(/\{Y\}/g, String(_latestKazeiReiwa() + 2018));
+}
+function _taxEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _taxNoticeCardHTML() {
+  const r = _latestKazeiReiwa();
+  const refYear = r + 2018; // 令和r年度の賦課期日 = (r+2018)年1月1日（令和7年度→2025年）
+  return '' +
+    '<div class="tax-notice-card" style="margin:0 0 12px;border-radius:12px;overflow:hidden;border:1px solid #d5e3e1;box-shadow:0 1px 3px rgba(0,0,0,.06);">' +
+      '<div style="background:#14807a;color:#fff;font-weight:800;font-size:14px;padding:11px 14px;">役所の窓口でこの画面をお見せください' +
+        (_taxT('hdr') ? '<div style="font-weight:600;font-size:12px;margin-top:4px;opacity:.95;">' + _taxEsc(_taxT('hdr')) + '</div>' : '') + '</div>' +
+      '<div style="background:#fff;padding:14px;">' +
+        '<div style="font-size:14px;font-weight:700;color:#111827;line-height:1.9;">' +
+          '・令和' + r + '年度　所得・課税証明書　1通<br>' +
+          '・令和' + r + '年度　納税証明書（市区町村民税）　1通' +
+        '</div>' +
+        (_taxT('list') ? '<div style="font-size:12px;color:#475569;margin-top:2px;line-height:1.6;">' + _taxEsc(_taxT('list')) + '</div>' : '') +
+        '<div style="margin-top:12px;background:#fdf7ec;border:1px solid #f0e2c4;border-radius:8px;padding:9px 11px;font-size:11.5px;color:#8a6d3b;line-height:1.7;">' +
+          (_taxT('where')
+            ? '<strong style="color:#7a5a1e;font-size:13.5px;">' + _taxEsc(_taxT('where')) + '</strong><br>' +
+              '※ ' + _taxEsc(_taxT('n1')) + '<br>※ ' + _taxEsc(_taxT('n2')) + '<br>※ ' + _taxEsc(_taxT('n3')) + '<br>※ ' + _taxEsc(_taxT('n4'))
+            : '<strong style="color:#7a5a1e;font-size:13.5px;">' + refYear + '年1月1日に住んでいた市区町村の役所で取得</strong><br>' +
+              '※ そこから引っ越した場合は、前の住所の役所へ郵送で取り寄せてください（一部オンライン対応あり）<br>' +
+              '※ もちもの　在留カード<br>' +
+              '※ 手数料 各300円程度<br>' +
+              '※ マイナンバーカードがあればコンビニで発行できる場合もあります') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+// ver.20260803.07: 税証明書グループ先頭の質問（プランA）。「はい/いいえ」で不要3点をグレーアウト
+let taxNeeded = null; // null=未回答（必要扱い）, true=必要, false=不要
+function _setTaxNeeded(v) { taxNeeded = v; buildFields(); updateSubmitBtn(); }
+// ver.20261102.01: 「いいえ（○年以降に入国）」の回答だけでも送信できるように。案シスには「不要」の通知（理由つき）で届ける
+function _taxAnsKey() { return 'ofusa_tax_answer_' + (CASE_ID || ''); }
+function _taxAnswerSent() { try { return localStorage.getItem(_taxAnsKey()) === 'no'; } catch(e) { return false; } }
+function _taxAnswerPending() { return taxNeeded === false && !!CASE_ID && !_taxAnswerSent(); }
+async function _sendTaxAnswer() {
+  if (!_taxAnswerPending()) return true;
+  const refYear = _latestKazeiReiwa() + 2018;
+  const r = await _uplRpc('upload_notify', { p_payload: {
+    case_id: CASE_ID, folder_id: FOLDER_ID || '', file_count: 0,
+    file_names: '課税証明書・納税証明書・源泉徴収票は不要（' + refYear + '年以降に入国）',
+    doc_label: '不要', drive_url: null,
+    doc_note: refYear + '年1月1日に日本に住んでいなかった（' + refYear + '年以降に入国）と回答。課税証明書・納税証明書・源泉徴収票の3点は提出不要'
+  } });
+  if (!r || !r.ok) throw new Error('HTTP ' + (r ? r.status : ''));
+  try { localStorage.setItem(_taxAnsKey(), 'no'); } catch(e) {}
+  return true;
+}
+function _taxQuestionHTML() {
+  const refYear = _latestKazeiReiwa() + 2018;
+  const yesActive = (taxNeeded === true);
+  const noActive  = (taxNeeded === false);
+  const btn = function(active, bg, brd, col){ return 'flex:1;padding:10px 8px;border-radius:9px;border:2px solid ' + (active?brd:'#e2e8f0') + ';background:' + (active?bg:'#fff') + ';color:' + (active?col:'#475569') + ';font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;line-height:1.4;'; };
+  return '' +
+    '<div style="margin:0 0 12px;">' +
+      '<div style="font-size:13.5px;font-weight:800;color:#0f2040;margin-bottom:8px;line-height:1.6;">' + (_taxT('q') ? _taxEsc(_taxT('q')) : refYear + '年1月1日、日本に住んでいましたか？') + '</div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<button type="button" onclick="_setTaxNeeded(true)" style="' + btn(yesActive,'#ecfdf5','#16a34a','#166534') + '">' + (_taxT('yes') ? _taxEsc(_taxT('yes')) : 'はい') + '</button>' +
+        '<button type="button" onclick="_setTaxNeeded(false)" style="' + btn(noActive,'#eff6ff','#2563eb','#1e40af') + '">' + (_taxT('no') ? _taxEsc(_taxT('no')) : 'いいえ') + '<br><span style="font-weight:600;font-size:11px;">' + (_taxT('noSub') ? _taxEsc(_taxT('noSub')) : '（' + refYear + '年以降に入国）') + '</span></button>' +
+      '</div>' +
+    '</div>';
+}
+function _taxNotNeededNoteHTML() {
+  const refYear = _latestKazeiReiwa() + 2018;
+  return '' +
+    '<div style="margin:0 0 12px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:12px 14px;font-size:12.5px;color:#334155;line-height:1.7;">' +
+      '<span style="font-weight:800;color:#0f2040;">' + (_taxT('nn1') ? _taxEsc(_taxT('nn1')) : refYear + '年以降に入国された方は不要です。') + '</span><br>' +
+      (_taxT('nn2') ? _taxEsc(_taxT('nn2')) : '課税証明書・納税証明書・源泉徴収票の3点は提出不要です（下の項目はグレーになっています）。') +
+    '</div>';
+}
+function _jaLabelOf(key) {
+  if (USE_NEW_DOCS) return DOC_LABELS_JA[key] || '';
+  return (LANGS.ja && LANGS.ja.docs && LANGS.ja.docs[key]) || key;
+}
+
+// ver.20260831: 送信済み書類の「確認中」表示ヘルパー
+//   送信後にリンクを閉じて再度開くと、この画面で選んだファイルはメモリから消え「未選択」に戻る。
+//   案シスの提出済み(DOC_DONE)は担当者確認まで反映されないため、その間の空白を localStorage で埋める。
+function _reviewingLsKey(){ return 'ofusa_upload_submitted_' + (typeof CASE_ID !== 'undefined' ? CASE_ID : ''); }
+function _reviewingMap(){
+  try { return JSON.parse(localStorage.getItem(_reviewingLsKey()) || '{}') || {}; } catch(e){ return {}; }
+}
+function _isReviewingKey(key){
+  // 既に案シスで提出済み確定(DOC_DONE)なら、そちらの「✓提出済み」を優先し確認中は出さない
+  if (typeof DOC_DONE !== 'undefined' && DOC_DONE && DOC_DONE[key]) return false;
+  var m = _reviewingMap();
+  return !!m[key];
+}
+function _reviewingLabel(){
+  var labels = {
+    ja:'⏳ 確認中', en:'⏳ Under review', vi:'⏳ Đang kiểm tra', id:'⏳ Sedang diperiksa',
+    my:'⏳ စစ်ဆေးဆဲ', ko:'⏳ 확인 중', ne:'⏳ जाँच हुँदै', zh:'⏳ 确认中',
+    th:'⏳ กำลังตรวจสอบ', km:'⏳ កំពុងពិនិត្យ', mn:'⏳ Шалгаж байна', si:'⏳ පරීක්ෂා වෙමින්'
+  };
+  return labels[(typeof currentLang!=='undefined'?currentLang:'ja')] || labels.en;
+}
+// 送信直後などに、DOMのステータス表示を「確認中」へ更新する
+function _applyReviewingBadges(){
+  try {
+    var nodes = document.querySelectorAll('.field-status[data-dockey]');
+    nodes.forEach(function(st){
+      var key = st.getAttribute('data-dockey');
+      if (!key) return;
+      // その項目に今ファイルが入っている(=選択済み)なら触らない
+      var hasNow = (typeof fileData !== 'undefined' && fileData[key] && fileData[key].length);
+      if (hasNow) return;
+      if (_isReviewingKey(key)) {
+        st.className = 'field-status reviewing';
+        st.textContent = _reviewingLabel();
+        st.style.color = '#b45309';
+      }
+    });
+  } catch(e){ console.warn('applyReviewingBadges err:', e); }
+}
+
+function buildFields() {
+  const L = LANGS[currentLang];
+  fieldsList.innerHTML = '';
+  let firstEmptyOpened = false;
+  // ver.20260525.01: 新ロジックでは DOC_REQUIRED、旧ロジックでは pattern
+  const pattern = (!USE_NEW_DOCS && APP_TYPE) ? getDocPattern() : null;
+  let taxGroupEl = null;
+  DOC_KEYS.forEach(key => {
+    // ver.20260803.07: 課税/納税を枠で囲み、枠先頭に質問＋案内。taxNeeded===falseで税3点をグレーアウト
+    const _jaL = _jaLabelOf(key);
+    const _isTax = false;   // 追完専用: 税の質問カードは出さない（入管が求めているため必ず出す）
+    const _isWithholding = false;
+    const _greyNotNeeded = (taxNeeded === false) && (_isTax || _isWithholding);
+    let parentEl = fieldsList;
+    if (_isTax) {
+      if (!taxGroupEl) {
+        taxGroupEl = document.createElement('div');
+        taxGroupEl.className = 'tax-group';
+        taxGroupEl.style.cssText = 'border:2px solid #14807a;border-radius:14px;padding:12px;margin:0 0 14px;background:#f4faf9;';
+        const _q = document.createElement('div');
+        _q.innerHTML = _taxQuestionHTML();
+        taxGroupEl.appendChild(_q.firstChild);
+        const _wrap = document.createElement('div');
+        _wrap.innerHTML = (taxNeeded === false) ? _taxNotNeededNoteHTML() : _taxNoticeCardHTML();
+        taxGroupEl.appendChild(_wrap.firstChild);
+        fieldsList.appendChild(taxGroupEl);
+      }
+      parentEl = taxGroupEl;
+    }
+    const hasFiles = fileData[key] && fileData[key].length > 0;
+    const isRequired = USE_NEW_DOCS ? !!DOC_REQUIRED[key] : (pattern && pattern[key] === 'required');
+    const row = document.createElement('div');
+    row.className = 'field-row' + (hasFiles ? ' has-file' : '');
+    row.dataset.key = key;
+    const header = document.createElement('div');
+    header.className = 'field-header';
+    const label = document.createElement('span');
+    label.className = 'field-label';
+    // ver.20260525.01: 新ロジックではDOC_LABELS_JA経由で日本語ラベル取得→翻訳辞書で多言語化
+    // ver.20260525.22: 日本語表示時はふりがな(ruby)付きHTMLを使用
+    let labelText;
+    let labelIsHtml = false;
+    if (USE_NEW_DOCS) {
+      const ja = DOC_LABELS_JA[key] || key;
+      const tr = DOC_TRANSLATIONS[ja];
+      if (currentLang === 'ja') {
+        // 日本語：ふりがな(ruby)付きがあればそれを、なければそのまま
+        if (tr && tr.ruby) {
+          labelText = tr.ruby;
+          labelIsHtml = true;
+        } else {
+          labelText = ja;
+        }
+      } else {
+        labelText = (tr && tr[currentLang]) ? tr[currentLang] : ja;
+      }
+    } else {
+      labelText = (L.docs && L.docs[key]) || key;
+    }
+    // ruby タグ等の HTML を含む可能性があるため、innerHTML を使う（テキストは esc 済み or 信頼できる）
+    if (isRequired) {
+      label.innerHTML = '<span style="color:#dc2626;font-size:11px;margin-right:3px;">必須</span>' + (labelIsHtml ? labelText : _escName(labelText));
+    } else {
+      label.innerHTML = labelIsHtml ? labelText : _escName(labelText);
+    }
+    // ver.20260616.03: 専門級は「技能実習をしていた方のみ」の注釈を表示
+    var _jaLbl = (typeof DOC_LABELS_JA !== 'undefined' && DOC_LABELS_JA && DOC_LABELS_JA[key]) ? DOC_LABELS_JA[key] : key;
+    if (String(_jaLbl).indexOf('専門級') >= 0) {
+      const noteLabels = {
+        ja: '※ 技能実習をしていた方のみ',
+        en: '* Only for those who did Technical Intern Training (Ginou Jisshu)',
+        vi: '* Chỉ dành cho người từng thực tập kỹ năng (Ginou Jisshu)',
+        id: '* Hanya untuk yang pernah ikut Pemagangan Teknis (Ginou Jisshu)',
+        my: '* နည်းပညာအလုပ်သင် (Ginou Jisshu) လုပ်ခဲ့ဖူးသူများသာ',
+        ko: '* 기능실습을 한 분만 (Ginou Jisshu)',
+        ne: '* प्राविधिक प्रशिक्षण (Ginou Jisshu) गरेकाहरूका लागि मात्र',
+        zh: '※ 仅限曾参加技能实习（技能実習）者',
+        th: '* เฉพาะผู้ที่เคยฝึกงานทักษะ (Ginou Jisshu) เท่านั้น',
+        km: '* សម្រាប់តែអ្នកធ្លាប់កម្មសិក្សាជំនាញ (Ginou Jisshu) ប៉ុណ្ណោះ',
+        mn: '* Зөвхөн дадлага хийсэн хүмүүст (Ginou Jisshu)',
+        si: '* තාක්ෂණික පුහුණුව (Ginou Jisshu) කළ අයට පමණි'
+      };
+      const _nt = noteLabels[currentLang] || noteLabels.en;
+      const noteEl = document.createElement('div');
+      noteEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:700;margin-top:3px;line-height:1.6;';
+      noteEl.innerHTML = (currentLang === 'ja') ? fzExp(_nt) : _escName(_nt);
+      label.appendChild(noteEl);
+    }
+    // ver.20260821: 推薦票の企業対応(suisen=other)のとき、住民票に取得方法の注記を出す
+    if (IS_SUISEN_OTHER && String(_jaLbl).indexOf('住民票') >= 0) {
+      const _juminNotes = {
+        ja: '住民票の原本のコピー（※3か月以内に発行したもの）\n→ 国籍・在留資格・在留カード番号・在留期限が記載されているもの\n→ 市役所で取得。マイナンバーカードがあればコンビニでも発行できます',
+        en: 'A copy of the original residence certificate (issued within the last 3 months)\n→ Must show nationality, status of residence, residence card number, and period of stay\n→ Obtain at city hall. Also available at convenience stores if you have a My Number card',
+        vi: 'Bản sao giấy chứng nhận cư trú gốc (cấp trong vòng 3 tháng)\n→ Phải ghi quốc tịch, tư cách lưu trú, số thẻ cư trú và thời hạn lưu trú\n→ Lấy tại tòa thị chính. Nếu có thẻ My Number có thể lấy ở cửa hàng tiện lợi',
+        id: 'Salinan surat keterangan domisili asli (diterbitkan dalam 3 bulan terakhir)\n→ Harus mencantumkan kewarganegaraan, status tinggal, nomor kartu izin tinggal, dan masa tinggal\n→ Diperoleh di kantor kota. Bisa juga di minimarket jika punya kartu My Number',
+        my: 'နေထိုင်ခွင့်လက်မှတ် မူရင်းမိတ္တူ (၃ လအတွင်း ထုတ်ပေးထားသည့်)\n→ နိုင်ငံသား၊ နေထိုင်ခွင့်၊ ကတ်နံပါတ်နှင့် သက်တမ်း ပါဝင်ရမည်\n→ မြို့တော်ခန်းမတွင် ရယူပါ။ My Number ကတ်ရှိပါက convenience store တွင်လည်း ရနိုင်သည်',
+        ko: '주민표 원본 사본 (※3개월 이내 발행)\n→ 국적・재류자격・재류카드번호・재류기간이 기재된 것\n→ 시청에서 발급. 마이넘버카드가 있으면 편의점에서도 발급 가능',
+        ne: 'बसोबास प्रमाणपत्रको मूल प्रतिलिपि (३ महिनाभित्र जारी भएको)\n→ राष्ट्रियता, बसोबास स्थिति, कार्ड नम्बर र अवधि उल्लेख भएको\n→ नगरपालिकामा प्राप्त गर्नुहोस्। My Number कार्ड भए कन्भिनियन्स स्टोरमा पनि',
+        zh: '住民票原件的复印件（※3个月以内签发）\n→ 需记载国籍、在留资格、在留卡号、在留期限\n→ 在市役所办理。有My Number卡也可在便利店打印',
+        th: 'สำเนาทะเบียนบ้านฉบับจริง (ออกภายใน 3 เดือน)\n→ ต้องระบุสัญชาติ สถานะการพำนัก หมายเลขบัตร และระยะเวลาพำนัก\n→ ขอที่ศาลากลาง หากมีบัตร My Number ขอที่ร้านสะดวกซื้อได้',
+        km: 'ច្បាប់ចម្លងលិខិតបញ្ជាក់ទីលំនៅដើម (ចេញក្នុងរយៈពេល ៣ ខែ)\n→ ត្រូវមានសញ្ជាតិ ស្ថានភាពស្នាក់នៅ លេខកាត និងកាលកំណត់\n→ យកនៅសាលាក្រុង។ បើមានកាត My Number អាចយកនៅហាងទំនិញ',
+        mn: 'Оршин суугчийн гэрчилгээний эх хувийн хуулбар (3 сарын дотор олгосон)\n→ Иргэншил, оршин суух эрх, картын дугаар, хугацаа бичигдсэн байх\n→ Хотын захиргаанаас авна. My Number карттай бол дэлгүүрээс ч авч болно',
+        si: 'පදිංචිකරුවා සහතිකයේ මුල් පිටපතක් (මාස 3ක් තුළ නිකුත් කළ)\n→ ජාතිකත්වය, පදිංචි තත්ත්වය, කාඩ් අංකය සහ කාලය සඳහන් විය යුතුය\n→ නගර සභාවෙන් ලබාගන්න. My Number කාඩ්පතක් ඇත්නම් වෙළඳසැලකින්ද'
+      };
+      const _jn = _juminNotes[currentLang] || _juminNotes.en;
+      const jnEl = document.createElement('div');
+      jnEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:700;margin-top:3px;line-height:1.6;white-space:pre-line;';
+      jnEl.innerHTML = (currentLang === 'ja') ? fzExp(_jn) : _escName(_jn);
+      label.appendChild(jnEl);
+    }
+    // ver.20260824: 家族滞在の書類注記（身分関係を証する文書・扶養者の収入証明書類）
+    if (typeof DOC_KAZOKU_HINTS !== 'undefined' && DOC_KAZOKU_HINTS[_jaLbl]) {
+      const _kh = DOC_KAZOKU_HINTS[_jaLbl];
+      const _khText = _kh[currentLang] || _kh.ja;
+      const khEl = document.createElement('div');
+      khEl.style.cssText = 'font-size:11px;color:#b45309;font-weight:700;margin-top:3px;line-height:1.6;white-space:pre-line;';
+      khEl.innerHTML = (currentLang === 'ja') ? fzExp(_khText) : _escName(_khText);
+      label.appendChild(khEl);
+    }
+    if (typeof _tkInfoHtml === 'function') { const _ti = _tkInfoHtml(key); if (_ti) { const _te = document.createElement('div'); _te.innerHTML = _ti; label.appendChild(_te.firstChild); } }
+    if (DOC_DONE && DOC_DONE[key]) {
+      row.style.background = '#cbd5e1'; row.style.borderColor = '#94a3b8'; row.style.opacity = '0.7';
+      const _doneEl = document.createElement('span');
+      _doneEl.style.cssText = 'color:#16a34a;font-size:11px;font-weight:700;margin-left:4px;';
+      // ver.20260612.01: 「提出済み（再提出が必要な場合のみ）」を各言語に翻訳
+      const _doneLabels = {
+        ja: '✓ 提出済み（再提出が必要な場合のみ）',
+        en: '✓ Already submitted (only if re-submission is needed)',
+        vi: '✓ Đã nộp (chỉ nộp lại nếu cần)',
+        id: '✓ Sudah dikirim (hanya jika perlu kirim ulang)',
+        my: '✓ တင်ပြီး (ပြန်တင်ရန် လိုအပ်မှသာ)',
+        ko: '✓ 제출 완료 (재제출이 필요한 경우에만)',
+        ne: '✓ पेश गरिएको (पुनः पेश गर्न आवश्यक भएमा मात्र)',
+        zh: '✓ 已提交（仅在需要重新提交时）',
+        th: '✓ ส่งแล้ว (เฉพาะกรณีที่ต้องส่งใหม่)',
+        km: '✓ បានដាក់ស្នើ (តែពេលត្រូវដាក់ស្នើឡើងវិញ)',
+        mn: '✓ Илгээсэн (зөвхөн дахин илгээх шаардлагатай үед)',
+        si: '✓ ඉදිරිපත් කර ඇත (නැවත ඉදිරිපත් කිරීමට අවශ්‍ය නම් පමණි)'
+      };
+      _doneEl.textContent = _doneLabels[currentLang] || _doneLabels.en;
+      label.appendChild(_doneEl);
+    }
+    const status = document.createElement('span');
+    status.className = 'field-status' + (hasFiles ? ' ready' : '');
+    status.textContent = hasFiles ? L.selected : L.noFile;
+    status.setAttribute('data-dockey', key);
+    // ver.20260831: 既に送信済み(localStorage記録あり)かつ今この画面で未選択なら「確認中」を表示
+    if (!hasFiles && typeof _isReviewingKey === 'function' && _isReviewingKey(key)) {
+      status.className = 'field-status reviewing';
+      status.textContent = (typeof _reviewingLabel === 'function') ? _reviewingLabel() : '⏳ 確認中';
+      status.style.color = '#b45309';
+    }
+    const chevron = document.createElement('span');
+    chevron.className = 'chevron';
+    chevron.textContent = '▼';
+    header.appendChild(label); header.appendChild(status); header.appendChild(chevron);
+    header.addEventListener('click', () => row.classList.toggle('open'));
+    const body = document.createElement('div');
+    body.className = 'field-body';
+// ver.20260616: 「見本を見る」クリックを廃止し、取得方法（説明＋見本）を常時インライン表示
+    var __sk = _sampleKey(key);
+    if (__sk) {
+      const inlineHelp = buildSampleInline(__sk);
+      if (inlineHelp) body.appendChild(inlineHelp);
+    }
+    { const _fb = (typeof _tkFormsBox === 'function') ? _tkFormsBox(key) : null; if (_fb) body.appendChild(_fb); }
+    // ver.20261008.02: 合格証（技能）は「合格証である」ことをチェックで確認するまでアップロード不可
+    if (__sk === 'cert_skill') {
+      const _cw = document.createElement('label');
+      _cw.style.cssText = 'display:flex;align-items:flex-start;gap:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:11px 12px;margin-bottom:10px;cursor:pointer;font-size:13px;color:#7c2d12;line-height:1.6;font-weight:600;';
+      const _cb = document.createElement('input');
+      _cb.type = 'checkbox'; _cb.id = 'certSkillChk'; _cb.checked = certSkillConfirmed;
+      _cb.style.cssText = 'width:20px;height:20px;flex:0 0 auto;margin-top:1px;cursor:pointer;';
+      _cb.addEventListener('change', function(){
+        certSkillConfirmed = _cb.checked;
+        const _md = body.querySelector('.mini-drop');
+        if (_md) _applyCertSkillLock(_md);
+      });
+      const _sp = document.createElement('span');
+      _sp.textContent = CERT_SKILL_CONFIRM_LABEL[currentLang] || CERT_SKILL_CONFIRM_LABEL.en;
+      _cw.appendChild(_cb); _cw.appendChild(_sp);
+      body.appendChild(_cw);
+    }
+    if (hasFiles) {
+      fileData[key].forEach((fd, fi) => {
+        const pw = document.createElement('div');
+        pw.className = 'preview-wrap';
+        if (fd.isPdf) { const pi = document.createElement('div'); pi.style.cssText='padding:12px;background:#fef2f2;border-radius:8px;text-align:center;font-size:13px;color:#dc2626;font-weight:600;'; pi.textContent='📄 '+fd.name; pw.appendChild(pi); }
+        else { const img = document.createElement('img'); img.src = fd.dataUrl; pw.appendChild(img); }
+        const rb = document.createElement('button'); rb.className='remove-btn'; rb.textContent='×';
+        rb.addEventListener('click', () => { fileData[key].splice(fi,1); if(!fileData[key].length) delete fileData[key]; buildFields(); updateSubmitBtn(); });
+        pw.appendChild(rb); body.appendChild(pw);
+      });
+      const am = document.createElement('div'); am.className='mini-drop'; am.style.cssText='margin-top:4px;';
+      const ai = document.createElement('input'); ai.type='file'; ai.accept='image/*,image/heic,image/heif,application/pdf'; ai.multiple=true;
+      ai.addEventListener('change', e => { gatedLoad(key, e, function(){ buildFields(); updateSubmitBtn(); }); });
+      if (key === 'mugshot' || (DOC_LABELS_JA && DOC_LABELS_JA[key] === '顔写真')) attachMugshotGate(ai);
+      if (__sk === 'cert_skill') { attachCertSkillGate(ai); _applyCertSkillLock(am); }
+      const at2 = document.createElement('div'); at2.className='mini-drop-text'; at2.textContent='➕ 追加';
+      am.appendChild(ai); am.appendChild(at2); body.appendChild(am);
+    } else {
+      const mini = document.createElement('div'); mini.className='mini-drop';
+      const input = document.createElement('input'); input.type='file'; input.accept='image/*,image/heic,image/heif,application/pdf'; input.multiple=true;
+      input.addEventListener('change', e => { gatedLoad(key, e, function(){ buildFields(); updateSubmitBtn(); const idx=DOC_KEYS.indexOf(key); const nk=DOC_KEYS.slice(idx+1).find(k=>!fileData[k]||!fileData[k].length); if(nk){const nr=fieldsList.querySelector('[data-key="'+nk+'"]');if(nr)nr.classList.add('open');} }); });
+      if (key === 'mugshot' || (DOC_LABELS_JA && DOC_LABELS_JA[key] === '顔写真')) attachMugshotGate(input);
+      if (__sk === 'cert_skill') attachCertSkillGate(input);
+      const dt = document.createElement('div'); dt.className='mini-drop-text'; dt.textContent=L.tapToAdd;
+      const dh = document.createElement('div'); dh.className='mini-drop-hint'; dh.textContent=L.hint;
+      mini.appendChild(input); mini.appendChild(dt); mini.appendChild(dh); body.appendChild(mini);
+      if (__sk === 'cert_skill') _applyCertSkillLock(mini);
+      if (!firstEmptyOpened) { row.classList.add('open'); firstEmptyOpened=true; }
+    }
+    if (_greyNotNeeded) {
+      row.style.background = '#e2e8f0'; row.style.borderColor = '#94a3b8'; row.style.opacity = '0.6';
+      body.style.pointerEvents = 'none';
+      const _nn = document.createElement('span');
+      _nn.style.cssText = 'color:#64748b;font-size:11px;font-weight:700;margin-left:4px;';
+      _nn.textContent = '不要';
+      label.appendChild(_nn);
+    }
+    row.appendChild(header); row.appendChild(body); parentEl.appendChild(row);
+  });
+}
+function updateSubmitBtn() {
+  const L = LANGS[currentLang];
+  submitBtn.textContent = L.btnSubmit;
+  submitBtn.disabled = Object.keys(fileData).filter(k=>fileData[k]&&fileData[k].length>0).length===0 && !_taxAnswerPending();   // ver.20261102.01
+}
+
+
+// 追完専用：フォーマット（様式）のボタン。健康診断票には「受診者の申告書（別紙）」を、選んでいる言語のPDFで付ける
+const TK_1_3_LANGS = ['en','id','km','ko','mn','my','ne','si','th','tl','vi','zh'];
+const TK_FORM_TXT = { ja:'📥 フォーマット（印刷して使ってください）', en:'📥 Forms (please print and use)', vi:'📥 Mẫu (vui lòng in ra để dùng)', id:'📥 Formulir (silakan cetak)', zh:'📥 表格（请打印使用）', ko:'📥 양식 (인쇄해서 사용하세요)' };
+function _tkFormsFor(key){
+  var out = [];
+  var i = window._tkInfo && window._tkInfo[key];
+  var lbl = (typeof DOC_LABELS_JA !== 'undefined' && DOC_LABELS_JA && DOC_LABELS_JA[key]) || '';
+  if (/健康診断/.test(lbl)) {
+    var lg = TK_1_3_LANGS.indexOf(currentLang) >= 0 ? currentLang : 'en';
+    out.push({ label:'受診者の申告書（参考様式第1-3号別紙）', url:'https://ofusa2026.github.io/docs/pdf/1_3_' + lg + '.pdf' });
+  }
+  ((i && i.forms) || []).forEach(function(f){
+    if (f && f.url && /^(https:\/\/|forms\/)/.test(f.url) && !out.some(function(o){ return o.url === f.url; })) out.push({ label:String(f.label || 'フォーマット'), url:String(f.url) });
+  });
+  return out;
+}
+function _tkFormsBox(key){
+  var fs = _tkFormsFor(key); if (!fs.length) return null;
+  var box = document.createElement('div');
+  box.style.cssText = 'margin:0 0 10px;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;';
+  var h = document.createElement('div');
+  h.style.cssText = 'font-size:12px;font-weight:700;color:#1d4ed8;margin-bottom:6px;';
+  h.textContent = TK_FORM_TXT[currentLang] || TK_FORM_TXT.en;
+  box.appendChild(h);
+  fs.forEach(function(f){
+    var a = document.createElement('a');
+    a.href = f.url; a.target = '_blank'; a.rel = 'noopener';
+    a.style.cssText = 'display:block;margin-top:5px;padding:9px 12px;background:#fff;border:1.5px solid #93c5fd;border-radius:8px;color:#1d4ed8;font-size:13px;font-weight:700;text-decoration:none;';
+    a.textContent = '📄 ' + f.label;
+    a.addEventListener('click', function(e){ e.stopPropagation(); });
+    box.appendChild(a);
+  });
+  return box;
+}
+// ===== 追完専用：見出し・理由の表示 =====
+const TK_TXT = {
+  title: { ja:'追加の書類のアップロード', en:'Upload additional documents', vi:'Tải lên tài liệu bổ sung', id:'Unggah dokumen tambahan', my:'ထပ်ဆောင်းစာရွက်စာတမ်း တင်ရန်', ko:'추가 서류 업로드', ne:'थप कागजात अपलोड', zh:'上传补充文件', th:'อัปโหลดเอกสารเพิ่มเติม', km:'បង្ហោះឯកសារបន្ថែម', mn:'Нэмэлт бичиг баримт илгээх', si:'අමතර ලේඛන උඩුගත කරන්න' },
+  sub:   { ja:'入管から、追加の書類を出すように言われました。\n下の書類の写真をアップロードしてください。', en:'Immigration has asked for additional documents.\nPlease upload photos of the documents below.', vi:'Cục xuất nhập cảnh yêu cầu nộp thêm tài liệu.\nVui lòng tải ảnh các tài liệu dưới đây.', id:'Imigrasi meminta dokumen tambahan.\nSilakan unggah foto dokumen di bawah ini.', ko:'출입국관리국에서 추가 서류 제출을 요청했습니다.\n아래 서류의 사진을 업로드해 주세요.', zh:'入管局要求提交补充文件。\n请上传以下文件的照片。' },
+  due:   { ja:'までにお願いします', en:'Please submit by ' },
+  redo:  { ja:'出し直し', en:'Re-submit' },
+  sign:  { ja:'署名する', en:'Sign' },
+  pay:   { ja:'払ってから証明を出す', en:'Pay, then submit proof' },
+  err:   { ja:'このURLでは書類を表示できません。お手数ですが、担当者に連絡してください。', en:'Documents cannot be shown with this URL. Please contact your staff.' },
+  done:  { ja:'この追加の書類は、すべて受け取りました。ありがとうございました。', en:'We have received all of these documents. Thank you.' }
+};
+function _tkT(k, code){ var o = TK_TXT[k] || {}; return o[code] || o.en || o.ja || ''; }
+function _tkDueDate(){
+  var d = window._tkMeta && window._tkMeta.deadline ? String(window._tkMeta.deadline).slice(0,10) : '';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return '';
+  var t = new Date(d + 'T00:00:00'); t.setDate(t.getDate() - 2);   // 入管の期限の2日前（案内の文と同じ）
+  var now = new Date(); now.setHours(0,0,0,0);
+  if(t < now) return '';
+  return t;
+}
+function _tkSubtitle(code){
+  var s = _tkT('sub', code);
+  var t = _tkDueDate();
+  if(t){
+    if(code === 'ja') s += '\n' + (t.getMonth()+1) + '月' + t.getDate() + '日' + TK_TXT.due.ja;
+    else s += '\n' + TK_TXT.due.en + t.getFullYear() + '/' + (t.getMonth()+1) + '/' + t.getDate();
+  }
+  return s;
+}
+function _tkShowErr(code){
+  var el = document.getElementById('tkErrBox');
+  var msg = '';
+  if(window._tkLoadErr) msg = _tkT('err', code);
+  else if(window._tkMeta && window._tkMeta.done) msg = _tkT('done', code);
+  else if(Array.isArray(DOCS_LIST) && !DOCS_LIST.length) msg = _tkT('err', code);
+  if(!msg){ if(el) el.remove(); return; }
+  if(!el){
+    el = document.createElement('div'); el.id = 'tkErrBox';
+    el.style.cssText = 'margin:0 0 14px;padding:14px 16px;border-radius:12px;background:#fff7ed;border:1.5px solid #fdba74;color:#9a3412;font-size:14px;font-weight:700;line-height:1.7;text-align:center;';
+    var fl = document.getElementById('fieldsList'); if(fl && fl.parentNode) fl.parentNode.insertBefore(el, fl);
+  }
+  el.textContent = msg;
+}
+// 書類名の下に出す：印（出し直し・署名・支払い）／年度・範囲／→ 理由／・注意点（理由の文は日本語のまま）
+function _tkInfoHtml(key){
+  var i = window._tkInfo && window._tkInfo[key]; if(!i) return '';
+  var e = function(x){ return _escName(String(x||'')); };
+  var h = '<div style="margin-top:5px;font-weight:400;line-height:1.65;">';
+  var tags = [];
+  if(i.sashi || i.kind === 'redo') tags.push('<span style="display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:99px;background:#fee2e2;color:#b91c1c;margin-right:4px;">' + e(_tkT('redo', currentLang)) + '</span>');
+  if(i.kind === 'sign') tags.push('<span style="display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:99px;background:#ede9fe;color:#6d28d9;margin-right:4px;">' + e(_tkT('sign', currentLang)) + '</span>');
+  if(i.kind === 'pay') tags.push('<span style="display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:99px;background:#fef3c7;color:#b45309;margin-right:4px;">' + e(_tkT('pay', currentLang)) + '</span>');
+  var ys = [i.year, i.scope].filter(Boolean).join('・');
+  if(ys) tags.push('<span style="display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:99px;background:#e0f2fe;color:#0369a1;margin-right:4px;">' + e(ys) + '</span>');
+  if(tags.length) h += '<div style="margin-bottom:3px;">' + tags.join('') + '</div>';
+  var n = String(i.sashi || i.note || '').trim();
+  if(n) h += '<div style="font-size:12.5px;color:#1e3a5f;">→ ' + e(n) + '</div>';
+  (i.tips || []).slice(0,2).forEach(function(tp){ tp = String(tp||'').trim(); if(tp) h += '<div style="font-size:12px;color:#b45309;">・' + e(tp) + '</div>'; });
+  h += '</div>';
+  return (h === '<div style="margin-top:5px;font-weight:400;line-height:1.65;"></div>') ? '' : h;
+}
+function setLang(code) {
+  if (!LANGS[code]) return;
+  currentLang = code;
+  const L = LANGS[code];
+  langBar.querySelectorAll('.lang-btn').forEach((b,i) => { b.classList.toggle('active', LANG_ORDER[i]===code); });
+  document.getElementById('ttlMain').textContent = (TK_TXT.title[code] || TK_TXT.title.en);
+  document.getElementById('ttlSub').textContent = _tkSubtitle(code);
+  _tkShowErr(code);
+  buildFields(); updateSubmitBtn();
+}
+// ver.20260525.34: DBキャッシュから書類リストを取得してから初期描画
+// ver.20260607.01: doc_check をライブ読みして done(取得済み staff / 不要 skip) を付与（再生成不要）
+function _applyLiveDoneFromDocCheck(){
+  return new Promise(function(resolve){
+    if(TSUIKAN_ID || !CASE_ID){ resolve(); return; }   // 追完専用: 申請前の書類チェックは見ない
+    _uplRpc('upload_doc_check_get', { p_case_id: CASE_ID })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(rows){
+      var doneSet = {};
+      (rows||[]).forEach(function(row){
+        var dk = row.doc_key || ''; var idx = dk.indexOf('::'); if(idx<0) return;
+        var prefix = dk.substring(0, idx); var name = dk.substring(idx+2);
+        var v = row.value; var truthy = (v!=null && v!=='' && v!=='false');
+        if((prefix==='staff' || prefix==='skip') && truthy){ doneSet[name] = true; }
+      });
+      // ver.20260611.03: 旧モード(DOCS_LIST無し)でもグレーアウトできるよう doneSet を保持
+      window._liveDoneSet = doneSet;
+      if(Array.isArray(DOCS_LIST) && DOCS_LIST.length){
+        DOCS_LIST.forEach(function(d){ if(d && d.l){ d.done = !!doneSet[d.l]; } });
+      }
+      resolve();
+    })
+    .catch(function(e){ console.warn('doc_check live fetch err:', e); resolve(); });
+  });
+}
+(async function _initDocsAndLang(){
+  try {
+    await _loadDocsFromCache();
+    await _applyLiveDoneFromDocCheck();
+    _initDocKeys();
+  } catch(e){ console.warn('_initDocsAndLang err:', e); }
+  setLang('ja');
+})();
+document.getElementById('verBadge').textContent = VERSION;
+
+// 名前確認モーダル処理
+function _escName(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function _showMainCard(applicantName){
+  if(applicantName){
+    const _en=_escName(applicantName);
+    const nb=document.getElementById('nameBanner');
+    const nbn=document.getElementById('nameBannerName');
+    if(nbn) nbn.innerHTML=_en;
+    if(nb) nb.style.display='block';
+  }
+  document.getElementById('mainCard').style.display='block';
+}
+function confirmName(isMatch){
+  const overlay=document.getElementById('nameConfirmOverlay');
+  if(overlay) overlay.style.display='none';
+  if(isMatch){
+    // 確認済みフラグをlocalStorageに保存（同案件で再表示防止）
+    try{ localStorage.setItem('ofusa_upload_name_confirmed_'+CASE_ID,'1'); }catch(e){}
+    _showMainCard(window._applicantName||'');
+  } else {
+    // 名前違いの連絡画面を表示
+    document.getElementById('nameMismatchScreen').style.display='block';
+  }
+}
+
+// case_idから申請者名を取得して名前確認モーダルを表示
+(async function _initNameConfirm(){
+  if(!CASE_ID){
+    // case_idがない場合は確認なしで表示
+    _showMainCard('');
+    return;
+  }
+  // 既に確認済みならスキップ
+  let _alreadyConfirmed=false;
+  try{ _alreadyConfirmed=!!localStorage.getItem('ofusa_upload_name_confirmed_'+CASE_ID); }catch(e){}
+  // Supabaseからcases.applicantを取得（nameパラメータが渡されていればそちらを優先）
+  let applicantName=APPLICANT_NAME || '';
+  if(!applicantName){
+    try{
+      const _res=await _uplRpc('upload_case_get',{ p_case_id: CASE_ID });
+      const _data=await _res.json();
+      if(_data && _data.applicant) applicantName=_data.applicant;
+    } catch(e){ console.warn('applicant取得失敗:',e); }
+  }
+  window._applicantName=applicantName;
+  if(applicantName && !_alreadyConfirmed){
+    document.getElementById('nameConfirmName').innerHTML=_escName(applicantName);
+    document.getElementById('nameConfirmOverlay').style.display='flex';
+  } else {
+    _showMainCard(applicantName);
+  }
+})();
+
+// ============================================================
+// 画像前処理：HEIC → JPEG変換 + 圧縮
+// ============================================================
+async function preprocessFile(fileBlob, fileName, mimeType) {
+  // PDFはそのまま返す
+  if (mimeType === 'application/pdf' || /\.pdf$/i.test(fileName)) {
+    return { blob: fileBlob, name: fileName, mimeType: 'application/pdf' };
+  }
+  
+  let workBlob = fileBlob;
+  let workName = fileName;
+  let workMime = mimeType || 'image/jpeg';
+  
+  // HEIC/HEIF判定（拡張子 or MIME or 両方）
+  const isHeic = /\.(heic|heif)$/i.test(fileName) || 
+                 mimeType === 'image/heic' || 
+                 mimeType === 'image/heif' ||
+                 mimeType === '';
+  
+  // HEIC → JPEG変換
+  if (isHeic && typeof heic2any !== 'undefined') {
+    try {
+      const converted = await heic2any({ blob: fileBlob, toType: 'image/jpeg', quality: 0.85 });
+      workBlob = Array.isArray(converted) ? converted[0] : converted;
+      workName = fileName.replace(/\.(heic|heif)$/i, '.jpg');
+      if (!/\.(jpg|jpeg)$/i.test(workName)) workName += '.jpg';
+      workMime = 'image/jpeg';
+      console.log('HEIC変換成功:', fileName, '→', workName);
+    } catch (e) {
+      console.warn('HEIC変換失敗（そのまま続行）:', fileName, e);
+    }
+  }
+  
+  // 画像圧縮（image系のみ）
+  if (workMime.startsWith('image/') && typeof imageCompression !== 'undefined') {
+    try {
+      const compressed = await imageCompression(workBlob, {
+        maxSizeMB: 1.5,
+        maxWidthOrHeight: 2000,
+        useWebWorker: true,
+        fileType: 'image/jpeg',
+        initialQuality: 0.8
+      });
+      workBlob = compressed;
+      workMime = 'image/jpeg';
+      if (!/\.(jpg|jpeg)$/i.test(workName)) {
+        workName = workName.replace(/\.[^.]+$/, '') + '.jpg';
+      }
+      console.log('圧縮成功:', fileName, '→', (compressed.size/1024).toFixed(0) + 'KB');
+    } catch (e) {
+      console.warn('圧縮失敗（元ファイルで続行）:', fileName, e);
+    }
+  }
+  
+  return { blob: workBlob, name: workName, mimeType: workMime };
+}
+
+// Blob → base64
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+// dataURL → Blob（既存fileDataがdataUrl形式のため）
+function dataUrlToBlob(dataUrl, mimeType) {
+  const arr = dataUrl.split(',');
+  const bstr = atob(arr[1]);
+  const u8 = new Uint8Array(bstr.length);
+  for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
+  return new Blob([u8], { type: mimeType || 'application/octet-stream' });
+}
+
+// ============================================================
+// 1ファイルずつ送信（直列処理）
+// ver.20260625.02: メインGASに合わせてaction/data形式でPOST、成功判定をstatus:'ok'に変更
+// ============================================================
+async function uploadOneFile(payload) {
+  const res = await _uplFetch(GAS_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    body: JSON.stringify({
+      action: 'uploadFileToDrive',
+      data: {
+        folderId: payload.folderId || FOLDER_ID,
+        base64:   payload.data     || payload.base64,    // 旧形式(data)・新形式(base64)両対応
+        fileName: payload.name     || payload.fileName,  // 旧形式(name)・新形式(fileName)両対応
+        mimeType: payload.mimeType || 'application/octet-stream'
+      }
+    })
+  });
+  // ver.20261003.01: HTTPエラーを成功扱いしない
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  let json = { status: 'ok' };
+  try {
+    const text = await res.text();
+    if (text && text.trim().startsWith('{')) json = JSON.parse(text);
+  } catch (e) {}
+  // メインGASは {status:'ok'} 形式、旧GASは {success:true} 形式 → 両対応
+  const ok = (json.status === 'ok') || (json.success === true);
+  if (!ok) throw new Error(json.msg || json.error || 'upload failed');
+  return json;
+}
+
+// ver.20260611.01: GASの応答から保存ファイルのドライブURLを取り出す（実装差を吸収）
+function _extractDriveUrl(json) {
+  if (!json || typeof json !== 'object') return '';
+  var cand = json.url || json.webViewLink || json.fileUrl || json.driveUrl || json.link || '';
+  if (!cand && Array.isArray(json.files) && json.files.length) {
+    var f0 = json.files[0] || {};
+    cand = f0.url || f0.webViewLink || f0.fileUrl || f0.driveUrl || f0.link || '';
+    if (!cand && f0.id) cand = 'https://drive.google.com/file/d/' + f0.id + '/view';
+  }
+  if (!cand && json.id) cand = 'https://drive.google.com/file/d/' + json.id + '/view';
+  return cand || '';
+}
+
+submitBtn.addEventListener('click', async () => {
+  const L = LANGS[currentLang];
+  const keys = Object.keys(fileData).filter(k => fileData[k] && fileData[k].length > 0);
+  // ver.20261102.01: 書類を選んでいなくても「いいえ（○年以降に入国）」の回答だけは送る
+  if (!keys.length && _taxAnswerPending()) {
+    submitBtn.disabled = true;
+    statusMsg.style.display = 'block'; statusMsg.className = 'status-msg'; statusMsg.textContent = '送信中… / Sending…';
+    try {
+      await _sendTaxAnswer();
+      statusMsg.className = 'status-msg success';
+      statusMsg.textContent = L.msgSuccess + '\n（課税証明書・納税証明書・源泉徴収票は提出不要です）';
+    } catch (e) {
+      statusMsg.className = 'status-msg error';
+      statusMsg.textContent = '❌ 送信できませんでした。通信状況を確認して、もう一度お試しください。\n' + _uplErrReason(e);
+    }
+    updateSubmitBtn();
+    return;
+  }
+  if (!keys.length) { alert(L.msgNoFile); return; }
+  if (!FOLDER_ID) { statusMsg.style.display='block'; statusMsg.className='status-msg error'; statusMsg.textContent='❌ 送信できません\n'+_uplErrReason(new Error('NO_FOLDER')); return; }
+  
+  submitBtn.disabled = true;
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '2%';
+  statusMsg.style.display = 'none';
+  
+  // 全ファイルをフラットにペイロード化（前処理前）
+  const allFiles = [];
+  keys.forEach(key => {
+    const arr = fileData[key] || [];
+    // ver.20260525.01: 新ロジックではDOC_LABELS_JA、旧ロジックではLANGS.ja.docs
+    const docLabel = USE_NEW_DOCS
+      ? (DOC_LABELS_JA[key] || key)
+      : (LANGS['ja'].docs[key] || key);
+    arr.forEach((d, i) => {
+      const ext = (d.name.split('.').pop() || 'jpg').toLowerCase();
+      const sfx = arr.length > 1 ? '_' + (i + 1) : '';
+      allFiles.push({
+        key: key,
+        idx: i,
+        docLabel: docLabel,
+        originalName: d.name,
+        ext: ext,
+        dataUrl: d.dataUrl,
+        mimeType: d.mimeType,
+        isPdf: d.isPdf
+      });
+    });
+  });
+  
+  const total = allFiles.length;
+  const failed = [];
+  const successKeys = []; // 成功した {key, idx} を記録
+  
+  // ステータス表示要素
+  statusMsg.style.display = 'block';
+  statusMsg.className = 'status-msg';
+  statusMsg.style.background = '#eff6ff';
+  statusMsg.style.color = '#1e40af';
+  statusMsg.style.border = '1px solid #bfdbfe';
+  
+  for (let i = 0; i < allFiles.length; i++) {
+    const f = allFiles[i];
+    const stepLabel = '(' + (i + 1) + '/' + total + ')';
+    
+    try {
+      // ステップ1: 前処理表示
+      statusMsg.textContent = stepLabel + ' ' + f.docLabel + ' を準備中…';
+      progressBar.style.width = Math.round((i / total) * 90 + 2) + '%';
+      
+      // dataUrl → Blob → 前処理
+      const srcBlob = dataUrlToBlob(f.dataUrl, f.mimeType);
+      const processed = await preprocessFile(srcBlob, f.originalName, f.mimeType);
+      if (processed.blob && processed.blob.size > UPL_MAX_FILE_MB*1024*1024) throw new Error('FILE_TOO_LARGE:' + _uplMB(processed.blob.size));
+      const base64 = await blobToBase64(processed.blob);
+      
+      // ファイル名生成（書類名_連番.拡張子）
+      const arrLen = (fileData[f.key] || []).length;
+      const newExt = processed.name.split('.').pop() || 'jpg';
+      const sfx = arrLen > 1 ? '_' + (f.idx + 1) : '';
+      // ver.20261002.01: 顔写真はファイル名を「顔写真_人材名」にする
+      let _baseName = f.docLabel;
+      try{ const _nm=String(window._applicantName||'').replace(/[\\/:*?"<>|]/g,'').trim(); if(f.docLabel==='顔写真' && _nm) _baseName='顔写真_'+_nm; }catch(e){}
+      const finalName = _baseName + sfx + '.' + newExt;
+      
+      const payload = {
+        name: finalName,
+        mimeType: processed.mimeType,
+        data: base64
+      };
+      
+      // ステップ2: 送信表示
+      statusMsg.textContent = stepLabel + ' ' + f.docLabel + ' を送信中…';
+      progressBar.style.width = Math.round(((i + 0.5) / total) * 90 + 2) + '%';
+      
+      var _upJson = await uploadOneFile(payload);
+      var _uploadedUrl = _extractDriveUrl(_upJson);
+      
+      // Supabase通知（1ファイルごと）
+      if (CASE_ID) {
+        try {
+          await _uplRpc('upload_notify', { p_payload: {
+              case_id: CASE_ID,
+              folder_id: FOLDER_ID,
+              file_count: 1,
+              file_names: finalName,
+              doc_label: f.docLabel,
+              drive_url: _uploadedUrl || null
+            } });
+        } catch (e) { console.warn('通知保存失敗:', e); }
+      }
+      
+      // folder2 が設定されていれば2つ目のフォルダにも送信
+      if (FOLDER_ID2) {
+        try {
+          var _upJson2 = await (async function() {
+            const res2 = await _uplFetch(GAS_URL, {
+              method: 'POST',
+              redirect: 'follow',
+              body: JSON.stringify({
+                action: 'uploadFileToDrive',
+                data: { folderId: FOLDER_ID2, base64: payload.data || payload.base64, fileName: payload.name || payload.fileName, mimeType: payload.mimeType || 'application/octet-stream' }   // ver.20261007.01: 中身とファイル名が空のまま送られていたのを修正（1つ目と同じ取り出し方に）
+              })
+            });
+            let json2 = { status: 'ok' };
+            try { const t2 = await res2.text(); if (t2 && t2.trim().startsWith('{')) json2 = JSON.parse(t2); } catch(e2){}
+            return json2;
+          })();
+          var _uploadedUrl2 = _extractDriveUrl(_upJson2);
+          if (CASE_ID) {
+            try {
+              await _uplRpc('upload_notify', { p_payload: {
+                  case_id: CASE_ID,
+                  folder_id: FOLDER_ID2,
+                  file_count: 1,
+                  file_names: finalName,
+                  doc_label: f.docLabel,
+                  drive_url: _uploadedUrl2 || null
+                } });
+            } catch (e) { console.warn('通知保存失敗(folder2):', e); }
+          }
+        } catch (e2) { console.warn('folder2アップロード失敗:', f.docLabel, e2); }
+      }
+      
+      successKeys.push({ key: f.key, idx: f.idx });
+      progressBar.style.width = Math.round(((i + 1) / total) * 90 + 2) + '%';
+      
+    } catch (err) {
+      console.error('アップロード失敗:', f.docLabel, err);
+      failed.push({ docLabel: f.docLabel, error: err.message || 'error', reason: _uplErrReason(err) });
+    }
+  }
+  
+  // 成功したファイルだけ fileData から削除（失敗したのは残してリトライ可能に）
+  // 後ろから消さないとidxがずれる
+  const successByKey = {};
+  successKeys.forEach(s => {
+    if (!successByKey[s.key]) successByKey[s.key] = [];
+    successByKey[s.key].push(s.idx);
+  });
+  Object.keys(successByKey).forEach(key => {
+    const indices = successByKey[key].sort((a, b) => b - a);
+    indices.forEach(idx => {
+      if (fileData[key]) fileData[key].splice(idx, 1);
+    });
+    if (fileData[key] && fileData[key].length === 0) delete fileData[key];
+  });
+  
+  // 結果表示
+  progressBar.style.width = '100%';
+  statusMsg.style.background = '';
+  statusMsg.style.color = '';
+  statusMsg.style.border = '';
+
+  // ver.20260831: 送信できた書類キーをlocalStorageに記録し、再度開いたとき「確認中」を表示する
+  //   （案シスの提出済み(DOC_DONE)は担当者確認まで反映されないため、その間「未選択」に戻って見える問題の対策）
+  try {
+    var _submittedKeys = {};
+    successKeys.forEach(function(s){ if(s && s.key) _submittedKeys[s.key] = true; });
+    var _lsKey = 'ofusa_upload_submitted_' + (typeof CASE_ID !== 'undefined' ? CASE_ID : '');
+    var _prev = {};
+    try { _prev = JSON.parse(localStorage.getItem(_lsKey) || '{}') || {}; } catch(e){}
+    Object.keys(_submittedKeys).forEach(function(k){ _prev[k] = Date.now(); });
+    localStorage.setItem(_lsKey, JSON.stringify(_prev));
+    // 画面のバッジを即時更新
+    if (typeof _applyReviewingBadges === 'function') _applyReviewingBadges();
+  } catch(e){ console.warn('submitted keys save failed:', e); }
+
+  if (failed.length === 0) {
+    statusMsg.className = 'status-msg success';
+    statusMsg.textContent = L.msgSuccess;
+  } else if (failed.length === total) {
+    statusMsg.className = 'status-msg error';
+    statusMsg.textContent = L.msgError + '\n\n【送信できなかった理由】\n' + _uplFormatFailures(failed);
+    submitBtn.disabled = false;
+  } else {
+    // 一部成功
+    statusMsg.className = 'status-msg error';
+    const successCount = total - failed.length;
+    statusMsg.textContent = '✅ ' + successCount + '件 送信完了\n❌ ' + failed.length + '件 失敗\n\n【送信できなかった理由】\n' + _uplFormatFailures(failed) + '\n\n対処後、もう一度「' + L.btnSubmit + '」を押してください（送信済みの書類は再送されません）。';
+    submitBtn.disabled = false;
+  }
+  
+  try { await _sendTaxAnswer(); } catch (e) { console.warn('tax answer send failed:', e); }   // ver.20261102.01
+  buildFields();
+  updateSubmitBtn();
+  setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 1500);
+});
+</script>
+</body>
+</html>
