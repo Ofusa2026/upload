@@ -107,22 +107,6 @@ body.signed-view #step2 [data-i18n="s2_doclabel"],body.signed-view #btnToStep3,b
 .error-msg{font-size:14px;color:var(--muted);}
 .notice{background:#fffbf0;border:1px solid #f0d080;border-radius:8px;padding:11px 13px;font-size:12px;color:#7a6010;line-height:1.6;margin-top:10px;}
 .notice strong{font-weight:700;}
-/* ver.20261120.01: 意思確認 */
-.intent-box{margin-top:16px;}
-.intent-title{font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:8px;}
-.intent-q{background:#fff;border:1px solid #d8dce6;border-radius:10px;padding:12px 13px;margin-bottom:10px;}
-.intent-q .q{font-size:14px;line-height:1.7;color:#1a1a2e;}
-.intent-q .q .intentName{font-weight:700;}
-.intent-q .en{font-size:11px;color:#6b7280;margin-top:2px;line-height:1.5;}
-.intent-yn{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
-.intent-yn button{height:44px;border-radius:8px;border:1px solid #c5cad6;background:#fff;font-size:14px;font-weight:700;color:#374151;cursor:pointer;}
-.intent-yn button.sel-yes{background:#e8f7ee;border-color:#2e9e5b;color:#1f7a45;}
-.intent-yn button.sel-no{background:#fdecec;border-color:#d9534f;color:#b42318;}
-.intent-msg{font-size:12px;line-height:1.6;color:#6b7280;margin:2px 0 4px;}
-.intent-msg.ok{color:#1f7a45;font-weight:700;}
-.intent-msg.ng{color:#b42318;font-weight:700;}
-#step2.intent-locked .sign-sec,#step2.intent-locked [data-i18n="s2_notice_save"],#step2.intent-locked #btnToStep3{display:none!important;}   /* ver.20261120.02: 「はい」まで署名欄を出さない */
-body.signed-view #intentBox{display:none!important;}
 .btn-download{width:100%;padding:14px;background:#1a1a2e;color:white;border:none;border-radius:50px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;}
 /* パスポート署名案内カード */
 .pp-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-top:20px;}
@@ -153,7 +137,8 @@ body.signed-view #intentBox{display:none!important;}
 </head>
 <body>
 <div class="header" style="position:relative;">
-  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20261120.02</span></div>
+  <!-- ver.20261121.01: 11/20 の意思確認（ver.20261120.01・.02）を取りやめ、ver.20261112.01 の中身に戻した -->
+  <div class="header-logo">OFUSA 行政書士法人 <span style="opacity:.5;font-size:9px;">ver.20261121.01</span></div>
   <div class="header-title" data-i18n="hdr_doc">サイン<ruby>書類<rt>しょるい</rt></ruby></div>
   <select id="langSel" onchange="applyLang(this.value)" aria-label="Language / 言語" style="position:absolute;top:10px;right:12px;font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;cursor:pointer;">
     <option value="ja">🌐 日本語</option>
@@ -219,7 +204,7 @@ body.signed-view #intentBox{display:none!important;}
     <button class="btn-primary" id="s1Btn" data-i18n="s1_btn" onclick="goStep(2)" disabled>📄 <ruby>書類<rt>しょるい</rt></ruby>を<ruby>確認<rt>かくにん</rt></ruby>して<ruby>署名<rt>しょめい</rt></ruby>する →</button>
   </div>
 
-  <div id="step2" class="step intent-locked">
+  <div id="step2" class="step">
     <div id="signedBanner" class="signed-banner" style="display:none;"></div>
     <div class="step-indicator">
       <div class="step-dot done"></div><div class="step-dot active"></div>
@@ -242,15 +227,6 @@ body.signed-view #intentBox{display:none!important;}
         <div id="docNote" class="doc-note" style="display:none;"></div>
         <div id="pdfContainer"><div class="pdf-loading">📄 PDFを読み込み中...</div></div>
       </div>
-    </div>
-    <!-- ver.20261120.02: 意思確認（本人のみ。署名の前に出し、2つとも「はい」で署名欄が出る） -->
-    <div id="intentBox" class="intent-box">
-      <div class="intent-title" data-i18n="intent_title">✋ <ruby>意思<rt>いし</rt></ruby><ruby>確認<rt>かくにん</rt></ruby></div>
-      <div class="intent-q"><div class="q" data-i18n="intent_q1"><span class="intentName"></span> さん<ruby>ご本人<rt>ごほんにん</rt></ruby>でお<ruby>間違<rt>まちが</rt></ruby>いないでしょうか。<div class="en">Are you <span class="intentName"></span> yourself?</div></div>
-        <div class="intent-yn"><button type="button" data-iq="1" data-iv="yes" data-i18n="intent_yes" onclick="_intentPick(this)">はい</button><button type="button" data-iq="1" data-iv="no" data-i18n="intent_no_btn" onclick="_intentPick(this)">いいえ</button></div></div>
-      <div class="intent-q"><div class="q" data-i18n="intent_q2"><ruby>大房<rt>おおふさ</rt></ruby><ruby>行政書士法人<rt>ぎょうせいしょしほうじん</rt></ruby>へ<ruby>申請取次<rt>しんせいとりつぎ</rt></ruby>をお<ruby>願<rt>ねが</rt></ruby>いします。<div class="en">I request OFUSA Gyoseishoshi Corporation to act as my application agent.</div></div>
-        <div class="intent-yn"><button type="button" data-iq="2" data-iv="yes" data-i18n="intent_yes" onclick="_intentPick(this)">はい</button><button type="button" data-iq="2" data-iv="no" data-i18n="intent_no_btn" onclick="_intentPick(this)">いいえ</button></div></div>
-      <div id="intentMsg" class="intent-msg" data-i18n="intent_hint">2つとも「はい」を<ruby>選<rt>えら</rt></ruby>ぶと<ruby>署名欄<rt>しょめいらん</rt></ruby>が<ruby>出<rt>で</rt></ruby>ます。</div>
     </div>
     <div class="section sign-sec">
       <div class="section-label" data-i18n="s2_signlabel"><ruby>署名<rt>しょめい</rt></ruby>（<ruby>指<rt>ゆび</rt></ruby>でサインしてください）</div>
@@ -376,15 +352,6 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 // ===== 多言語（i18n）＝ ja はHTML側のルビ付きを既定にし、他言語は辞書から差し替え =====
 var I18N = {
- intent_title:{en:'✋ Confirmation',id:'✋ Konfirmasi',vi:'✋ Xác nhận ý chí',zh:'✋ 意愿确认',km:'✋ ការបញ្ជាក់',my:'✋ ဆန္ဒအတည်ပြုခြင်း',th:'✋ ยืนยันความประสงค์'},
- intent_q1:{en:'Are you <span class="intentName"></span> yourself?',id:'Apakah Anda benar <span class="intentName"></span>?',vi:'Bạn có đúng là <span class="intentName"></span> không?',zh:'您是 <span class="intentName"></span> 本人吗？',km:'តើអ្នកពិតជា <span class="intentName"></span> ផ្ទាល់មែនទេ?',my:'သင်သည် <span class="intentName"></span> ကိုယ်တိုင် ဟုတ်ပါသလား။',th:'คุณคือ <span class="intentName"></span> ใช่หรือไม่'},
- intent_q2:{en:'I request OFUSA Gyoseishoshi Corporation (大房行政書士法人) to act as my application agent (申請取次) for my immigration application.',id:'Saya meminta OFUSA Gyoseishoshi Corporation (大房行政書士法人) menjadi agen pengajuan (申請取次) permohonan imigrasi saya.',vi:'Tôi đề nghị Pháp nhân Hành chính thư sĩ OFUSA (大房行政書士法人) làm đại diện nộp hồ sơ (申請取次) xin tư cách lưu trú cho tôi.',zh:'我委托大房行政书士法人（大房行政書士法人）代为提交我的在留申请（申请取次）。',km:'ខ្ញុំស្នើសុំឱ្យ OFUSA Gyoseishoshi Corporation (大房行政書士法人) ធ្វើជាភ្នាក់ងារដាក់ពាក្យសុំ (申請取次) ស្នាក់នៅរបស់ខ្ញុំ។',my:'ကျွန်ုပ်၏ နေထိုင်ခွင့်လျှောက်လွှာကို OFUSA Gyoseishoshi Corporation (大房行政書士法人) မှ ကိုယ်စားတင်သွင်းပေးရန် (申請取次) တောင်းဆိုပါသည်။',th:'ข้าพเจ้าขอมอบหมายให้ OFUSA Gyoseishoshi Corporation (大房行政書士法人) เป็นผู้ยื่นคำร้อง (申請取次) ด้านถิ่นที่อยู่แทนข้าพเจ้า'},
- intent_yes:{en:'Yes',id:'Ya',vi:'Có',zh:'是',km:'បាទ/ចាស',my:'ဟုတ်ကဲ့',th:'ใช่'},
- intent_no_btn:{en:'No',id:'Tidak',vi:'Không',zh:'否',km:'ទេ',my:'မဟုတ်ပါ',th:'ไม่ใช่'},
- intent_hint:{en:'Answer "Yes" to both to open the signature box.',id:'Jawab "Ya" untuk keduanya agar kotak tanda tangan muncul.',vi:'Chọn "Có" cho cả hai để mở ô chữ ký.',zh:'两项都选择"是"后，会出现签名栏。',km:'ឆ្លើយ "បាទ/ចាស" ទាំងពីរ ដើម្បីបើកប្រអប់ហត្ថលេខា។',my:'နှစ်ခုလုံး "ဟုတ်ကဲ့" ဟုဖြေပါက လက်မှတ်ကွက် ပေါ်လာပါမည်။',th:'เลือก "ใช่" ทั้งสองข้อเพื่อเปิดช่องลายเซ็น'},
- intent_ok:{en:'Confirmed. Please sign in the box below.',id:'Sudah dikonfirmasi. Silakan tanda tangan di kotak di bawah.',vi:'Đã xác nhận. Vui lòng ký vào ô bên dưới.',zh:'已确认，请在下方签名栏签名。',km:'បានបញ្ជាក់ហើយ។ សូមចុះហត្ថលេខាក្នុងប្រអប់ខាងក្រោម។',my:'အတည်ပြုပြီးပါပြီ။ အောက်ပါကွက်တွင် လက်မှတ်ထိုးပါ။',th:'ยืนยันแล้ว กรุณาลงนามในช่องด้านล่าง'},
- intent_need:{en:'Before signing, please answer both confirmation questions with "Yes".',id:'Jawab kedua pertanyaan konfirmasi dengan "Ya" sebelum mengirim.',vi:'Vui lòng chọn "Có" cho cả hai câu hỏi xác nhận trước khi gửi.',zh:'请先对两项确认都选择"是"，再提交。',km:'សូមឆ្លើយ "បាទ/ចាស" ចំពោះសំណួរបញ្ជាក់ទាំងពីរ មុនពេលដាក់ស្នើ។',my:'မပို့မီ အတည်ပြုမေးခွန်းနှစ်ခုလုံးကို "ဟုတ်ကဲ့" ဟုဖြေပါ။',th:'กรุณาเลือก "ใช่" ทั้งสองข้อก่อนส่ง'},
- intent_ng:{en:'You chose "No", so this cannot be submitted. Please contact the person in charge.',id:'Anda memilih "Tidak", jadi tidak dapat dikirim. Silakan hubungi penanggung jawab.',vi:'Bạn đã chọn "Không" nên không thể gửi. Vui lòng liên hệ người phụ trách.',zh:'您选择了"否"，因此无法提交。请联系负责人。',km:'អ្នកបានជ្រើស "ទេ" ដូច្នេះមិនអាចដាក់ស្នើបានទេ។ សូមទាក់ទងអ្នកទទួលបន្ទុក។',my:'"မဟုတ်ပါ" ကို ရွေးထားသောကြောင့် ပို့၍မရပါ။ တာဝန်ခံထံ ဆက်သွယ်ပါ။',th:'คุณเลือก "ไม่ใช่" จึงไม่สามารถส่งได้ กรุณาติดต่อผู้รับผิดชอบ'},
   hdr_doc:{en:'Document to sign',id:'Dokumen untuk ditandatangani',vi:'Tài liệu cần ký',zh:'需签名的文件',km:'ឯកសារសម្រាប់ចុះហត្ថលេខា',my:'လက်မှတ်ထိုးရန် စာရွက်စာတမ်း',th:'เอกสารที่ต้องลงนาม'},
   step1_label:{en:'Review',id:'Konfirmasi',vi:'Xác nhận',zh:'内容确认',km:'ពិនិត្យ',my:'စစ်ဆေးရန်',th:'ตรวจสอบ'},
   s1_target:{en:'Signer',id:'Penanda tangan',vi:'Người ký',zh:'签名对象',km:'អ្នកចុះហត្ថលេខា',my:'လက်မှတ်ထိုးသူ',th:'ผู้ลงนาม'},
@@ -455,7 +422,6 @@ function applyLang(lang){
   });
   try{ document.documentElement.lang=lang; }catch(e){}
   var sel=document.getElementById('langSel'); if(sel&&sel.value!==lang) sel.value=lang;
-  try{ _intentFill(); }catch(e){}   // ver.20261120.01
   try{ localStorage.setItem('ofusa_sign_lang', lang); }catch(e){}
 }
 document.addEventListener('DOMContentLoaded', function(){
@@ -523,7 +489,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 });
 
 async function loadSignRequest(token){
-  console.log('%c OFUSA upload/sign.html ver.20261120.02 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
+  console.log('%c OFUSA upload/sign.html ver.20261106.01 ', 'background:#1a1a2e;color:#fff;font-weight:bold;font-size:13px;border-radius:4px;padding:2px 6px;');
   try{
     // ver.20261106.01: まず書類の一覧だけを読む（中身は見ている書類だけ1件ずつ読む＝開くときに15MBを待たない）。
     //   新しい仕組み（sign_get_meta）が無いときは、これまでどおり全部まとめて読む
@@ -545,7 +511,6 @@ async function loadSignRequest(token){
     document.getElementById('workerName').textContent=data.applicant||'—';
     var _snr=document.getElementById('signNameRef'); if(_snr) _snr.textContent=data.applicant||'';
     document.getElementById('companyName').textContent=data.company||'—';
-    _intentFill();   // ver.20261120.01
     if(data.status==='signed'){
       // ver.20261106.01: 署名が終わったあとは、同じリンクで署名済みの書類を見返せる
       if(_light && !isCompany){ await showSignedReview(data); } else { showAlreadySigned(); }
@@ -958,7 +923,6 @@ async function saveToDriveNow(){
 }
 // ver.20260804.01: 企業押印モード — UI切り替え
 function _applyCompanyMode(){
-  try{ var _ib=document.getElementById('intentBox'); if(_ib) _ib.style.display='none'; var _s2=document.getElementById('step2'); if(_s2) _s2.classList.remove('intent-locked'); }catch(e){}   // ver.20261120.01
   // header
   var hd = document.querySelector('.header-title');
   if(hd) hd.textContent = '企業押印';
@@ -1058,45 +1022,10 @@ async function submitCompanySign(){
   }
 }
 
-// ===== ver.20261120.01: 意思確認（①ご本人か ②大房行政書士法人へ申請取次を依頼するか） =====
-var _intent={1:null,2:null};
-function _intentFill(){ var n=(caseData&&caseData.applicant)||''; document.querySelectorAll('.intentName').forEach(function(el){ el.textContent=n||'—'; }); }
-function _intentMsg(kind){ var m=document.getElementById('intentMsg'); if(!m) return;
-  m.className='intent-msg'+(kind==='ok'?' ok':(kind==='ng'||kind==='need')?' ng':'');
-  if(kind) m.innerHTML=_t('intent_'+kind); }
-function _intentPick(btn){
-  var q=btn.getAttribute('data-iq'), v=btn.getAttribute('data-iv'); _intent[q]=v;
-  document.querySelectorAll('.intent-yn button[data-iq="'+q+'"]').forEach(function(b){ b.classList.remove('sel-yes','sel-no'); });
-  btn.classList.add(v==='yes'?'sel-yes':'sel-no');
-  var s2=document.getElementById('step2');
-  if(_intent[1]==='yes'&&_intent[2]==='yes'){
-    _intentMsg('ok'); _intentSave();
-    if(s2 && s2.classList.contains('intent-locked')){
-      s2.classList.remove('intent-locked');   // ver.20261120.02: 2つとも「はい」で署名欄を出す
-      setTimeout(function(){ try{ initCanvas(); }catch(e){} var sc=document.querySelector('#step2 .sign-sec'); if(sc) sc.scrollIntoView({behavior:'smooth',block:'start'}); },60);
-    }
-  }else{
-    if(s2) s2.classList.add('intent-locked');
-    if(_intent[1]==='no'||_intent[2]==='no'){ _intentMsg('ng'); _intentSave(); }
-  }
-}
-async function _intentSave(){
-  if(!requestToken||!_intent[1]||!_intent[2]) return false;
-  try{ var r=await _withTimeout(sb.rpc('sign_intent_save',{p_token:requestToken,p_identity:_intent[1],p_agent:_intent[2]}),15000);
-       return !!(r&&!r.error&&r.data&&r.data.ok); }catch(e){ return false; }
-}
-async function _intentGate(){
-  if(_intent[1]==='no'||_intent[2]==='no'){ _intentMsg('ng'); _intentSave(); alert(_t('intent_ng')); return false; }
-  if(!(_intent[1]==='yes'&&_intent[2]==='yes')){ alert(_t('intent_need')); goStep(2); _intentMsg('need');
-    setTimeout(function(){ var b=document.getElementById('intentBox'); if(b) b.scrollIntoView({behavior:'smooth',block:'center'}); },150); return false; }
-  await _intentSave();   // 記録できなくても署名は止めない（回答は画面で確認済み）
-  return true;
-}
 async function submitSign(){
   const name=document.getElementById('inputName').value.trim();
   const card='';
   if(!name){alert('氏名を入力してください');return;}
-  if(!(await _intentGate())) return;   // ver.20261120.02: 意思確認（念のため送信時にも確認）
   if(!hasDrawn || !_sigHasInk()){ hasDrawn=false; alert(_t('sign_missing')); goStep(2); return; }   // ver.20261112.01: 白紙のまま送らない
   const btn=document.getElementById('btnSubmit');
   btn.disabled=true;btn.innerHTML='<span>⏳ 処理中…</span>';
@@ -1280,10 +1209,7 @@ var _TJA = {
   signed_banner:'✅ 署名済みです。署名した書類を見返すことができます（もう一度署名することはできません）。',
   signed_at:'署名日時',
   signed_pending_doc:'※ この書類は署名を反映中です。数分後にもう一度開くと、署名入りで表示されます。',
-  sign_missing:'署名が入っていません。署名欄にもう一度サインしてください。',   // ver.20261112.01
-  intent_ok:'確認できました。下の署名欄にサインしてください。',   // ver.20261120.01
-  intent_need:'署名の前に、2つの意思確認に「はい」で答えてください。',
-  intent_ng:'「いいえ」が選ばれているため送信できません。担当者にご連絡ください。'
+  sign_missing:'署名が入っていません。署名欄にもう一度サインしてください。'   // ver.20261112.01
 };
 Object.assign(I18N, {
   sign_missing:{en:'Your signature is missing. Please sign in the signature box again.',id:'Tanda tangan belum ada. Silakan tanda tangan lagi di kotak tanda tangan.',vi:'Chưa có chữ ký. Vui lòng ký lại vào ô chữ ký.',zh:'签名为空。请在签名栏中重新签名。',km:'មិនទាន់មានហត្ថលេខាទេ។ សូមចុះហត្ថលេខាម្តងទៀតក្នុងប្រអប់ហត្ថលេខា។',my:'လက်မှတ် မပါသေးပါ။ လက်မှတ်အကွက်တွင် ထပ်မံ လက်မှတ်ထိုးပါ။',th:'ยังไม่มีลายเซ็น กรุณาเซ็นชื่ออีกครั้งในช่องลายเซ็น'},
