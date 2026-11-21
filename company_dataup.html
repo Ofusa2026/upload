@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- company_dataup ver.20261121.03 - パソコンは画面の大きさに合わせて広げる（画面の94%・最大1680px）。文字・ボタン・見本画像も画面に合わせて大きく。 -->
 <!-- company_dataup ver.20261121.02 - 1つの書類＝1つの区切り：「取れるところ」を書類の中に入れ、住所の説明も各書類にくっつける（上のまとめは出さない）。パソコンは横幅を広げ、開いた書類の中を左（取れるところ）・右（説明と見本）の2列に。 -->
 <!-- company_dataup ver.20261121.01 - 色をへらして見やすく：黄・緑の囲みをやめ、白＋うすいグレー、注意は左のオレンジ線だけに。取れるところは「・」の箇条書き、住所まとめは表に。提出済みはうすいグレー。 -->
 <!-- company_dataup ver.20261111.01 - 書類ごとに「📍 取れるところ」（会社の住所から窓口・オンラインのボタン）を出す。案シスに住所が無い会社は、最初に住所の入力画面（郵便番号から住所を入れる）。中身は Edge Function upload-offices -->
@@ -171,25 +172,43 @@
   .field-row.open { border-color:#1a56db; box-shadow:0 2px 10px rgba(26,86,219,.08); }
   .field-row .field-body { border-top:none; padding-top:2px; }
   .field-row.open .field-header { padding-bottom:8px; }
-  /* ver.20261121.02: パソコン（横幅が広い画面）は横に広げて、書類の中を左右2列に */
+  /* ver.20261121.02: パソコン（横幅が広い画面）は横に広げて、書類の中を左右2列に
+     ver.20261121.03: 画面の大きさに合わせて広げる（最大1680px）・文字も画面に合わせて大きく */
   @media (min-width: 900px) {
-    body { padding: 32px 24px 80px; }
-    .card { max-width: 1040px; padding: 36px 40px; }
-    .header { margin-bottom: 28px; }
-    .company-name-bar { font-size: 15px; }
-    .tab-btn { font-size: 13.5px; padding: 12px 8px; }
-    .notice-box { font-size: 13px; }
-    .fields-list { gap: 14px; }
-    .field-header { padding: 16px 20px; }
-    .field-label { font-size: 15.5px; }
-    .field-status { font-size: 13px; }
-    .field-row.open .field-body { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); column-gap: 20px; align-items: start; padding: 4px 20px 18px; }
-    .field-row.open .field-body > * { grid-column: 1; }
-    .field-row.open .field-body > .smp { grid-column: 2; grid-row: 1 / span 20; margin: 0; }
-    .field-row.open .field-body:not(:has(> .smp)) > * { grid-column: 1 / -1; }
-    .upl-off { font-size: 13.5px; }
-    .add-file-label { padding: 14px; font-size: 14px; }
-    .submit-btn { max-width: 420px; display: block; margin-left: auto; margin-right: auto; }
+    body { padding: clamp(24px,2.2vw,48px) clamp(16px,2vw,40px) 80px; }
+    body .card { max-width: none; width: min(94vw, 1680px); padding: clamp(36px,3vw,60px) clamp(40px,3.6vw,72px); border-radius: 24px; }
+    body .header { margin-bottom: clamp(28px,2.4vw,44px); }
+    body .office-name { font-size: clamp(13px,1vw,16px); }
+    body .page-icon { font-size: clamp(40px,3.2vw,56px); }
+    body h1 { font-size: clamp(24px,2vw,34px); }
+    body .subtitle { font-size: clamp(14px,1.1vw,18px); }
+    body .company-name-bar { font-size: clamp(16px,1.3vw,22px); padding: clamp(12px,1vw,18px); }
+    body .tab-btn { font-size: clamp(14px,1.15vw,19px); padding: clamp(12px,1vw,18px) 8px; }
+    body .tab-btn .tab-count { font-size: clamp(11px,.85vw,14px); }
+    body .notice-box { font-size: clamp(14px,1.05vw,17px); padding: clamp(12px,1vw,18px) clamp(14px,1.2vw,22px); }
+    body .fields-list { gap: clamp(14px,1.1vw,20px); }
+    body .field-header { padding: clamp(16px,1.3vw,24px) clamp(20px,1.6vw,30px); }
+    body .field-label { font-size: clamp(16px,1.3vw,22px); }
+    body .field-label span[style*="font-size:11px"] { font-size: .68em !important; }
+    body .field-label span[style*="11.5px"], body .field-label div[style*="11.5px"] { font-size: .7em !important; }
+    body .field-status { font-size: clamp(13px,1vw,17px); }
+    body .field-row.open .field-body { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); column-gap: clamp(20px,1.8vw,36px); align-items: start; padding: 4px clamp(20px,1.6vw,30px) clamp(18px,1.5vw,28px); }
+    body .field-row.open .field-body > * { grid-column: 1; }
+    body .field-row.open .field-body > .smp { grid-column: 2; grid-row: 1 / span 20; margin: 0; }
+    body .field-row.open .field-body:not(:has(> .smp)) > * { grid-column: 1 / -1; }
+    body .upl-off { font-size: clamp(14px,1.05vw,18px); padding: clamp(12px,1vw,18px) clamp(14px,1.2vw,22px); }
+    body .upl-off a.upl-off-btn { font-size: clamp(14px,1vw,17px); padding: clamp(9px,.7vw,13px) clamp(14px,1.1vw,20px); }
+    body .upl-off .upl-off-note,body .upl-off .upl-off-none { font-size: clamp(13px,.9vw,15px); }
+    body .upl-off .upl-off-ad { font-size: clamp(12px,.85vw,14px); }
+    body .smp { padding: clamp(12px,1vw,18px) clamp(14px,1.2vw,22px) !important; }
+    body .smp > div { font-size: clamp(14px,1.05vw,18px) !important; }
+    body .smp > a,body .smp > button { font-size: clamp(13px,1vw,16px) !important; padding: clamp(9px,.7vw,13px) clamp(14px,1.1vw,20px) !important; }
+    body .smp img { width: clamp(300px,22vw,420px) !important; }
+    body .field-body > div[style*="border-left:4px"] { font-size: clamp(14px,1.05vw,18px) !important; }
+    body .file-item { font-size: clamp(13px,1vw,16px); padding: 10px 14px; }
+    body .add-file-label { padding: clamp(14px,1.2vw,22px); font-size: clamp(14px,1.1vw,18px); }
+    body .hint { font-size: clamp(12px,.9vw,15px); }
+    body .submit-btn { max-width: 520px; display: block; margin-left: auto; margin-right: auto; font-size: clamp(16px,1.3vw,21px); padding: clamp(16px,1.3vw,22px); }
   }
   .file-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
   .file-item {
