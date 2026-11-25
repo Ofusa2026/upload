@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20261125.01'; // ver.20261125.01: 送信済みの「⏳ 確認中」と課税証明書「不要」の回答を、端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる ／ ver.20261113.01:ver.20261113.01: 課税・納税証明書の質問カード（「○年1月1日、日本に住んでいましたか？」・窓口案内・不要の案内）も言語ボタンに合わせて訳す。役所の人に見せる見出しと書類名は日本語のまま、下に訳を付ける ／ ver.20261105.01: 「国民健康保険料（税）納付証明書」にも納付証明書の見本を表示 ／ ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
+const VERSION = 'ver.20261125.02'; // ver.20261125.02: 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のままで、再提出してよいか分からなかった）。出し直すと確認中に戻る ／ ver.20261125.01: 送信済みの「⏳ 確認中」と課税証明書「不要」の回答を、端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる ／ ver.20261113.01:ver.20261113.01: 課税・納税証明書の質問カード（「○年1月1日、日本に住んでいましたか？」・窓口案内・不要の案内）も言語ボタンに合わせて訳す。役所の人に見せる見出しと書類名は日本語のまま、下に訳を付ける ／ ver.20261105.01: 「国民健康保険料（税）納付証明書」にも納付証明書の見本を表示 ／ ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -1290,6 +1290,7 @@ function _reviewingMap(){
 function _isReviewingKey(key){
   // 既に案シスで提出済み確定(DOC_DONE)なら、そちらの「✓提出済み」を優先し確認中は出さない
   if (typeof DOC_DONE !== 'undefined' && DOC_DONE && DOC_DONE[key]) return false;
+  if (_isSashimodoshiKey(key)) return false;   // ver.20261125.02: 差戻し中は「差戻し」を優先
   var m = _reviewingMap();
   if (m[key]) return true;
   // ver.20261125.01: サーバーの送信記録（誰がどの端末で送っても）でも「確認中」にする
@@ -1302,13 +1303,13 @@ var _SRV_TAX_NO = false;
 function _loadServerSubmitted(){
   return new Promise(function(resolve){
     if(!CASE_ID){ resolve(); return; }
-    _uplRpc('upload_submitted_labels_get', { p_case_id: CASE_ID })
+    _uplRpc('upload_submitted_labels_get', { p_case_id: CASE_ID, p_days: 400 })
     .then(function(r){ return r.ok ? r.json() : []; })
     .then(function(rows){
       (rows||[]).forEach(function(x){
         if(!x || !x.doc_label) return;
         if(x.doc_label === '不要'){ _SRV_TAX_NO = true; return; }  // 課税・納税証明書「不要」の回答
-        _SRV_SUBMITTED[x.doc_label] = 1;
+        var _t = Date.parse(x.last_at || ''); _SRV_SUBMITTED[x.doc_label] = isNaN(_t) ? 1 : _t;
       });
       resolve();
     })
@@ -1322,6 +1323,52 @@ function _reviewingLabel(){
     th:'⏳ กำลังตรวจสอบ', km:'⏳ កំពុងពិនិត្យ', mn:'⏳ Шалгаж байна', si:'⏳ පරීක්ෂා වෙමින්'
   };
   return labels[(typeof currentLang!=='undefined'?currentLang:'ja')] || labels.en;
+}
+// ===== ver.20261125.02: 差戻しの表示 =====
+//   案シスで差戻し（doc_check の sashimodoshi::書類名）された書類は、その後に出し直しが無ければ「🔁 差戻し・要再提出」と出す。
+//   出し直しの判定は案シスと同じ（差戻しの時刻より新しい送信があれば解消）。送信はサーバーの送信記録と、この端末の記録の両方を見る。
+//   差戻しの理由（担当者のメモ）は社内向けの書き方のことがあるので、この画面には出さない。
+var _SD_MAP = {};   // 正規化した書類名 → 差戻しの時刻(ms)
+function _sdNorm(s){ return String(s||'').replace(/[\s　_().（）\/・]/g,'').toLowerCase(); }
+function _sdLastSubmittedMs(key){
+  var best = 0;
+  try { var v = _reviewingMap()[key]; if (typeof v === 'number' && v > 1) best = v; } catch(e){}
+  var ja = _jaLabelOf(key); var s = ja ? _SRV_SUBMITTED[ja] : 0;
+  if (typeof s === 'number' && s > best) best = s;
+  return best;
+}
+function _isSashimodoshiKey(key){
+  if (typeof DOC_DONE !== 'undefined' && DOC_DONE && DOC_DONE[key]) return false;
+  var ja = _jaLabelOf(key); if (!ja) return false;
+  var at = _SD_MAP[_sdNorm(ja)]; if (at === undefined) return false;
+  var last = _sdLastSubmittedMs(key);
+  if (at && last && last > at) return false;   // 差戻しのあとに出し直し済み → 確認中へ
+  return true;
+}
+function _sashimodoshiLabel(){
+  var labels = {
+    ja:'🔁 差戻し・要再提出', en:'🔁 Returned – please resubmit', vi:'🔁 Bị trả lại – vui lòng nộp lại', id:'🔁 Dikembalikan – mohon kirim ulang',
+    my:'🔁 ပြန်ပို့ထားသည် – ပြန်တင်ပါ', ko:'🔁 반려 – 재제출 필요', ne:'🔁 फिर्ता – फेरि पेश गर्नुहोस्', zh:'🔁 已退回・需重新提交',
+    th:'🔁 ส่งคืน – กรุณาส่งใหม่', km:'🔁 បានបញ្ជូនត្រឡប់ – សូមដាក់ស្នើឡើងវិញ', mn:'🔁 Буцаасан – дахин илгээнэ үү', si:'🔁 ආපසු එවා ඇත – නැවත ඉදිරිපත් කරන්න'
+  };
+  return labels[(typeof currentLang!=='undefined'?currentLang:'ja')] || labels.en;
+}
+function _sashimodoshiNote(){
+  var notes = {
+    ja:'担当者が確認したところ、この書類はもう一度出していただく必要があります。担当者からの連絡（理由）を確認して、正しい書類をアップロードしてください。',
+    en:'After checking, our staff need you to submit this document again. Please check the message from our staff (the reason) and upload the correct document.',
+    vi:'Sau khi kiểm tra, nhân viên cần bạn nộp lại giấy tờ này. Vui lòng xem tin nhắn (lý do) từ nhân viên và tải lên giấy tờ đúng.',
+    id:'Setelah diperiksa, dokumen ini perlu dikirim ulang. Silakan cek pesan (alasan) dari staf kami dan unggah dokumen yang benar.',
+    my:'စစ်ဆေးပြီးနောက် ဤစာရွက်စာတမ်းကို ပြန်တင်ရန် လိုအပ်ပါသည်။ ဝန်ထမ်းထံမှ စာ (အကြောင်းရင်း) ကို ကြည့်ပြီး မှန်ကန်သော စာရွက်စာတမ်းကို တင်ပါ။',
+    ko:'확인 결과 이 서류를 다시 제출해 주셔야 합니다. 담당자의 연락(사유)을 확인하시고 올바른 서류를 업로드해 주세요.',
+    ne:'जाँच गर्दा यो कागजात फेरि पेश गर्नुपर्ने देखियो। कर्मचारीको सन्देश (कारण) हेरेर सही कागजात अपलोड गर्नुहोस्।',
+    zh:'经负责人确认，此文件需要重新提交。请查看负责人的联系（理由），并上传正确的文件。',
+    th:'หลังจากตรวจสอบแล้ว จำเป็นต้องส่งเอกสารนี้ใหม่ กรุณาดูข้อความ (เหตุผล) จากเจ้าหน้าที่ แล้วอัปโหลดเอกสารที่ถูกต้อง',
+    km:'បន្ទាប់ពីពិនិត្យ ឯកសារនេះត្រូវដាក់ស្នើឡើងវិញ។ សូមមើលសារ (មូលហេតុ) ពីបុគ្គលិក ហើយផ្ទុកឡើងឯកសារត្រឹមត្រូវ។',
+    mn:'Шалгасны дараа энэ баримтыг дахин илгээх шаардлагатай. Ажилтны мессеж (шалтгаан)-ийг үзээд зөв баримтыг байршуулна уу.',
+    si:'පරීක්ෂා කිරීමෙන් පසු මෙම ලේඛනය නැවත ඉදිරිපත් කළ යුතුය. කාර්ය මණ්ඩලයේ පණිවිඩය (හේතුව) බලා නිවැරදි ලේඛනය උඩුගත කරන්න.'
+  };
+  return notes[(typeof currentLang!=='undefined'?currentLang:'ja')] || notes.en;
 }
 // 送信直後などに、DOMのステータス表示を「確認中」へ更新する
 function _applyReviewingBadges(){
@@ -1337,6 +1384,12 @@ function _applyReviewingBadges(){
         st.className = 'field-status reviewing';
         st.textContent = _reviewingLabel();
         st.style.color = '#b45309';
+        // ver.20261125.02: 出し直したら差戻しの赤い表示と説明を外す
+        var _row = st.closest('.field-row');
+        if (_row && _row.classList.contains('sashimodoshi')) {
+          _row.classList.remove('sashimodoshi'); _row.style.borderColor = ''; _row.style.background = '';
+          var _n = _row.querySelector('.sd-note'); if (_n) _n.remove();
+        }
       }
     });
   } catch(e){ console.warn('applyReviewingBadges err:', e); }
@@ -1488,7 +1541,19 @@ function buildFields() {
     status.textContent = hasFiles ? L.selected : L.noFile;
     status.setAttribute('data-dockey', key);
     // ver.20260831: 既に送信済み(localStorage記録あり)かつ今この画面で未選択なら「確認中」を表示
-    if (!hasFiles && typeof _isReviewingKey === 'function' && _isReviewingKey(key)) {
+    // ver.20261125.02: 案シスで差戻しされ、まだ出し直していない書類は「差戻し・要再提出」
+    if (!hasFiles && typeof _isSashimodoshiKey === 'function' && _isSashimodoshiKey(key)) {
+      status.className = 'field-status sashimodoshi';
+      status.textContent = _sashimodoshiLabel();
+      status.style.color = '#dc2626'; status.style.fontWeight = '700';
+      row.classList.add('sashimodoshi');
+      row.style.borderColor = '#fca5a5'; row.style.background = '#fef2f2';
+      const _sdEl = document.createElement('div');
+      _sdEl.className = 'sd-note';
+      _sdEl.style.cssText = 'font-size:11.5px;color:#b91c1c;font-weight:700;margin-top:4px;line-height:1.6;';
+      _sdEl.textContent = _sashimodoshiNote();
+      label.appendChild(_sdEl);
+    } else if (!hasFiles && typeof _isReviewingKey === 'function' && _isReviewingKey(key)) {
       status.className = 'field-status reviewing';
       status.textContent = (typeof _reviewingLabel === 'function') ? _reviewingLabel() : '⏳ 確認中';
       status.style.color = '#b45309';
@@ -1594,6 +1659,11 @@ function _applyLiveDoneFromDocCheck(){
         var prefix = dk.substring(0, idx); var name = dk.substring(idx+2);
         var v = row.value; var truthy = (v!=null && v!=='' && v!=='false');
         if((prefix==='staff' || prefix==='skip') && truthy){ doneSet[name] = true; }
+        // ver.20261125.02: 差戻しの記録（{at,text,by}）。取り消されたもの（空・false）は数えない
+        if(prefix==='sashimodoshi' && truthy){
+          var _m = v; try{ if(typeof v === 'string') _m = JSON.parse(v); }catch(e){ _m = {}; }
+          var _at = Date.parse((_m && _m.at) || ''); _SD_MAP[_sdNorm(name)] = isNaN(_at) ? 0 : _at;
+        }
       });
       // ver.20260611.03: 旧モード(DOCS_LIST無し)でもグレーアウトできるよう doneSet を保持
       window._liveDoneSet = doneSet;

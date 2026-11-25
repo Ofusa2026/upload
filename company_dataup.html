@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20261125.01 - 送信済みの「⏳ 確認中」を端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる（複数担当者での重複準備を防ぐ） -->
+<!-- company_dataup ver.20261125.02 - 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のままで、再提出してよいか分からなかった）。出し直すと確認中に戻る -->
+<!-- 旧: ver.20261125.01 - 送信済みの「⏳ 確認中」を端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる（複数担当者での重複準備を防ぐ） -->
 <!-- company_dataup ver.20261123.03- 個人事業主の住民票：本籍「省略」は不可（本籍記載のものを）と説明と見本に明記 -->
 <!-- company_dataup ver.20261123.02 - 個人事業主の見本を、許可が出た個人事業主の実際の書類（個人情報は黒塗り）に差し替え：住民票・医療保険の資格確認書・国民健康保険料納付確認書・被保険者記録照会（納付Ⅱ）・被保険者記録照会回答票 -->
 <!-- company_dataup ver.20261123.01 - 個人事業主の「個人事業主納税証明書その3(5項目)」で法人の見本（法人税入り）が出ていたのを、個人の見本（源泉・申告所得税・相続税・贈与税・消費税の5項目）と説明に直した -->
@@ -831,9 +832,9 @@ var _SRV_SUBMITTED = {};
 function _loadServerSubmitted(){
   return new Promise(function(resolve){
     if(!COMPANY_ID){ resolve(); return; }
-    _uplRpc('upload_submitted_labels_get', { p_company_id: COMPANY_ID })
+    _uplRpc('upload_submitted_labels_get', { p_company_id: COMPANY_ID, p_days: 400 })
     .then(function(r){ return r.ok ? r.json() : []; })
-    .then(function(rows){ (rows||[]).forEach(function(x){ if(x && x.doc_label) _SRV_SUBMITTED[x.doc_label] = 1; }); resolve(); })
+    .then(function(rows){ (rows||[]).forEach(function(x){ if(x && x.doc_label){ var _t = Date.parse(x.last_at || ''); _SRV_SUBMITTED[x.doc_label] = isNaN(_t) ? 1 : _t; } }); resolve(); })
     .catch(function(e){ console.warn('submitted labels fetch err:', e); resolve(); });
   });
 }
@@ -843,7 +844,25 @@ function _reviewingMap(){
   Object.keys(_SRV_SUBMITTED).forEach(function(l){ if(!m[l]) m[l] = 1; });
   return m;
 }
-function _isReviewingLabel(label){ if(!label) return false; var m=_reviewingMap(); return !!m[label]; }
+function _isReviewingLabel(label){ if(!label) return false; if(_isSashimodoshiLabel(label)) return false; var m=_reviewingMap(); return !!m[label]; }
+// ===== ver.20261125.02: 差戻しの表示 =====
+//   案シスで差戻し（co_doc_check の sashimodoshi::書類名）された書類は、その後に出し直しが無ければ「🔁 差戻し・要再提出」と出す。
+//   出し直しの判定は案シスと同じ（差戻しの時刻より新しい送信があれば解消）。差戻しの理由（担当者のメモ）はこの画面には出さない。
+var _SD_MAP = {};   // 正規化した書類名 → 差戻しの時刻(ms)
+function _sdNorm(s){ return String(s||'').replace(/[\s　_().（）\/・]/g,'').toLowerCase(); }
+function _isSashimodoshiLabel(label){
+  if(!label) return false;
+  var at = _SD_MAP[_sdNorm(label)];
+  if (at === undefined && typeof DOC_DONE_ALIAS !== 'undefined' && DOC_DONE_ALIAS[label]) at = _SD_MAP[_sdNorm(DOC_DONE_ALIAS[label])];
+  if (at === undefined) return false;
+  var last = 0;
+  try { var v = JSON.parse(localStorage.getItem(_reviewingLsKey()) || '{}')[label]; if (typeof v === 'number' && v > 1) last = v; } catch(e){}
+  var s = _SRV_SUBMITTED[label]; if (typeof s === 'number' && s > last) last = s;
+  if (at && last && last > at) return false;   // 差戻しのあとに出し直し済み → 確認中へ
+  return true;
+}
+function _sashimodoshiLabel(){ return '🔁 差戻し・要再提出'; }
+var _SD_NOTE = '弊社で確認したところ、この書類は再度ご提出をお願いしております。担当者からのご連絡（理由）をご確認のうえ、正しい書類をアップロードしてください。';
 function _reviewingLabel(){ return '⏳ 確認中'; }
 function _recordSubmittedLabels(labels){
   try {
@@ -1301,6 +1320,17 @@ function buildAllFields() {
             doneEl.textContent = '✓ 提出済み（再提出が必要な場合のみ）';
             labelEl.appendChild(doneEl);
           }
+        } else if (typeof _isSashimodoshiLabel === 'function' && _isSashimodoshiLabel(it.label) && !(fileData[it.key] && fileData[it.key].length)) {
+          // ver.20261125.02: 案シスで差戻しされ、まだ出し直していない書類は「差戻し・要再提出」（確認中より優先）
+          var _sdSt = row.querySelector('.field-status');
+          if (_sdSt) { _sdSt.className = 'field-status'; _sdSt.textContent = _sashimodoshiLabel(); _sdSt.style.color = '#dc2626'; _sdSt.style.fontWeight = '700'; }
+          row.style.borderColor = '#fca5a5'; row.style.background = '#fef2f2';
+          if (labelEl) {
+            const sdEl = document.createElement('span');
+            sdEl.style.cssText = 'display:block;color:#b91c1c;font-size:11.5px;font-weight:700;margin-top:3px;line-height:1.6;';
+            sdEl.textContent = _SD_NOTE;
+            labelEl.appendChild(sdEl);
+          }
         } else if (typeof _isReviewingLabel === 'function' && _isReviewingLabel(it.label) && !(fileData[it.key] && fileData[it.key].length)) {
           // ver.20260910.01: 送信済みだが担当未確認の書類は「⏳ 確認中」を表示（提出済み確定が優先）
           var _stEl = row.querySelector('.field-status');
@@ -1408,6 +1438,11 @@ function _applyLiveDoneFromCoDocCheck(){
         var prefix = dk.substring(0, idx); var name = dk.substring(idx+2);
         var v = row.value; var truthy = (v!=null && v!=='' && v!=='false');
         if((prefix==='staff' || prefix==='skip') && truthy){ doneSet[name] = true; }
+        // ver.20261125.02: 差戻しの記録（{at,text,by}）。取り消されたもの（空・false）は数えない
+        if(prefix==='sashimodoshi' && truthy){
+          var _m = v; try{ if(typeof v === 'string') _m = JSON.parse(v); }catch(e){ _m = {}; }
+          var _at = Date.parse((_m && _m.at) || ''); _SD_MAP[_sdNorm(name)] = isNaN(_at) ? 0 : _at;
+        }
       });
       DOCS_LIST.forEach(function(d){
         if(d && d.l){
