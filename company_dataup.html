@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20261123.03 - 個人事業主の住民票：本籍「省略」は不可（本籍記載のものを）と説明と見本に明記 -->
+<!-- company_dataup ver.20261125.01 - 送信済みの「⏳ 確認中」を端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる（複数担当者での重複準備を防ぐ） -->
+<!-- company_dataup ver.20261123.03- 個人事業主の住民票：本籍「省略」は不可（本籍記載のものを）と説明と見本に明記 -->
 <!-- company_dataup ver.20261123.02 - 個人事業主の見本を、許可が出た個人事業主の実際の書類（個人情報は黒塗り）に差し替え：住民票・医療保険の資格確認書・国民健康保険料納付確認書・被保険者記録照会（納付Ⅱ）・被保険者記録照会回答票 -->
 <!-- company_dataup ver.20261123.01 - 個人事業主の「個人事業主納税証明書その3(5項目)」で法人の見本（法人税入り）が出ていたのを、個人の見本（源泉・申告所得税・相続税・贈与税・消費税の5項目）と説明に直した -->
 <!-- company_dataup ver.20261121.03 - パソコンは画面の大きさに合わせて広げる（画面の94%・最大1680px）。文字・ボタン・見本画像も画面に合わせて大きく。 -->
@@ -824,7 +825,24 @@ function buildCompanySampleInline(label){
 //   案シスの提出済み確定(担当者確認)まで反映されないため、その間の空白を localStorage で埋める。
 //   キー d0.. は書類構成が変わると別書類を指しうるため、判定は「日本語ラベル」で行う。
 function _reviewingLsKey(){ return 'ofusa_upload_submitted_co_' + (typeof COMPANY_ID !== 'undefined' ? COMPANY_ID : ''); }
-function _reviewingMap(){ try { return JSON.parse(localStorage.getItem(_reviewingLsKey()) || '{}') || {}; } catch(e){ return {}; } }
+// ver.20261125.01: 「確認中」を端末ごとの記録だけでなく、サーバーの送信記録(upload_notifications)からも読む。
+//   同じリンクを別の担当者・別の端末で開いても、誰かが送った書類は「⏳ 確認中」になる（重複準備の防止）。
+var _SRV_SUBMITTED = {};
+function _loadServerSubmitted(){
+  return new Promise(function(resolve){
+    if(!COMPANY_ID){ resolve(); return; }
+    _uplRpc('upload_submitted_labels_get', { p_company_id: COMPANY_ID })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(rows){ (rows||[]).forEach(function(x){ if(x && x.doc_label) _SRV_SUBMITTED[x.doc_label] = 1; }); resolve(); })
+    .catch(function(e){ console.warn('submitted labels fetch err:', e); resolve(); });
+  });
+}
+function _reviewingMap(){
+  var m = {};
+  try { m = JSON.parse(localStorage.getItem(_reviewingLsKey()) || '{}') || {}; } catch(e){ m = {}; }
+  Object.keys(_SRV_SUBMITTED).forEach(function(l){ if(!m[l]) m[l] = 1; });
+  return m;
+}
 function _isReviewingLabel(label){ if(!label) return false; var m=_reviewingMap(); return !!m[label]; }
 function _reviewingLabel(){ return '⏳ 確認中'; }
 function _recordSubmittedLabels(labels){
@@ -1571,7 +1589,7 @@ function uplAgSkip(){ _uplAgClose(); }
     DOCS_LIST = _buildFallbackDocsList();
     USE_NEW_DOCS = true;
   }
-  try { await _applyLiveDoneFromCoDocCheck(); } catch(e){ console.warn('live done err:', e); }
+  try { await Promise.all([_applyLiveDoneFromCoDocCheck(), _loadServerSubmitted()]); } catch(e){ console.warn('live done err:', e); }
   buildAllFields();
 })();
 

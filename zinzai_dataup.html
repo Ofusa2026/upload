@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20261113.01'; // ver.20261113.01: 課税・納税証明書の質問カード（「○年1月1日、日本に住んでいましたか？」・窓口案内・不要の案内）も言語ボタンに合わせて訳す。役所の人に見せる見出しと書類名は日本語のまま、下に訳を付ける ／ ver.20261105.01: 「国民健康保険料（税）納付証明書」にも納付証明書の見本を表示 ／ ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
+const VERSION = 'ver.20261125.01'; // ver.20261125.01: 送信済みの「⏳ 確認中」と課税証明書「不要」の回答を、端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる ／ ver.20261113.01:ver.20261113.01: 課税・納税証明書の質問カード（「○年1月1日、日本に住んでいましたか？」・窓口案内・不要の案内）も言語ボタンに合わせて訳す。役所の人に見せる見出しと書類名は日本語のまま、下に訳を付ける ／ ver.20261105.01: 「国民健康保険料（税）納付証明書」にも納付証明書の見本を表示 ／ ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -1238,7 +1238,7 @@ let taxNeeded = null; // null=未回答（必要扱い）, true=必要, false=�
 function _setTaxNeeded(v) { taxNeeded = v; buildFields(); updateSubmitBtn(); }
 // ver.20261102.01: 「いいえ（○年以降に入国）」の回答だけでも送信できるように。案シスには「不要」の通知（理由つき）で届ける
 function _taxAnsKey() { return 'ofusa_tax_answer_' + (CASE_ID || ''); }
-function _taxAnswerSent() { try { return localStorage.getItem(_taxAnsKey()) === 'no'; } catch(e) { return false; } }
+function _taxAnswerSent() { if (typeof _SRV_TAX_NO !== 'undefined' && _SRV_TAX_NO) return true; try { return localStorage.getItem(_taxAnsKey()) === 'no'; } catch(e) { return false; } }
 function _taxAnswerPending() { return taxNeeded === false && !!CASE_ID && !_taxAnswerSent(); }
 async function _sendTaxAnswer() {
   if (!_taxAnswerPending()) return true;
@@ -1291,7 +1291,29 @@ function _isReviewingKey(key){
   // 既に案シスで提出済み確定(DOC_DONE)なら、そちらの「✓提出済み」を優先し確認中は出さない
   if (typeof DOC_DONE !== 'undefined' && DOC_DONE && DOC_DONE[key]) return false;
   var m = _reviewingMap();
-  return !!m[key];
+  if (m[key]) return true;
+  // ver.20261125.01: サーバーの送信記録（誰がどの端末で送っても）でも「確認中」にする
+  var ja = (typeof _jaLabelOf === 'function') ? _jaLabelOf(key) : '';
+  return !!(ja && _SRV_SUBMITTED[ja]);
+}
+// ver.20261125.01: 送信記録(upload_notifications)を読み込む。同じリンクを別の人・別の端末で開いても提出状況が分かる
+var _SRV_SUBMITTED = {};
+var _SRV_TAX_NO = false;
+function _loadServerSubmitted(){
+  return new Promise(function(resolve){
+    if(!CASE_ID){ resolve(); return; }
+    _uplRpc('upload_submitted_labels_get', { p_case_id: CASE_ID })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(rows){
+      (rows||[]).forEach(function(x){
+        if(!x || !x.doc_label) return;
+        if(x.doc_label === '不要'){ _SRV_TAX_NO = true; return; }  // 課税・納税証明書「不要」の回答
+        _SRV_SUBMITTED[x.doc_label] = 1;
+      });
+      resolve();
+    })
+    .catch(function(e){ console.warn('submitted labels fetch err:', e); resolve(); });
+  });
 }
 function _reviewingLabel(){
   var labels = {
@@ -1586,7 +1608,7 @@ function _applyLiveDoneFromDocCheck(){
 (async function _initDocsAndLang(){
   try {
     await _loadDocsFromCache();
-    await _applyLiveDoneFromDocCheck();
+    await Promise.all([_applyLiveDoneFromDocCheck(), _loadServerSubmitted()]);
     _initDocKeys();
   } catch(e){ console.warn('_initDocsAndLang err:', e); }
   setLang('ja');
