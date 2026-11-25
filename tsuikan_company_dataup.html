@@ -1,4 +1,5 @@
-<!-- tsuikan_company_dataup tsuikan ver.20261125.04 - 提出済みの欄は右側も「✓ 提出済み」にそろえた（「未選択」と同時に出て迷うため）／差戻しの説明を書類名の横でなく欄の幅いっぱいに出す（スマホで縦長にならない） -->
+<!-- tsuikan_company_dataup tsuikan ver.20261125.05 - 提出状況のまとめ（◯/◯件・まだの書類ボタン）を上に表示、送信ボタンを画面下に固定、選んだのに未送信の書類があるまま閉じると確認を出す -->
+<!-- 旧: tsuikan ver.20261125.04 - 提出済みの欄は右側も「✓ 提出済み」にそろえた（「未選択」と同時に出て迷うため）／差戻しの説明を書類名の横でなく欄の幅いっぱいに出す（スマホで縦長にならない） -->
 <!-- 旧: tsuikan ver.20261125.03 - 案シスで差戻し（↩ 差戻）した書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のまま）。出し直すと確認中に戻る。画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す -->
 <!-- 旧: tsuikan ver.20261119.01 - 追完専用（入管から追加で求められた書類だけ・理由つき）。もとは company_dataup.html -->
 <!DOCTYPE html>
@@ -1964,5 +1965,137 @@ async function _sfMake(){
 }
 
 </script>
+<!-- ===== ver.20261125.05: 提出状況のまとめ（上）・送信ボタンを画面下に固定・送り忘れ警告（5画面共通） ===== -->
+<style>
+  #uplStickyBar{position:sticky;bottom:0;z-index:50;margin:16px -4px 0;padding:10px 4px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-top:1px solid #e2e8f0;box-shadow:0 -6px 16px rgba(15,23,42,.08);}
+  #uplStickyBar #submitBtn{margin-top:0;}
+  #uplStickyMsg{font-size:12.5px;font-weight:700;line-height:1.5;text-align:center;margin:0 0 8px;}
+  #uplStickyMsg:empty{display:none;}
+  #uplSummary{margin:0 0 12px;border-radius:10px;padding:12px 14px;border:2px solid #bfdbfe;background:#eff6ff;}
+  #uplSummary.all-done{border-color:#86efac;background:#f0fdf4;}
+  #uplSummary .us-head{font-size:14px;font-weight:800;color:#1e3a8a;}
+  #uplSummary.all-done .us-head{color:#166534;}
+  #uplSummary .us-bar{height:8px;border-radius:99px;background:#dbeafe;overflow:hidden;margin:8px 0;}
+  #uplSummary .us-bar > div{height:100%;background:#16a34a;border-radius:99px;transition:width .3s;}
+  #uplSummary .us-lead{font-size:12px;color:#334155;margin:0 0 6px;line-height:1.6;}
+  #uplSummary button{display:inline-block;margin:0 6px 6px 0;padding:5px 10px;border-radius:8px;border:1.5px solid #93c5fd;background:#fff;color:#1e40af;font-size:12.5px;font-weight:700;cursor:pointer;text-align:left;font-family:inherit;}
+  #uplSummary button.req{border-color:#f87171;color:#b91c1c;}
+  #uplSummary button.sel{border-color:#fbbf24;color:#92400e;background:#fffbeb;}
+</style>
+<script>
+(function(){
+  var T = {
+    ja:{head:'📋 提出状況：{d} / {t} 件', lead:'まだの書類（押すとその書類へ移動します）', done:'✅ 必要な書類はすべて提出済みです。ありがとうございました。', pend:'📤 選んだ書類が {n} 件、まだ送信されていません。下のボタンを押して送信してください。', left:'あと {n} 件の書類が未提出です', req:'必須', sel:'未送信'},
+    en:{head:'📋 Submitted: {d} / {t}', lead:'Not submitted yet (tap to jump to it)', done:'✅ All required documents have been submitted. Thank you!', pend:'📤 {n} selected document(s) have NOT been sent yet. Press the button below to send.', left:'{n} document(s) still to submit', req:'Required', sel:'Not sent'},
+    vi:{head:'📋 Đã nộp: {d} / {t}', lead:'Giấy tờ chưa nộp (nhấn để chuyển đến)', done:'✅ Đã nộp đủ tất cả giấy tờ cần thiết. Xin cảm ơn!', pend:'📤 Có {n} giấy tờ đã chọn nhưng CHƯA gửi. Hãy nhấn nút bên dưới để gửi.', left:'Còn {n} giấy tờ chưa nộp', req:'Bắt buộc', sel:'Chưa gửi'},
+    id:{head:'📋 Terkirim: {d} / {t}', lead:'Belum dikirim (ketuk untuk menuju dokumen)', done:'✅ Semua dokumen yang diperlukan sudah dikirim. Terima kasih!', pend:'📤 {n} dokumen yang dipilih BELUM dikirim. Tekan tombol di bawah untuk mengirim.', left:'Masih ada {n} dokumen yang belum dikirim', req:'Wajib', sel:'Belum dikirim'},
+    my:{head:'📋 တင်ပြီး: {d} / {t}', lead:'မတင်ရသေးသော စာရွက်စာတမ်းများ (နှိပ်ပါက ထိုနေရာသို့ သွားမည်)', done:'✅ လိုအပ်သော စာရွက်စာတမ်းအားလုံး တင်ပြီးပါပြီ။ ကျေးဇူးတင်ပါသည်။', pend:'📤 ရွေးထားသော စာရွက်စာတမ်း {n} ခု မပို့ရသေးပါ။ အောက်ပါခလုတ်ကို နှိပ်၍ ပို့ပါ။', left:'မတင်ရသေးသော စာရွက်စာတမ်း {n} ခု ကျန်သည်', req:'မဖြစ်မနေ', sel:'မပို့ရသေး'},
+    ko:{head:'📋 제출 현황: {d} / {t}건', lead:'아직 제출하지 않은 서류 (누르면 해당 서류로 이동)', done:'✅ 필요한 서류를 모두 제출했습니다. 감사합니다.', pend:'📤 선택한 서류 {n}건이 아직 전송되지 않았습니다. 아래 버튼을 눌러 전송하세요.', left:'아직 {n}건 미제출입니다', req:'필수', sel:'미전송'},
+    ne:{head:'📋 पेश गरिएको: {d} / {t}', lead:'अझै पेश नगरिएका कागजात (थिच्दा त्यहाँ जान्छ)', done:'✅ आवश्यक सबै कागजात पेश भइसके। धन्यवाद!', pend:'📤 छानिएका {n} कागजात अझै पठाइएको छैन। तलको बटन थिचेर पठाउनुहोस्।', left:'अझै {n} कागजात पेश गर्न बाँकी', req:'अनिवार्य', sel:'नपठाइएको'},
+    zh:{head:'📋 提交情况：{d} / {t} 份', lead:'尚未提交的文件（点击跳转）', done:'✅ 所需文件已全部提交。谢谢！', pend:'📤 已选择的 {n} 份文件还没有发送。请按下方按钮发送。', left:'还有 {n} 份文件未提交', req:'必须', sel:'未发送'},
+    th:{head:'📋 ส่งแล้ว: {d} / {t}', lead:'เอกสารที่ยังไม่ได้ส่ง (แตะเพื่อไปยังเอกสาร)', done:'✅ ส่งเอกสารที่จำเป็นครบแล้ว ขอบคุณค่ะ', pend:'📤 เอกสารที่เลือกไว้ {n} รายการ ยังไม่ได้ส่ง กรุณากดปุ่มด้านล่างเพื่อส่ง', left:'ยังเหลือเอกสาร {n} รายการที่ยังไม่ได้ส่ง', req:'จำเป็น', sel:'ยังไม่ส่ง'},
+    km:{head:'📋 បានដាក់ស្នើ៖ {d} / {t}', lead:'ឯកសារមិនទាន់ដាក់ស្នើ (ចុចដើម្បីទៅកាន់)', done:'✅ ឯកសារចាំបាច់ទាំងអស់ត្រូវបានដាក់ស្នើរួចហើយ។ សូមអរគុណ!', pend:'📤 ឯកសារដែលបានជ្រើសរើស {n} មិនទាន់បានផ្ញើទេ។ សូមចុចប៊ូតុងខាងក្រោមដើម្បីផ្ញើ។', left:'នៅសល់ឯកសារ {n} មិនទាន់ដាក់ស្នើ', req:'ចាំបាច់', sel:'មិនទាន់ផ្ញើ'},
+    mn:{head:'📋 Илгээсэн: {d} / {t}', lead:'Илгээгээгүй баримтууд (дарж тухайн баримт руу очно)', done:'✅ Шаардлагатай бүх баримтыг илгээсэн. Баярлалаа!', pend:'📤 Сонгосон {n} баримт хараахан илгээгдээгүй байна. Доорх товчийг дарж илгээнэ үү.', left:'Илгээгээгүй {n} баримт үлдсэн', req:'Заавал', sel:'Илгээгээгүй'},
+    si:{head:'📋 ඉදිරිපත් කළ: {d} / {t}', lead:'තවම ඉදිරිපත් නොකළ ලේඛන (එබූ විට එතැනට යයි)', done:'✅ අවශ්‍ය සියලු ලේඛන ඉදිරිපත් කර ඇත. ස්තූතියි!', pend:'📤 තෝරාගත් ලේඛන {n} ක් තවම යවා නැත. යැවීමට පහත බොත්තම ඔබන්න.', left:'තවම ඉදිරිපත් නොකළ ලේඛන {n} ක් ඇත', req:'අනිවාර්ය', sel:'යවා නැත'}
+  };
+  function L(){ var c = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'ja'; return T[c] || T.en; }
+  function visible(el){ return !!(el && el.getClientRects().length); }
+  function rowName(row){
+    var l = row.querySelector('.field-label'); var n = '';
+    if (l) { var c = l.cloneNode(true); c.querySelectorAll('rt,rp,div,span[style],.sd-note').forEach(function(x){ x.remove(); }); n = String(c.textContent||'').replace(/\s+/g,' ').trim(); }
+    return n.length > 40 ? n.slice(0,40) + '…' : n;
+  }
+  // 行の状態: sel=選んだが未送信 / sd=差戻し / done=提出済み・確認中 / na=不要・弊社作成 / todo=まだ
+  function rowState(row){
+    var st = row.querySelector('.field-status'); var tx = st ? String(st.textContent||'') : '';
+    if (row.classList.contains('has-file') || (st && st.classList.contains('ready'))) return 'sel';
+    if (row.classList.contains('sashimodoshi') || (st && st.classList.contains('sashimodoshi'))) return 'sd';
+    if (/不要|弊社作成/.test(tx)) return 'na';
+    if (/[✓⏳]/.test(tx)) return 'done';
+    return 'todo';
+  }
+  function collect(){
+    var rows = [].slice.call(document.querySelectorAll('.fields-list .field-row')).filter(function(r){
+      var k = String(r.dataset.key || ''); if (/^other/.test(k)) return false;
+      return visible(r);
+    });
+    var o = {rows:[], sel:0, sd:0, done:0, todo:0};
+    rows.forEach(function(r){ var s = rowState(r); if (s === 'na') return; o[s]++; o.rows.push({row:r, s:s}); });
+    o.total = o.rows.length;
+    return o;
+  }
+  var lastSig = '';
+  function render(){
+    try {
+      var btn = document.getElementById('submitBtn'); if (!btn) return;
+      // 送信ボタンを画面下に固定するための入れ物（ボタンそのものは動かすだけ・処理はそのまま）
+      var bar = document.getElementById('uplStickyBar');
+      if (!bar) {
+        bar = document.createElement('div'); bar.id = 'uplStickyBar';
+        var msg = document.createElement('div'); msg.id = 'uplStickyMsg';
+        btn.parentNode.insertBefore(bar, btn); bar.appendChild(msg); bar.appendChild(btn);
+      }
+      var btnHidden = getComputedStyle(btn).display === 'none';
+      bar.style.display = btnHidden ? 'none' : '';
+      var o = collect(); var t = L();
+      var sig = [currentLangSafe(), o.total, o.sel, o.sd, o.done, o.todo, btnHidden, o.rows.map(function(x){ return x.s + rowName(x.row); }).join('|')].join('/');
+      if (sig === lastSig) return; lastSig = sig;
+      var m = document.getElementById('uplStickyMsg');
+      if (o.sel > 0) { m.textContent = t.pend.replace('{n}', o.sel); m.style.color = '#b45309'; }
+      else if (o.todo + o.sd > 0 && o.done > 0) { m.textContent = t.left.replace('{n}', o.todo + o.sd); m.style.color = '#475569'; }
+      else m.textContent = '';
+      // 上のまとめ
+      var old = document.getElementById('uplSummary'); if (old) old.remove();
+      if (!o.total || btnHidden) return;
+      var box = document.createElement('div'); box.id = 'uplSummary';
+      var allDone = (o.done === o.total);
+      if (allDone) box.className = 'all-done';
+      var h = document.createElement('div'); h.className = 'us-head';
+      h.textContent = allDone ? t.done : t.head.replace('{d}', o.done).replace('{t}', o.total);
+      box.appendChild(h);
+      if (!allDone) {
+        var b = document.createElement('div'); b.className = 'us-bar';
+        var f = document.createElement('div'); f.style.width = Math.round(o.done / o.total * 100) + '%'; b.appendChild(f); box.appendChild(b);
+        var rest = o.rows.filter(function(x){ return x.s === 'todo' || x.s === 'sel'; });
+        if (rest.length) {
+          var ld = document.createElement('div'); ld.className = 'us-lead'; ld.textContent = t.lead; box.appendChild(ld);
+          rest.sort(function(a, b){ return (isReq(b.row) - isReq(a.row)); });
+          rest.forEach(function(x){
+            var k = document.createElement('button'); k.type = 'button';
+            var req = isReq(x.row);
+            k.className = x.s === 'sel' ? 'sel' : (req ? 'req' : '');
+            k.textContent = (x.s === 'sel' ? '📤 ' : (req ? '● ' : '○ ')) + (rowName(x.row) || '—') + (x.s === 'sel' ? '（' + t.sel + '）' : '');
+            k.onclick = function(){ x.row.classList.add('open'); try { x.row.scrollIntoView({behavior:'smooth', block:'center'}); } catch(e){ x.row.scrollIntoView(); } };
+            box.appendChild(k);
+          });
+        }
+      }
+      var sd = document.getElementById('sdBanner');
+      var anchor = document.querySelector('.tabs-wrap') || document.querySelector('.fields-list');
+      if (sd && sd.parentNode) sd.parentNode.insertBefore(box, sd.nextSibling);
+      else if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(box, anchor);
+    } catch(e){ console.warn('upl summary err:', e); }
+  }
+  function isReq(row){ var l = row.querySelector('.field-label'); return (l && l.textContent.indexOf('必須') !== -1) ? 1 : 0; }
+  function currentLangSafe(){ return (typeof currentLang !== 'undefined') ? currentLang : 'ja'; }
+  var timer = null;
+  function schedule(){ if (timer) return; timer = setTimeout(function(){ timer = null; render(); }, 120); }
+  new MutationObserver(function(muts){
+    for (var i = 0; i < muts.length; i++) {
+      var n = muts[i].target;
+      if (n && n.closest && (n.closest('#uplSummary') || n.closest('#uplStickyMsg'))) continue;
+      schedule(); return;
+    }
+  }).observe(document.body, {childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['class','style']});
+  document.addEventListener('click', schedule, true);
+  window.addEventListener('resize', schedule);
+  schedule();
+  // 選んだのに送信していない書類があるまま閉じようとしたら確認を出す
+  window.addEventListener('beforeunload', function(e){
+    try { if (collect().sel > 0) { e.preventDefault(); e.returnValue = ''; return ''; } } catch(_){}
+  });
+})();
+</script>
+<!-- ===== /ver.20261125.05 ===== -->
 </body>
 </html>
