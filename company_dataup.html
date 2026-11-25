@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20261125.05 - 提出状況のまとめ（◯/◯件・まだの書類ボタン）を上に表示、送信ボタンを画面下に固定、選んだのに未送信の書類があるまま閉じると確認を出す -->
+<!-- company_dataup ver.20261125.06 - 提出状況の表示を控えめに（最初は件数とバーだけ・書類名ボタンは1件提出してから。選んだのに未送信の書類は常に表示） -->
+<!-- 旧: ver.20261125.05 - 提出状況のまとめ（◯/◯件・まだの書類ボタン）を上に表示、送信ボタンを画面下に固定、選んだのに未送信の書類があるまま閉じると確認を出す -->
 <!-- 旧: ver.20261125.04 - 提出済みの欄は右側も「✓ 提出済み」にそろえた（「未選択」と同時に出て迷うため）／差戻しの説明を書類名の横でなく欄の幅いっぱいに出す（スマホで縦長にならない）／中小企業に書類がある会社は最初から「中小企業」タブで開く（書類の無い「大企業」タブで開いていた） -->
 <!-- 旧: ver.20261125.03 - 画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す（押すとその書類へ移動） -->
 <!-- 旧: ver.20261125.02 - 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のままで、再提出してよいか分からなかった）。出し直すと確認中に戻る -->
@@ -1945,17 +1946,18 @@ async function _sfMake(){
 }
 
 </script>
-<!-- ===== ver.20261125.05: 提出状況のまとめ（上）・送信ボタンを画面下に固定・送り忘れ警告（5画面共通） ===== -->
+<!-- ===== ver.20261125.05〜.06: 提出状況のまとめ（上）・送信ボタンを画面下に固定・送り忘れ警告（5画面共通） ===== -->
 <style>
   #uplStickyBar{position:sticky;bottom:0;z-index:50;margin:16px -4px 0;padding:10px 4px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-top:1px solid #e2e8f0;box-shadow:0 -6px 16px rgba(15,23,42,.08);}
   #uplStickyBar #submitBtn{margin-top:0;}
   #uplStickyMsg{font-size:12.5px;font-weight:700;line-height:1.5;text-align:center;margin:0 0 8px;}
   #uplStickyMsg:empty{display:none;}
-  #uplSummary{margin:0 0 12px;border-radius:10px;padding:12px 14px;border:2px solid #bfdbfe;background:#eff6ff;}
+  #uplSummary{margin:0 0 12px;border-radius:10px;padding:10px 14px;border:1.5px solid #dbeafe;background:#f8fbff;}
   #uplSummary.all-done{border-color:#86efac;background:#f0fdf4;}
-  #uplSummary .us-head{font-size:14px;font-weight:800;color:#1e3a8a;}
+  #uplSummary .us-head{font-size:13px;font-weight:700;color:#1e3a8a;}
   #uplSummary.all-done .us-head{color:#166534;}
-  #uplSummary .us-bar{height:8px;border-radius:99px;background:#dbeafe;overflow:hidden;margin:8px 0;}
+  #uplSummary .us-bar{height:6px;border-radius:99px;background:#e2e8f0;overflow:hidden;margin:6px 0 2px;}
+  #uplSummary .us-lead{margin-top:8px !important;}
   #uplSummary .us-bar > div{height:100%;background:#16a34a;border-radius:99px;transition:width .3s;}
   #uplSummary .us-lead{font-size:12px;color:#334155;margin:0 0 6px;line-height:1.6;}
   #uplSummary button{display:inline-block;margin:0 6px 6px 0;padding:5px 10px;border-radius:8px;border:1.5px solid #93c5fd;background:#fff;color:#1e40af;font-size:12.5px;font-weight:700;cursor:pointer;text-align:left;font-family:inherit;}
@@ -2036,7 +2038,8 @@ async function _sfMake(){
       if (!allDone) {
         var b = document.createElement('div'); b.className = 'us-bar';
         var f = document.createElement('div'); f.style.width = Math.round(o.done / o.total * 100) + '%'; b.appendChild(f); box.appendChild(b);
-        var rest = o.rows.filter(function(x){ return x.s === 'todo' || x.s === 'sel'; });
+        // ver.20261125.06: 最初（まだ1件も提出していない）は件数とバーだけ。書類名は途中から出す（下の一覧と二重に見えるため）。選んだのに未送信の書類だけは常に出す
+        var rest = o.rows.filter(function(x){ return x.s === 'sel' || (x.s === 'todo' && o.done > 0); });
         if (rest.length) {
           var ld = document.createElement('div'); ld.className = 'us-lead'; ld.textContent = t.lead; box.appendChild(ld);
           rest.sort(function(a, b){ return (isReq(b.row) - isReq(a.row)); });

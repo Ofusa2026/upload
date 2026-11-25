@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20261125.05'; // ver.20261125.05: 提出状況のまとめ（◯/◯件・まだの書類ボタン）を上に表示、送信ボタンを画面下に固定、選んだのに未送信の書類があるまま閉じると確認を出す ／ ver.20261125.04: 提出済みの欄は右側も「✓ 提出済み」にそろえた（「未選択」と同時に出て迷うため）／差戻しの説明を書類名の横でなく欄の幅いっぱいに出す（スマホで縦長にならない） ／ ver.20261125.03: 画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す（押すとその書類へ移動） ／ ver.20261125.02: 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のままで、再提出してよいか分からなかった）。出し直すと確認中に戻る ／ ver.20261125.01: 送信済みの「⏳ 確認中」と課税証明書「不要」の回答を、端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる ／ ver.20261113.01:ver.20261113.01: 課税・納税証明書の質問カード（「○年1月1日、日本に住んでいましたか？」・窓口案内・不要の案内）も言語ボタンに合わせて訳す。役所の人に見せる見出しと書類名は日本語のまま、下に訳を付ける ／ ver.20261105.01: 「国民健康保険料（税）納付証明書」にも納付証明書の見本を表示 ／ ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
+const VERSION = 'ver.20261125.06'; // ver.20261125.06: 提出状況の表示を控えめに（最初は件数とバーだけ・書類名ボタンは1件提出してから。選んだのに未送信の書類は常に表示） ／ ver.20261125.05: 提出状況のまとめ（◯/◯件・まだの書類ボタン）を上に表示、送信ボタンを画面下に固定、選んだのに未送信の書類があるまま閉じると確認を出す ／ ver.20261125.04: 提出済みの欄は右側も「✓ 提出済み」にそろえた（「未選択」と同時に出て迷うため）／差戻しの説明を書類名の横でなく欄の幅いっぱいに出す（スマホで縦長にならない） ／ ver.20261125.03: 画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す（押すとその書類へ移動） ／ ver.20261125.02: 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のままで、再提出してよいか分からなかった）。出し直すと確認中に戻る ／ ver.20261125.01: 送信済みの「⏳ 確認中」と課税証明書「不要」の回答を、端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる ／ ver.20261113.01:ver.20261113.01: 課税・納税証明書の質問カード（「○年1月1日、日本に住んでいましたか？」・窓口案内・不要の案内）も言語ボタンに合わせて訳す。役所の人に見せる見出しと書類名は日本語のまま、下に訳を付ける ／ ver.20261105.01: 「国民健康保険料（税）納付証明書」にも納付証明書の見本を表示 ／ ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -2140,17 +2140,18 @@ submitBtn.addEventListener('click', async () => {
   setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 1500);
 });
 </script>
-<!-- ===== ver.20261125.05: 提出状況のまとめ（上）・送信ボタンを画面下に固定・送り忘れ警告（5画面共通） ===== -->
+<!-- ===== ver.20261125.05〜.06: 提出状況のまとめ（上）・送信ボタンを画面下に固定・送り忘れ警告（5画面共通） ===== -->
 <style>
   #uplStickyBar{position:sticky;bottom:0;z-index:50;margin:16px -4px 0;padding:10px 4px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-top:1px solid #e2e8f0;box-shadow:0 -6px 16px rgba(15,23,42,.08);}
   #uplStickyBar #submitBtn{margin-top:0;}
   #uplStickyMsg{font-size:12.5px;font-weight:700;line-height:1.5;text-align:center;margin:0 0 8px;}
   #uplStickyMsg:empty{display:none;}
-  #uplSummary{margin:0 0 12px;border-radius:10px;padding:12px 14px;border:2px solid #bfdbfe;background:#eff6ff;}
+  #uplSummary{margin:0 0 12px;border-radius:10px;padding:10px 14px;border:1.5px solid #dbeafe;background:#f8fbff;}
   #uplSummary.all-done{border-color:#86efac;background:#f0fdf4;}
-  #uplSummary .us-head{font-size:14px;font-weight:800;color:#1e3a8a;}
+  #uplSummary .us-head{font-size:13px;font-weight:700;color:#1e3a8a;}
   #uplSummary.all-done .us-head{color:#166534;}
-  #uplSummary .us-bar{height:8px;border-radius:99px;background:#dbeafe;overflow:hidden;margin:8px 0;}
+  #uplSummary .us-bar{height:6px;border-radius:99px;background:#e2e8f0;overflow:hidden;margin:6px 0 2px;}
+  #uplSummary .us-lead{margin-top:8px !important;}
   #uplSummary .us-bar > div{height:100%;background:#16a34a;border-radius:99px;transition:width .3s;}
   #uplSummary .us-lead{font-size:12px;color:#334155;margin:0 0 6px;line-height:1.6;}
   #uplSummary button{display:inline-block;margin:0 6px 6px 0;padding:5px 10px;border-radius:8px;border:1.5px solid #93c5fd;background:#fff;color:#1e40af;font-size:12.5px;font-weight:700;cursor:pointer;text-align:left;font-family:inherit;}
@@ -2231,7 +2232,8 @@ submitBtn.addEventListener('click', async () => {
       if (!allDone) {
         var b = document.createElement('div'); b.className = 'us-bar';
         var f = document.createElement('div'); f.style.width = Math.round(o.done / o.total * 100) + '%'; b.appendChild(f); box.appendChild(b);
-        var rest = o.rows.filter(function(x){ return x.s === 'todo' || x.s === 'sel'; });
+        // ver.20261125.06: 最初（まだ1件も提出していない）は件数とバーだけ。書類名は途中から出す（下の一覧と二重に見えるため）。選んだのに未送信の書類だけは常に出す
+        var rest = o.rows.filter(function(x){ return x.s === 'sel' || (x.s === 'todo' && o.done > 0); });
         if (rest.length) {
           var ld = document.createElement('div'); ld.className = 'us-lead'; ld.textContent = t.lead; box.appendChild(ld);
           rest.sort(function(a, b){ return (isReq(b.row) - isReq(a.row)); });
