@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20261125.02'; // ver.20261125.02: 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のままで、再提出してよいか分からなかった）。出し直すと確認中に戻る ／ ver.20261125.01: 送信済みの「⏳ 確認中」と課税証明書「不要」の回答を、端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる ／ ver.20261113.01:ver.20261113.01: 課税・納税証明書の質問カード（「○年1月1日、日本に住んでいましたか？」・窓口案内・不要の案内）も言語ボタンに合わせて訳す。役所の人に見せる見出しと書類名は日本語のまま、下に訳を付ける ／ ver.20261105.01: 「国民健康保険料（税）納付証明書」にも納付証明書の見本を表示 ／ ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
+const VERSION = 'ver.20261125.03'; // ver.20261125.03: 画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す（押すとその書類へ移動） ／ ver.20261125.02: 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のままで、再提出してよいか分からなかった）。出し直すと確認中に戻る ／ ver.20261125.01: 送信済みの「⏳ 確認中」と課税証明書「不要」の回答を、端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる ／ ver.20261113.01:ver.20261113.01: 課税・納税証明書の質問カード（「○年1月1日、日本に住んでいましたか？」・窓口案内・不要の案内）も言語ボタンに合わせて訳す。役所の人に見せる見出しと書類名は日本語のまま、下に訳を付ける ／ ver.20261105.01: 「国民健康保険料（税）納付証明書」にも納付証明書の見本を表示 ／ ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -1295,7 +1295,9 @@ function _isReviewingKey(key){
   if (m[key]) return true;
   // ver.20261125.01: サーバーの送信記録（誰がどの端末で送っても）でも「確認中」にする
   var ja = (typeof _jaLabelOf === 'function') ? _jaLabelOf(key) : '';
-  return !!(ja && _SRV_SUBMITTED[ja]);
+  // ver.20261125.03: 送信記録は差戻しの判定用に400日分読むが、「確認中」は従来どおり90日以内の送信だけ
+  var s = ja ? _SRV_SUBMITTED[ja] : 0;
+  return !!(s && (s === 1 || s > Date.now() - 90*24*3600*1000));
 }
 // ver.20261125.01: 送信記録(upload_notifications)を読み込む。同じリンクを別の人・別の端末で開いても提出状況が分かる
 var _SRV_SUBMITTED = {};
@@ -1370,6 +1372,62 @@ function _sashimodoshiNote(){
   };
   return notes[(typeof currentLang!=='undefined'?currentLang:'ja')] || notes.en;
 }
+
+// ===== ver.20261125.03: 画面の上に「再提出が必要な書類が◯件あります」と出す =====
+//   差戻し中の行（.field-row.sashimodoshi）を数え、書類名のボタンを並べる。押すとその書類を開いて移動する。
+//   行の並び（グループ分け）は崩さないよう、行は動かさない。
+function _sdRowName(row){
+  var l = row.querySelector('.field-label'); var n = '';
+  if (l) { var c = l.cloneNode(true); c.querySelectorAll('rt,rp,div,span[style],.sd-note').forEach(function(x){ x.remove(); }); n = String(c.textContent||'').replace(/\s+/g,' ').trim(); }
+  if (!n) n = row.dataset.sdname || '';
+  return n.length > 40 ? n.slice(0, 40) + '…' : n;
+}
+function _sdRenderBanner(){
+  try {
+    var old = document.getElementById('sdBanner'); if (old) old.remove();
+    var scope = document.getElementById('fieldsList');
+    var anchor = document.getElementById('fieldsList');
+    if (!scope || !anchor || !anchor.parentNode) return;
+    var rows = [].slice.call(scope.querySelectorAll('.field-row.sashimodoshi'));
+    if (!rows.length) return;
+  var T = {
+    ja:['🔁 再提出が必要な書類が {n} 件あります','赤い枠の書類です。押すとその書類に移動します。'],
+    en:['🔁 {n} document(s) need to be submitted again','They have a red frame. Tap one to jump to it.'],
+    vi:['🔁 Có {n} giấy tờ cần nộp lại','Giấy tờ có khung đỏ. Nhấn để chuyển đến giấy tờ đó.'],
+    id:['🔁 Ada {n} dokumen yang perlu dikirim ulang','Dokumen dengan bingkai merah. Ketuk untuk menuju dokumen tersebut.'],
+    my:['🔁 ပြန်တင်ရန် စာရွက်စာတမ်း {n} ခု ရှိသည်','အနီရောင်ဘောင်ရှိသော စာရွက်စာတမ်းများ ဖြစ်သည်။ နှိပ်ပါက ထိုနေရာသို့ သွားပါမည်။'],
+    ko:['🔁 다시 제출해야 할 서류가 {n}건 있습니다','빨간 테두리 서류입니다. 누르면 해당 서류로 이동합니다.'],
+    ne:['🔁 फेरि पेश गर्नुपर्ने {n} कागजात छन्','रातो किनारा भएका कागजात हुन्। थिच्दा त्यहाँ पुगिन्छ।'],
+    zh:['🔁 有 {n} 份文件需要重新提交','带红框的文件。点击即可跳转到该文件。'],
+    th:['🔁 มีเอกสาร {n} รายการที่ต้องส่งใหม่','เป็นเอกสารที่มีกรอบสีแดง แตะเพื่อไปยังเอกสารนั้น'],
+    km:['🔁 មានឯកសារ {n} ដែលត្រូវដាក់ស្នើឡើងវិញ','ជាឯកសារមានស៊ុមក្រហម។ ចុចដើម្បីទៅកាន់ឯកសារនោះ។'],
+    mn:['🔁 Дахин илгээх шаардлагатай {n} баримт байна','Улаан хүрээтэй баримтууд. Дарж тухайн баримт руу очно.'],
+    si:['🔁 නැවත ඉදිරිපත් කළ යුතු ලේඛන {n} ක් ඇත','රතු රාමුව ඇති ලේඛන වේ. එබූ විට එම ලේඛනයට යයි.']
+  };
+  var t = T[(typeof currentLang!=='undefined'?currentLang:'ja')] || T.en;
+    var b = document.createElement('div'); b.id = 'sdBanner';
+    b.style.cssText = 'margin:0 0 12px;background:#fef2f2;border:2px solid #fca5a5;border-radius:10px;padding:12px 14px;';
+    var h = document.createElement('div'); h.style.cssText = 'font-size:14px;font-weight:800;color:#b91c1c;';
+    h.textContent = t[0].replace('{n}', rows.length); b.appendChild(h);
+    var s = document.createElement('div'); s.style.cssText = 'font-size:12px;color:#7f1d1d;margin:3px 0 8px;line-height:1.6;';
+    s.textContent = t[1]; b.appendChild(s);
+    rows.forEach(function(row){
+      var btn = document.createElement('button'); btn.type = 'button';
+      btn.style.cssText = 'display:inline-block;margin:0 6px 6px 0;padding:5px 10px;border-radius:8px;border:1.5px solid #f87171;background:#fff;color:#b91c1c;font-size:12.5px;font-weight:700;cursor:pointer;text-align:left;';
+      btn.textContent = '🔁 ' + (_sdRowName(row) || '—');
+      btn.onclick = function(){ row.classList.add('open'); try { row.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e){ row.scrollIntoView(); } };
+      b.appendChild(btn);
+    });
+    anchor.parentNode.insertBefore(b, anchor);
+  } catch(e){ console.warn('sd banner err:', e); }
+}
+
+// ver.20261125.03: 書類の一覧を描き直すたびに、上のまとめも描き直す
+(function(){
+  if (typeof buildFields !== 'function') return;
+  var _o = buildFields;
+  buildFields = function(){ var r = _o.apply(this, arguments); try { _sdRenderBanner(); } catch(e){} return r; };
+})();
 // 送信直後などに、DOMのステータス表示を「確認中」へ更新する
 function _applyReviewingBadges(){
   try {
@@ -1390,6 +1448,7 @@ function _applyReviewingBadges(){
           _row.classList.remove('sashimodoshi'); _row.style.borderColor = ''; _row.style.background = '';
           var _n = _row.querySelector('.sd-note'); if (_n) _n.remove();
         }
+        try { _sdRenderBanner(); } catch(e){}
       }
     });
   } catch(e){ console.warn('applyReviewingBadges err:', e); }
@@ -1546,7 +1605,7 @@ function buildFields() {
       status.className = 'field-status sashimodoshi';
       status.textContent = _sashimodoshiLabel();
       status.style.color = '#dc2626'; status.style.fontWeight = '700';
-      row.classList.add('sashimodoshi');
+      row.classList.add('sashimodoshi'); row.dataset.sdname = _jaLabelOf(key);
       row.style.borderColor = '#fca5a5'; row.style.background = '#fef2f2';
       const _sdEl = document.createElement('div');
       _sdEl.className = 'sd-note';

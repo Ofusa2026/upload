@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20261125.02 - 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のままで、再提出してよいか分からなかった）。出し直すと確認中に戻る -->
+<!-- company_dataup ver.20261125.03 - 画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す（押すとその書類へ移動） -->
+<!-- 旧: ver.20261125.02 - 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のままで、再提出してよいか分からなかった）。出し直すと確認中に戻る -->
 <!-- 旧: ver.20261125.01 - 送信済みの「⏳ 確認中」を端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる（複数担当者での重複準備を防ぐ） -->
 <!-- company_dataup ver.20261123.03- 個人事業主の住民票：本籍「省略」は不可（本籍記載のものを）と説明と見本に明記 -->
 <!-- company_dataup ver.20261123.02 - 個人事業主の見本を、許可が出た個人事業主の実際の書類（個人情報は黒塗り）に差し替え：住民票・医療保険の資格確認書・国民健康保険料納付確認書・被保険者記録照会（納付Ⅱ）・被保険者記録照会回答票 -->
@@ -841,7 +842,9 @@ function _loadServerSubmitted(){
 function _reviewingMap(){
   var m = {};
   try { m = JSON.parse(localStorage.getItem(_reviewingLsKey()) || '{}') || {}; } catch(e){ m = {}; }
-  Object.keys(_SRV_SUBMITTED).forEach(function(l){ if(!m[l]) m[l] = 1; });
+  // ver.20261125.03: 送信記録は差戻しの判定用に400日分読むが、「確認中」は従来どおり90日以内の送信だけ
+  var _lim = Date.now() - 90*24*3600*1000;
+  Object.keys(_SRV_SUBMITTED).forEach(function(l){ var s = _SRV_SUBMITTED[l]; if(!m[l] && (s === 1 || s > _lim)) m[l] = s; });
   return m;
 }
 function _isReviewingLabel(label){ if(!label) return false; if(_isSashimodoshiLabel(label)) return false; var m=_reviewingMap(); return !!m[label]; }
@@ -862,6 +865,69 @@ function _isSashimodoshiLabel(label){
   return true;
 }
 function _sashimodoshiLabel(){ return '🔁 差戻し・要再提出'; }
+// ===== ver.20261125.03: 画面の上に「再提出が必要な書類が◯件あります」と出す =====
+//   差戻し中の行（.field-row.sashimodoshi）を数え、書類名のボタンを並べる。押すとその書類を開いて移動する。
+//   行の並び（グループ分け）は崩さないよう、行は動かさない。
+function _sdRowName(row){
+  var l = row.querySelector('.field-label'); var n = '';
+  if (l) { var c = l.cloneNode(true); c.querySelectorAll('rt,rp,div,span[style],.sd-note').forEach(function(x){ x.remove(); }); n = String(c.textContent||'').replace(/\s+/g,' ').trim(); }
+  if (!n) n = row.dataset.sdname || '';
+  return n.length > 40 ? n.slice(0, 40) + '…' : n;
+}
+function _sdRenderBanner(){
+  try {
+    var old = document.getElementById('sdBanner'); if (old) old.remove();
+    var scope = document;   // 大企業・中小企業・個人事業主のタブ全部から集める（同じ書類は1つにまとめる）
+    var anchor = document.querySelector('.tabs-wrap');
+    if (!scope || !anchor || !anchor.parentNode) return;
+    var rows = [], _seen = {};
+    [].slice.call(scope.querySelectorAll('.field-row.sashimodoshi')).forEach(function(r){ var k = r.dataset.sdname || _sdRowName(r); if (_seen[k]) return; _seen[k] = 1; rows.push(r); });
+    if (!rows.length) return;
+  var t = ['🔁 再提出が必要な書類が {n} 件あります','赤い枠の書類です。押すとその書類に移動します。'];
+    var b = document.createElement('div'); b.id = 'sdBanner';
+    b.style.cssText = 'margin:0 0 12px;background:#fef2f2;border:2px solid #fca5a5;border-radius:10px;padding:12px 14px;';
+    var h = document.createElement('div'); h.style.cssText = 'font-size:14px;font-weight:800;color:#b91c1c;';
+    h.textContent = t[0].replace('{n}', rows.length); b.appendChild(h);
+    var s = document.createElement('div'); s.style.cssText = 'font-size:12px;color:#7f1d1d;margin:3px 0 8px;line-height:1.6;';
+    s.textContent = t[1]; b.appendChild(s);
+    rows.forEach(function(row){
+      var btn = document.createElement('button'); btn.type = 'button';
+      btn.style.cssText = 'display:inline-block;margin:0 6px 6px 0;padding:5px 10px;border-radius:8px;border:1.5px solid #f87171;background:#fff;color:#b91c1c;font-size:12.5px;font-weight:700;cursor:pointer;text-align:left;';
+      btn.textContent = '🔁 ' + (_sdRowName(row) || '—');
+      btn.onclick = function(){
+        // いま開いているタブに同じ書類があればそれを、なければその書類のあるタブに切り替える
+        var nm = row.dataset.sdname || '';
+        var act = document.querySelector('.tab-panel.active');
+        var target = null;
+        if (act) [].slice.call(act.querySelectorAll('.field-row.sashimodoshi')).forEach(function(r){ if (!target && (r.dataset.sdname || '') === nm) target = r; });
+        if (!target) {
+          target = row;
+          var pn = row.closest('.tab-panel');
+          var tabOf = { panelLarge:'large', panelNormal:'normal', panelKojin:'kojin' };
+          if (pn && !pn.classList.contains('active') && tabOf[pn.id] && typeof switchTab === 'function') switchTab(tabOf[pn.id]);
+        }
+        setTimeout(function(){ target.classList.add('open'); try { target.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e){ target.scrollIntoView(); } }, 60);
+      };
+      b.appendChild(btn);
+    });
+    anchor.parentNode.insertBefore(b, anchor);
+  } catch(e){ console.warn('sd banner err:', e); }
+}
+
+// ver.20261125.03: 書類の一覧を描き直すたびに、上のまとめも描き直す
+(function(){
+  if (typeof buildAllFields !== 'function') return;
+  var _o = buildAllFields;
+  buildAllFields = function(){ var r = _o.apply(this, arguments); try { _sdRenderBanner(); } catch(e){} return r; };
+})();
+
+// ver.20261125.03: 書類の一覧を描き直すたびに、上のまとめも描き直す
+(function(){
+  if (typeof switchTab !== 'function') return;
+  var _o = switchTab;
+  switchTab = function(){ var r = _o.apply(this, arguments); try { _sdRenderBanner(); } catch(e){} return r; };
+})();
+
 var _SD_NOTE = '弊社で確認したところ、この書類は再度ご提出をお願いしております。担当者からのご連絡（理由）をご確認のうえ、正しい書類をアップロードしてください。';
 function _reviewingLabel(){ return '⏳ 確認中'; }
 function _recordSubmittedLabels(labels){
@@ -1325,6 +1391,7 @@ function buildAllFields() {
           var _sdSt = row.querySelector('.field-status');
           if (_sdSt) { _sdSt.className = 'field-status'; _sdSt.textContent = _sashimodoshiLabel(); _sdSt.style.color = '#dc2626'; _sdSt.style.fontWeight = '700'; }
           row.style.borderColor = '#fca5a5'; row.style.background = '#fef2f2';
+          row.classList.add('sashimodoshi'); row.dataset.sdname = it.label;
           if (labelEl) {
             const sdEl = document.createElement('span');
             sdEl.style.cssText = 'display:block;color:#b91c1c;font-size:11.5px;font-weight:700;margin-top:3px;line-height:1.6;';

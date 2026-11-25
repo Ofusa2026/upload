@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- ver.20261125.03: 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のまま）。出し直すと確認中に戻る。画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す -->
 <!-- ver.20261113.01: 読み込み中は「書類の一覧を読み込んでいます…」を表示。読み込み（_get）は9秒で打ち切って1回やり直し、だめなら「通信が不安定です」と再読み込みボタン（DBが混んで真っ白に見えていた対策） -->
 <!-- ver.20261111.01: 書類ごとに「📍 取れるところ」（会社の住所から窓口・オンラインのボタン）を出す。案シスに住所が無い会社は、最初に住所の入力画面。中身は Edge Function upload-offices -->
 <!-- ver.20261110.02: 「7. 求人票」の見本を記入見本（注意書き①〜⑨つき・会社名などは伏せたもの）に差し替え。［📄 記入見本（PDF）］［✅ チェックリスト］のボタンを追加。見本の画像は押すと大きく開く -->
@@ -26,7 +27,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <title>国交省書類アップロード（所属機関）</title>
-<!-- KOKKO_DATAUP_VERSION 20260910_01 送信済み書類の「⏳ 確認中」表示を追加（人材ページから移植） -->
+<!-- KOKKO_DATAUP_VERSION 20261125_03 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のまま）。出し直すと確認中に戻る。画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す -->
+<!-- 旧: KOKKO_DATAUP_VERSION 20260910_01 送信済み書類の「⏳ 確認中」表示を追加（人材ページから移植） -->
 <!-- 旧: 20260623_04 会員証明書をJACまたは全中連に修正 -->
 <!-- 旧: 20260602_08 タブ廃止・1リスト化 -->
 <style>
@@ -702,7 +704,77 @@ function switchTab(tab) {
 //   その空白を localStorage で埋め、アップ済み書類には「⏳ 確認中」を表示する。判定は日本語ラベルで行う。
 function _reviewingLsKey(){ return 'ofusa_upload_submitted_kokko_' + (typeof COMPANY_ID !== 'undefined' ? COMPANY_ID : ''); }
 function _reviewingMap(){ try { return JSON.parse(localStorage.getItem(_reviewingLsKey()) || '{}') || {}; } catch(e){ return {}; } }
-function _isReviewingLabel(label){ if(!label) return false; var m=_reviewingMap(); return !!m[label]; }
+function _isReviewingLabel(label){ if(!label) return false; if(typeof _isSashimodoshiLabel==='function' && _isSashimodoshiLabel(label)) return false; var m=_reviewingMap(); return !!m[label]; }
+// ===== ver.20261125.03: 差戻しの表示 =====
+//   案シスで差戻し（co_doc_check の sashimodoshi::書類名）された書類は、その後に出し直しが無ければ「🔁 差戻し・要再提出」と出す。
+//   出し直しの判定は案シスと同じ（差戻しの時刻より新しい送信があれば解消）。送信はサーバーの送信記録（国交省アップロード分）とこの端末の記録を見る。
+//   差戻しの理由（担当者のメモ）はこの画面には出さない。
+var _SD_MAP = {};          // 正規化した書類名 → 差戻しの時刻(ms)
+var _SRV_SUBMITTED = {};   // 書類名 → 最後に送られた時刻(ms)
+function _sdNorm(s){ return String(s||'').replace(/[\s　_().（）\/・]/g,'').toLowerCase(); }
+function _loadServerSubmitted(){
+  return new Promise(function(resolve){
+    if(!COMPANY_ID){ resolve(); return; }
+    _uplRpc('upload_submitted_labels_get', { p_company_id: COMPANY_ID, p_days: 400, p_source: 'kokko_dataup' })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(rows){ (rows||[]).forEach(function(x){ if(x && x.doc_label){ var _t = Date.parse(x.last_at || ''); _SRV_SUBMITTED[x.doc_label] = isNaN(_t) ? 1 : _t; } }); resolve(); })
+    .catch(function(e){ console.warn('submitted labels fetch err:', e); resolve(); });
+  });
+}
+function _isSashimodoshiLabel(label){
+  if(!label) return false;
+  var at = _SD_MAP[_sdNorm(label)]; if (at === undefined) return false;
+  var last = 0;
+  var v = _reviewingMap()[label]; if (typeof v === 'number' && v > 1) last = v;
+  var s = _SRV_SUBMITTED[label]; if (typeof s === 'number' && s > last) last = s;
+  if (at && last && last > at) return false;   // 差戻しのあとに出し直し済み → 確認中へ
+  return true;
+}
+function _sashimodoshiLabel(){ return '🔁 差戻し・要再提出'; }
+var _SD_NOTE = '弊社で確認したところ、この書類は再度ご提出をお願いしております。担当者からのご連絡（理由）をご確認のうえ、正しい書類をアップロードしてください。';
+
+// ===== ver.20261125.03: 画面の上に「再提出が必要な書類が◯件あります」と出す =====
+//   差戻し中の行（.field-row.sashimodoshi）を数え、書類名のボタンを並べる。押すとその書類を開いて移動する。
+//   行の並び（グループ分け）は崩さないよう、行は動かさない。
+function _sdRowName(row){
+  var l = row.querySelector('.field-label'); var n = '';
+  if (l) { var c = l.cloneNode(true); c.querySelectorAll('rt,rp,div,span[style],.sd-note').forEach(function(x){ x.remove(); }); n = String(c.textContent||'').replace(/\s+/g,' ').trim(); }
+  if (!n) n = row.dataset.sdname || '';
+  return n.length > 40 ? n.slice(0, 40) + '…' : n;
+}
+function _sdRenderBanner(){
+  try {
+    var old = document.getElementById('sdBanner'); if (old) old.remove();
+    var scope = document.getElementById('fieldsList');
+    var anchor = document.getElementById('fieldsList');
+    if (!scope || !anchor || !anchor.parentNode) return;
+    var rows = [].slice.call(scope.querySelectorAll('.field-row.sashimodoshi'));
+    if (!rows.length) return;
+  var t = ['🔁 再提出が必要な書類が {n} 件あります','赤い枠の書類です。押すとその書類に移動します。'];
+    var b = document.createElement('div'); b.id = 'sdBanner';
+    b.style.cssText = 'margin:0 0 12px;background:#fef2f2;border:2px solid #fca5a5;border-radius:10px;padding:12px 14px;';
+    var h = document.createElement('div'); h.style.cssText = 'font-size:14px;font-weight:800;color:#b91c1c;';
+    h.textContent = t[0].replace('{n}', rows.length); b.appendChild(h);
+    var s = document.createElement('div'); s.style.cssText = 'font-size:12px;color:#7f1d1d;margin:3px 0 8px;line-height:1.6;';
+    s.textContent = t[1]; b.appendChild(s);
+    rows.forEach(function(row){
+      var btn = document.createElement('button'); btn.type = 'button';
+      btn.style.cssText = 'display:inline-block;margin:0 6px 6px 0;padding:5px 10px;border-radius:8px;border:1.5px solid #f87171;background:#fff;color:#b91c1c;font-size:12.5px;font-weight:700;cursor:pointer;text-align:left;';
+      btn.textContent = '🔁 ' + (_sdRowName(row) || '—');
+      btn.onclick = function(){ row.classList.add('open'); try { row.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e){ row.scrollIntoView(); } };
+      b.appendChild(btn);
+    });
+    anchor.parentNode.insertBefore(b, anchor);
+  } catch(e){ console.warn('sd banner err:', e); }
+}
+
+// ver.20261125.03: 書類の一覧を描き直すたびに、上のまとめも描き直す
+(function(){
+  if (typeof buildAllFields !== 'function') return;
+  var _o = buildAllFields;
+  buildAllFields = function(){ var r = _o.apply(this, arguments); try { _sdRenderBanner(); } catch(e){} return r; };
+})();
+
 function _reviewingLabel(){ return '⏳ 確認中'; }
 function _recordSubmittedLabels(labels){
   try {
@@ -995,6 +1067,19 @@ function buildAllFields() {
         }
         labelEl.appendChild(doneEl);
       }
+    } else if (typeof _isSashimodoshiLabel === 'function' && _isSashimodoshiLabel(d.l) && !(fileData[key] && fileData[key].length)) {
+      // ver.20261125.03: 案シスで差戻しされ、まだ出し直していない書類は「差戻し・要再提出」（確認中より優先）
+      var _sdSt = row.querySelector('.field-status');
+      if (_sdSt) { _sdSt.className = 'field-status'; _sdSt.textContent = _sashimodoshiLabel(); _sdSt.style.color = '#dc2626'; _sdSt.style.fontWeight = '700'; }
+      row.style.borderColor = '#fca5a5'; row.style.background = '#fef2f2';
+      row.classList.add('sashimodoshi'); row.dataset.sdname = d.l;
+      if (labelEl) {
+        const sdEl = document.createElement('span');
+        sdEl.className = 'sd-note';
+        sdEl.style.cssText = 'display:block;color:#b91c1c;font-size:11.5px;font-weight:700;margin-top:3px;line-height:1.6;';
+        sdEl.textContent = _SD_NOTE;
+        labelEl.appendChild(sdEl);
+      }
     } else if (typeof _isReviewingLabel === 'function' && _isReviewingLabel(d.l) && !(fileData[key] && fileData[key].length)) {
       // ver.20260910_01: 送信済みだが担当未確認の書類は「⏳ 確認中」を表示（提出済み/不要が優先）
       var _stEl = row.querySelector('.field-status');
@@ -1151,6 +1236,12 @@ function _applyKokkoLiveDone(){
         var pre = dk.substring(0, i), name = dk.substring(i+2), v = row.value;
         var on = (v != null && v !== '' && v !== 'false' && v !== false);
         if(!on) return;
+        // ver.20261125.03: 差戻しの記録（{at,text,by}）
+        if(pre === 'sashimodoshi'){
+          var _m = v; try{ if(typeof v === 'string') _m = JSON.parse(v); }catch(e){ _m = {}; }
+          var _at = Date.parse((_m && _m.at) || ''); _SD_MAP[_sdNorm(name)] = isNaN(_at) ? 0 : _at;
+          return;
+        }
         if(pre === 'staff') staff[name] = true; else if(pre === 'skip') skip[name] = true;
       });
       DOCS_LIST.forEach(function(d){
@@ -1318,7 +1409,7 @@ function uplAgSkip(){ _uplAgClose(); }
       console.log('📋 kokko: キャッシュ無し → 標準書類で表示', DOCS_LIST.length, _info && _info.kojin ? '(個人事業主)' : '');
     } catch(e){ console.warn('kokko fallback err:', e); }
   }
-  try { await _applyKokkoLiveDone(); } catch(e){}
+  try { await Promise.all([_applyKokkoLiveDone(), _loadServerSubmitted()]); } catch(e){}
   buildAllFields();
   // ver.20261113.01: 一部の読み込みが通信失敗のまま標準の書類で表示したときは、提出済みが出ていないかもしれないので上に案内
   if (_uplNetFail && document.querySelector('#fieldsList .field-row')) {

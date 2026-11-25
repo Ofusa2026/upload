@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'tsuikan ver.20261119.01'; // 追完専用（入管から追加で求められた書類だけ・理由つき）。もとは zinzai_dataup.html
+const VERSION = 'tsuikan ver.20261125.03'; // ver.20261125.03: 案シスで差戻し（↩ 差戻）した書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のまま）。出し直すと確認中に戻る。画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す ／ 追完専用（入管から追加で求められた書類だけ・理由つき）。もとは zinzai_dataup.html
 console.log('📄 tsuikan_zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -244,9 +244,9 @@ function _loadDocsFromCache(){
     _uplRpc('tsuikan_upload_items_get', { p_id: TSUIKAN_ID, p_target: 'person' })
     .then(function(r){ return r.ok ? r.json() : null; }).then(function(o){
       if(!o || !Array.isArray(o.items)){ window._tkLoadErr='notfound'; DOCS_LIST=[]; USE_NEW_DOCS=true; resolve(DOCS_LIST); return; }
-      window._tkMeta = { deadline:o.deadline||'', applicant:o.applicant||'', done:!!o.done };
+      window._tkMeta = { deadline:o.deadline||'', applicant:o.applicant||'', done:!!o.done, caseId:o.case_id||'' };
       DOCS_LIST = o.items.filter(function(it){ return it && it.doc; }).map(function(it){
-        return { l:String(it.doc), r:1, done:!!it.done, note:it.note||'', tips:Array.isArray(it.tips)?it.tips:[], kind:it.kind||'', year:it.year||'', scope:it.scope||'', sashi:it.sashimodoshi||'', forms:Array.isArray(it.forms)?it.forms:[] };
+        return { l:String(it.doc), r:1, done:!!it.done, note:it.note||'', tips:Array.isArray(it.tips)?it.tips:[], kind:it.kind||'', year:it.year||'', scope:it.scope||'', sashi:it.sashimodoshi||'', sashiAt:it.sashi_at||'', received:!!it.received, forms:Array.isArray(it.forms)?it.forms:[] };
       });
       USE_NEW_DOCS = true;
       resolve(DOCS_LIST);
@@ -446,7 +446,7 @@ function _initDocKeys(){
       DOC_REQUIRED[key] = !!d.r;
       DOC_DONE[key] = !!d.done;
       if(!window._tkInfo) window._tkInfo = {};
-      window._tkInfo[key] = { note:d.note||'', tips:d.tips||[], kind:d.kind||'', year:d.year||'', scope:d.scope||'', sashi:d.sashi||'', forms:d.forms||[] };
+      window._tkInfo[key] = { note:d.note||'', tips:d.tips||[], kind:d.kind||'', year:d.year||'', scope:d.scope||'', sashi:d.sashi||'', sashiAt:d.sashiAt||'', received:!!d.received, done:!!d.done, forms:d.forms||[] };
     });
   } else {
     // 旧ロジック
@@ -1309,9 +1309,125 @@ function _reviewingMap(){
 function _isReviewingKey(key){
   // 既に案シスで提出済み確定(DOC_DONE)なら、そちらの「✓提出済み」を優先し確認中は出さない
   if (typeof DOC_DONE !== 'undefined' && DOC_DONE && DOC_DONE[key]) return false;
+  if (_isSashimodoshiKey(key)) return false;   // ver.20261125.03: 差戻し中は「差戻し」を優先
   var m = _reviewingMap();
   return !!m[key];
 }
+// ===== ver.20261125.03: 差戻しの表示（追完） =====
+//   案シスの追完の行で「↩ 差戻」にした書類（sashimodoshi）は、出し直しが届くまで「🔁 差戻し・要再提出」と出す。
+//   出し直しの判定は案シスと同じ（差戻しの日以降に送信があれば解消。受け取り済みになれば解消）。
+var _SRV_SUBMITTED = {};   // 書類名 → 最後に送られた時刻(ms)
+var _SD_T0 = Date.now();
+function _sdJstDay(ms){ try { return new Date(ms + 9*3600*1000).toISOString().slice(0,10); } catch(e){ return ''; } }
+function _tkSdActive(key, label, localMs){
+  var i = window._tkInfo && window._tkInfo[key];
+  if (!i || !i.sashi || i.received || i.done) return false;
+  var last = (typeof localMs === 'number' && localMs > 1) ? localMs : 0;
+  var s = label ? _SRV_SUBMITTED[label] : 0; if (typeof s === 'number' && s > last) last = s;
+  var sa = String(i.sashiAt || '').slice(0, 10);
+  if (sa) { if (last && _sdJstDay(last) >= sa) return false; }
+  else if (last && last > _SD_T0) return false;   // 差戻しの日が分からないときは、この画面で出し直したら解消
+  return true;
+}
+
+function _loadServerSubmitted(){
+  return new Promise(function(resolve){
+    var p = (CASE_ID || (window._tkMeta && window._tkMeta.caseId)) ? { p_case_id: (CASE_ID || window._tkMeta.caseId), p_days: 400 } : null;
+    if(!p){ resolve(); return; }
+    _uplRpc('upload_submitted_labels_get', p)
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(rows){ (rows||[]).forEach(function(x){ if(x && x.doc_label){ var _t = Date.parse(x.last_at || ''); _SRV_SUBMITTED[x.doc_label] = isNaN(_t) ? 1 : _t; } }); resolve(); })
+    .catch(function(e){ console.warn('submitted labels fetch err:', e); resolve(); });
+  });
+}
+
+function _isSashimodoshiKey(key){
+  if (typeof DOC_DONE !== 'undefined' && DOC_DONE && DOC_DONE[key]) return false;
+  var v = _reviewingMap()[key];
+  return _tkSdActive(key, (typeof DOC_LABELS_JA !== 'undefined' && DOC_LABELS_JA) ? (DOC_LABELS_JA[key] || '') : '', v);
+}
+function _sashimodoshiLabel(){
+  var labels = {
+    ja:'🔁 差戻し・要再提出', en:'🔁 Returned – please resubmit', vi:'🔁 Bị trả lại – vui lòng nộp lại', id:'🔁 Dikembalikan – mohon kirim ulang',
+    my:'🔁 ပြန်ပို့ထားသည် – ပြန်တင်ပါ', ko:'🔁 반려 – 재제출 필요', ne:'🔁 फिर्ता – फेरि पेश गर्नुहोस्', zh:'🔁 已退回・需重新提交',
+    th:'🔁 ส่งคืน – กรุณาส่งใหม่', km:'🔁 បានបញ្ជូនត្រឡប់ – សូមដាក់ស្នើឡើងវិញ', mn:'🔁 Буцаасан – дахин илгээнэ үү', si:'🔁 ආපසු එවා ඇත – නැවත ඉදිරිපත් කරන්න'
+  };
+  return labels[(typeof currentLang!=='undefined'?currentLang:'ja')] || labels.en;
+}
+function _sashimodoshiNote(){
+  var notes = {
+    ja:'担当者が確認したところ、この書類はもう一度出していただく必要があります。担当者からの連絡（理由）を確認して、正しい書類をアップロードしてください。',
+    en:'After checking, our staff need you to submit this document again. Please check the message from our staff (the reason) and upload the correct document.',
+    vi:'Sau khi kiểm tra, nhân viên cần bạn nộp lại giấy tờ này. Vui lòng xem tin nhắn (lý do) từ nhân viên và tải lên giấy tờ đúng.',
+    id:'Setelah diperiksa, dokumen ini perlu dikirim ulang. Silakan cek pesan (alasan) dari staf kami dan unggah dokumen yang benar.',
+    my:'စစ်ဆေးပြီးနောက် ဤစာရွက်စာတမ်းကို ပြန်တင်ရန် လိုအပ်ပါသည်။ ဝန်ထမ်းထံမှ စာ (အကြောင်းရင်း) ကို ကြည့်ပြီး မှန်ကန်သော စာရွက်စာတမ်းကို တင်ပါ။',
+    ko:'확인 결과 이 서류를 다시 제출해 주셔야 합니다. 담당자의 연락(사유)을 확인하시고 올바른 서류를 업로드해 주세요.',
+    ne:'जाँच गर्दा यो कागजात फेरि पेश गर्नुपर्ने देखियो। कर्मचारीको सन्देश (कारण) हेरेर सही कागजात अपलोड गर्नुहोस्।',
+    zh:'经负责人确认，此文件需要重新提交。请查看负责人的联系（理由），并上传正确的文件。',
+    th:'หลังจากตรวจสอบแล้ว จำเป็นต้องส่งเอกสารนี้ใหม่ กรุณาดูข้อความ (เหตุผล) จากเจ้าหน้าที่ แล้วอัปโหลดเอกสารที่ถูกต้อง',
+    km:'បន្ទាប់ពីពិនិត្យ ឯកសារនេះត្រូវដាក់ស្នើឡើងវិញ។ សូមមើលសារ (មូលហេតុ) ពីបុគ្គលិក ហើយផ្ទុកឡើងឯកសារត្រឹមត្រូវ។',
+    mn:'Шалгасны дараа энэ баримтыг дахин илгээх шаардлагатай. Ажилтны мессеж (шалтгаан)-ийг үзээд зөв баримтыг байршуулна уу.',
+    si:'පරීක්ෂා කිරීමෙන් පසු මෙම ලේඛනය නැවත ඉදිරිපත් කළ යුතුය. කාර්ය මණ්ඩලයේ පණිවිඩය (හේතුව) බලා නිවැරදි ලේඛනය උඩුගත කරන්න.'
+  };
+  return notes[(typeof currentLang!=='undefined'?currentLang:'ja')] || notes.en;
+}
+
+// ===== ver.20261125.03: 画面の上に「再提出が必要な書類が◯件あります」と出す =====
+//   差戻し中の行（.field-row.sashimodoshi）を数え、書類名のボタンを並べる。押すとその書類を開いて移動する。
+//   行の並び（グループ分け）は崩さないよう、行は動かさない。
+function _sdRowName(row){
+  var l = row.querySelector('.field-label'); var n = '';
+  if (l) { var c = l.cloneNode(true); c.querySelectorAll('rt,rp,div,span[style],.sd-note').forEach(function(x){ x.remove(); }); n = String(c.textContent||'').replace(/\s+/g,' ').trim(); }
+  if (!n) n = row.dataset.sdname || '';
+  return n.length > 40 ? n.slice(0, 40) + '…' : n;
+}
+function _sdRenderBanner(){
+  try {
+    var old = document.getElementById('sdBanner'); if (old) old.remove();
+    var scope = document.getElementById('fieldsList');
+    var anchor = document.getElementById('fieldsList');
+    if (!scope || !anchor || !anchor.parentNode) return;
+    var rows = [].slice.call(scope.querySelectorAll('.field-row.sashimodoshi'));
+    if (!rows.length) return;
+  var T = {
+    ja:['🔁 再提出が必要な書類が {n} 件あります','赤い枠の書類です。押すとその書類に移動します。'],
+    en:['🔁 {n} document(s) need to be submitted again','They have a red frame. Tap one to jump to it.'],
+    vi:['🔁 Có {n} giấy tờ cần nộp lại','Giấy tờ có khung đỏ. Nhấn để chuyển đến giấy tờ đó.'],
+    id:['🔁 Ada {n} dokumen yang perlu dikirim ulang','Dokumen dengan bingkai merah. Ketuk untuk menuju dokumen tersebut.'],
+    my:['🔁 ပြန်တင်ရန် စာရွက်စာတမ်း {n} ခု ရှိသည်','အနီရောင်ဘောင်ရှိသော စာရွက်စာတမ်းများ ဖြစ်သည်။ နှိပ်ပါက ထိုနေရာသို့ သွားပါမည်။'],
+    ko:['🔁 다시 제출해야 할 서류가 {n}건 있습니다','빨간 테두리 서류입니다. 누르면 해당 서류로 이동합니다.'],
+    ne:['🔁 फेरि पेश गर्नुपर्ने {n} कागजात छन्','रातो किनारा भएका कागजात हुन्। थिच्दा त्यहाँ पुगिन्छ।'],
+    zh:['🔁 有 {n} 份文件需要重新提交','带红框的文件。点击即可跳转到该文件。'],
+    th:['🔁 มีเอกสาร {n} รายการที่ต้องส่งใหม่','เป็นเอกสารที่มีกรอบสีแดง แตะเพื่อไปยังเอกสารนั้น'],
+    km:['🔁 មានឯកសារ {n} ដែលត្រូវដាក់ស្នើឡើងវិញ','ជាឯកសារមានស៊ុមក្រហម។ ចុចដើម្បីទៅកាន់ឯកសារនោះ។'],
+    mn:['🔁 Дахин илгээх шаардлагатай {n} баримт байна','Улаан хүрээтэй баримтууд. Дарж тухайн баримт руу очно.'],
+    si:['🔁 නැවත ඉදිරිපත් කළ යුතු ලේඛන {n} ක් ඇත','රතු රාමුව ඇති ලේඛන වේ. එබූ විට එම ලේඛනයට යයි.']
+  };
+  var t = T[(typeof currentLang!=='undefined'?currentLang:'ja')] || T.en;
+    var b = document.createElement('div'); b.id = 'sdBanner';
+    b.style.cssText = 'margin:0 0 12px;background:#fef2f2;border:2px solid #fca5a5;border-radius:10px;padding:12px 14px;';
+    var h = document.createElement('div'); h.style.cssText = 'font-size:14px;font-weight:800;color:#b91c1c;';
+    h.textContent = t[0].replace('{n}', rows.length); b.appendChild(h);
+    var s = document.createElement('div'); s.style.cssText = 'font-size:12px;color:#7f1d1d;margin:3px 0 8px;line-height:1.6;';
+    s.textContent = t[1]; b.appendChild(s);
+    rows.forEach(function(row){
+      var btn = document.createElement('button'); btn.type = 'button';
+      btn.style.cssText = 'display:inline-block;margin:0 6px 6px 0;padding:5px 10px;border-radius:8px;border:1.5px solid #f87171;background:#fff;color:#b91c1c;font-size:12.5px;font-weight:700;cursor:pointer;text-align:left;';
+      btn.textContent = '🔁 ' + (_sdRowName(row) || '—');
+      btn.onclick = function(){ row.classList.add('open'); try { row.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e){ row.scrollIntoView(); } };
+      b.appendChild(btn);
+    });
+    anchor.parentNode.insertBefore(b, anchor);
+  } catch(e){ console.warn('sd banner err:', e); }
+}
+
+// ver.20261125.03: 書類の一覧を描き直すたびに、上のまとめも描き直す
+(function(){
+  if (typeof buildFields !== 'function') return;
+  var _o = buildFields;
+  buildFields = function(){ var r = _o.apply(this, arguments); try { _sdRenderBanner(); } catch(e){} return r; };
+})();
+
 function _reviewingLabel(){
   var labels = {
     ja:'⏳ 確認中', en:'⏳ Under review', vi:'⏳ Đang kiểm tra', id:'⏳ Sedang diperiksa',
@@ -1334,6 +1450,13 @@ function _applyReviewingBadges(){
         st.className = 'field-status reviewing';
         st.textContent = _reviewingLabel();
         st.style.color = '#b45309';
+        // ver.20261125.03: 出し直したら差戻しの赤い表示と説明を外す
+        var _row = st.closest('.field-row');
+        if (_row && _row.classList.contains('sashimodoshi')) {
+          _row.classList.remove('sashimodoshi'); _row.style.borderColor = ''; _row.style.background = '';
+          var _n = _row.querySelector('.sd-note'); if (_n) _n.remove();
+        }
+        try { _sdRenderBanner(); } catch(e){}
       }
     });
   } catch(e){ console.warn('applyReviewingBadges err:', e); }
@@ -1486,7 +1609,19 @@ function buildFields() {
     status.textContent = hasFiles ? L.selected : L.noFile;
     status.setAttribute('data-dockey', key);
     // ver.20260831: 既に送信済み(localStorage記録あり)かつ今この画面で未選択なら「確認中」を表示
-    if (!hasFiles && typeof _isReviewingKey === 'function' && _isReviewingKey(key)) {
+    // ver.20261125.03: 案シスで差戻し（↩ 差戻）され、まだ出し直していない書類は「差戻し・要再提出」
+    if (!hasFiles && typeof _isSashimodoshiKey === 'function' && _isSashimodoshiKey(key)) {
+      status.className = 'field-status sashimodoshi';
+      status.textContent = _sashimodoshiLabel();
+      status.style.color = '#dc2626'; status.style.fontWeight = '700';
+      row.classList.add('sashimodoshi'); row.dataset.sdname = DOC_LABELS_JA ? (DOC_LABELS_JA[key] || '') : '';
+      row.style.borderColor = '#fca5a5'; row.style.background = '#fef2f2';
+      const _sdEl = document.createElement('div');
+      _sdEl.className = 'sd-note';
+      _sdEl.style.cssText = 'font-size:11.5px;color:#b91c1c;font-weight:700;margin-top:4px;line-height:1.6;';
+      _sdEl.textContent = _sashimodoshiNote();
+      label.appendChild(_sdEl);
+    } else if (!hasFiles && typeof _isReviewingKey === 'function' && _isReviewingKey(key)) {
       status.className = 'field-status reviewing';
       status.textContent = (typeof _reviewingLabel === 'function') ? _reviewingLabel() : '⏳ 確認中';
       status.style.color = '#b45309';
@@ -1702,7 +1837,7 @@ function _applyLiveDoneFromDocCheck(){
 (async function _initDocsAndLang(){
   try {
     await _loadDocsFromCache();
-    await _applyLiveDoneFromDocCheck();
+    await Promise.all([_applyLiveDoneFromDocCheck(), _loadServerSubmitted()]);
     _initDocKeys();
   } catch(e){ console.warn('_initDocsAndLang err:', e); }
   setLang('ja');
