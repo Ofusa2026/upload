@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- ver.20261125.04: 提出済み・不要・弊社作成の欄は右側も同じ表示にそろえた（「未選択」と同時に出て迷うため）／差戻しの説明を欄の幅いっぱいに出す -->
 <!-- ver.20261125.03: 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のまま）。出し直すと確認中に戻る。画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す -->
 <!-- ver.20261113.01: 読み込み中は「書類の一覧を読み込んでいます…」を表示。読み込み（_get）は9秒で打ち切って1回やり直し、だめなら「通信が不安定です」と再読み込みボタン（DBが混んで真っ白に見えていた対策） -->
 <!-- ver.20261111.01: 書類ごとに「📍 取れるところ」（会社の住所から窓口・オンラインのボタン）を出す。案シスに住所が無い会社は、最初に住所の入力画面。中身は Edge Function upload-offices -->
@@ -1063,9 +1064,19 @@ function buildAllFields() {
           doneEl.textContent = '― 不要';
           doneEl.style.color = '#64748b';
         } else {
-          doneEl.textContent = '✓ 提出済み（再提出が必要な場合のみ）';
+          doneEl.textContent = '（再提出が必要な場合のみ）';   // ver.20261125.04: 「✓ 提出済み」は右側に出す
+          doneEl.style.color = '#64748b';
         }
         labelEl.appendChild(doneEl);
+      }
+      // ver.20261125.04: 右側も状態にそろえる（「未選択」と同時に出て迷うため）
+      var _dnSt = row.querySelector('.field-status');
+      if (_dnSt && !(fileData[key] && fileData[key].length)) {
+        var _s2 = d.st || '';
+        if (_s2 === 'ofusa' || _kokkoIsOfusaDoc(d.l)) { _dnSt.textContent = '弊社作成'; _dnSt.style.color = '#7c3aed'; }
+        else if (filterSkipped || _s2 === 'skip') { _dnSt.textContent = '― 不要'; _dnSt.style.color = '#64748b'; }
+        else { _dnSt.textContent = '✓ 提出済み'; _dnSt.style.color = '#16a34a'; }
+        _dnSt.style.fontWeight = '700';
       }
     } else if (typeof _isSashimodoshiLabel === 'function' && _isSashimodoshiLabel(d.l) && !(fileData[key] && fileData[key].length)) {
       // ver.20261125.03: 案シスで差戻しされ、まだ出し直していない書類は「差戻し・要再提出」（確認中より優先）
@@ -1073,12 +1084,15 @@ function buildAllFields() {
       if (_sdSt) { _sdSt.className = 'field-status'; _sdSt.textContent = _sashimodoshiLabel(); _sdSt.style.color = '#dc2626'; _sdSt.style.fontWeight = '700'; }
       row.style.borderColor = '#fca5a5'; row.style.background = '#fef2f2';
       row.classList.add('sashimodoshi'); row.dataset.sdname = d.l;
-      if (labelEl) {
-        const sdEl = document.createElement('span');
+      {
+        // ver.20261125.04: 説明は書類名の横ではなく、欄の幅いっぱいに出す（スマホで縦長にならないように）
+        const sdEl = document.createElement('div');
         sdEl.className = 'sd-note';
-        sdEl.style.cssText = 'display:block;color:#b91c1c;font-size:11.5px;font-weight:700;margin-top:3px;line-height:1.6;';
+        sdEl.style.cssText = 'color:#b91c1c;font-size:12px;font-weight:700;line-height:1.6;padding:0 14px 12px;cursor:pointer;';
         sdEl.textContent = _SD_NOTE;
-        labelEl.appendChild(sdEl);
+        sdEl.onclick = function(){ row.classList.toggle('open'); };
+        const _hd = row.querySelector('.field-header');
+        if (_hd && _hd.parentNode === row) _hd.after(sdEl); else if (labelEl) labelEl.appendChild(sdEl);
       }
     } else if (typeof _isReviewingLabel === 'function' && _isReviewingLabel(d.l) && !(fileData[key] && fileData[key].length)) {
       // ver.20260910_01: 送信済みだが担当未確認の書類は「⏳ 確認中」を表示（提出済み/不要が優先）

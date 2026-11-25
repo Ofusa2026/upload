@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<!-- company_dataup ver.20261125.03 - 画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す（押すとその書類へ移動） -->
+<!-- company_dataup ver.20261125.04 - 提出済みの欄は右側も「✓ 提出済み」にそろえた（「未選択」と同時に出て迷うため）／差戻しの説明を書類名の横でなく欄の幅いっぱいに出す（スマホで縦長にならない）／中小企業に書類がある会社は最初から「中小企業」タブで開く（書類の無い「大企業」タブで開いていた） -->
+<!-- 旧: ver.20261125.03 - 画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す（押すとその書類へ移動） -->
 <!-- 旧: ver.20261125.02 - 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のままで、再提出してよいか分からなかった）。出し直すと確認中に戻る -->
 <!-- 旧: ver.20261125.01 - 送信済みの「⏳ 確認中」を端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる（複数担当者での重複準備を防ぐ） -->
 <!-- company_dataup ver.20261123.03- 個人事業主の住民票：本籍「省略」は不可（本籍記載のものを）と説明と見本に明記 -->
@@ -1383,20 +1384,28 @@ function buildAllFields() {
           if (labelEl) {
             const doneEl = document.createElement('span');
             doneEl.style.cssText = 'display:block;color:#16a34a;font-size:11.5px;font-weight:700;margin-top:3px;';
-            doneEl.textContent = '✓ 提出済み（再提出が必要な場合のみ）';
+            doneEl.textContent = '（再提出が必要な場合のみ）';   // ver.20261125.04: 「✓ 提出済み」は右側に出す
+            doneEl.style.color = '#64748b';
             labelEl.appendChild(doneEl);
           }
+          // ver.20261125.04: 右側も「✓ 提出済み」にそろえる（「未選択」と同時に出て迷うため）
+          var _dnSt = row.querySelector('.field-status');
+          if (_dnSt && !(fileData[it.key] && fileData[it.key].length)) { _dnSt.textContent = '✓ 提出済み'; _dnSt.style.color = '#16a34a'; _dnSt.style.fontWeight = '700'; }
         } else if (typeof _isSashimodoshiLabel === 'function' && _isSashimodoshiLabel(it.label) && !(fileData[it.key] && fileData[it.key].length)) {
           // ver.20261125.02: 案シスで差戻しされ、まだ出し直していない書類は「差戻し・要再提出」（確認中より優先）
           var _sdSt = row.querySelector('.field-status');
           if (_sdSt) { _sdSt.className = 'field-status'; _sdSt.textContent = _sashimodoshiLabel(); _sdSt.style.color = '#dc2626'; _sdSt.style.fontWeight = '700'; }
           row.style.borderColor = '#fca5a5'; row.style.background = '#fef2f2';
           row.classList.add('sashimodoshi'); row.dataset.sdname = it.label;
-          if (labelEl) {
-            const sdEl = document.createElement('span');
-            sdEl.style.cssText = 'display:block;color:#b91c1c;font-size:11.5px;font-weight:700;margin-top:3px;line-height:1.6;';
+          {
+            // ver.20261125.04: 説明は書類名の横ではなく、欄の幅いっぱいに出す（スマホで縦長にならないように）
+            const sdEl = document.createElement('div');
+            sdEl.className = 'sd-note';
+            sdEl.style.cssText = 'color:#b91c1c;font-size:12px;font-weight:700;line-height:1.6;padding:0 14px 12px;cursor:pointer;';
             sdEl.textContent = _SD_NOTE;
-            labelEl.appendChild(sdEl);
+            sdEl.onclick = function(){ row.classList.toggle('open'); };
+            const _hd = row.querySelector('.field-header');
+            if (_hd && _hd.parentNode === row) _hd.after(sdEl); else if (labelEl) labelEl.appendChild(sdEl);
           }
         } else if (typeof _isReviewingLabel === 'function' && _isReviewingLabel(it.label) && !(fileData[it.key] && fileData[it.key].length)) {
           // ver.20260910.01: 送信済みだが担当未確認の書類は「⏳ 確認中」を表示（提出済み確定が優先）
@@ -1417,10 +1426,13 @@ function buildAllFields() {
     renderBucket(document.getElementById('fieldsListKojin'),  buckets.kojin || []);
 
     // 書類があるタブを初期表示にする（normal優先 → kojin → large）
-    if ((buckets.normal||[]).length === 0 && (buckets.kojin||[]).length > 0) {
-      switchTab('kojin');
-    } else if ((buckets.normal||[]).length === 0 && (buckets.kojin||[]).length === 0 && (buckets.large||[]).length > 0) {
-      switchTab('large');
+    // ver.20261125.04: 画面は「大企業」タブで開くため、中小企業に書類があるときも切り替える（書類の無いタブで開いていた）。
+    //   はじめて描いたときだけ。送信後の描き直しでは、会社が選んだタブのままにする
+    if (!window._coTabInited) {
+      window._coTabInited = true;
+      if ((buckets.normal||[]).length > 0) switchTab('normal');
+      else if ((buckets.kojin||[]).length > 0) switchTab('kojin');
+      else if ((buckets.large||[]).length > 0) switchTab('large');
     }
     return;
   }

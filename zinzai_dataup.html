@@ -124,7 +124,7 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 <script>
-const VERSION = 'ver.20261125.03'; // ver.20261125.03: 画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す（押すとその書類へ移動） ／ ver.20261125.02: 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のままで、再提出してよいか分からなかった）。出し直すと確認中に戻る ／ ver.20261125.01: 送信済みの「⏳ 確認中」と課税証明書「不要」の回答を、端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる ／ ver.20261113.01:ver.20261113.01: 課税・納税証明書の質問カード（「○年1月1日、日本に住んでいましたか？」・窓口案内・不要の案内）も言語ボタンに合わせて訳す。役所の人に見せる見出しと書類名は日本語のまま、下に訳を付ける ／ ver.20261105.01: 「国民健康保険料（税）納付証明書」にも納付証明書の見本を表示 ／ ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
+const VERSION = 'ver.20261125.04'; // ver.20261125.04: 提出済みの欄は右側も「✓ 提出済み」にそろえた（「未選択」と同時に出て迷うため）／差戻しの説明を書類名の横でなく欄の幅いっぱいに出す（スマホで縦長にならない） ／ ver.20261125.03: 画面の上に「再提出が必要な書類が◯件あります」と書類名のボタンを出す（押すとその書類へ移動） ／ ver.20261125.02: 案シスで差戻しした書類を「🔁 差戻し・要再提出」と表示（これまでは「⏳ 確認中」のままで、再提出してよいか分からなかった）。出し直すと確認中に戻る ／ ver.20261125.01: 送信済みの「⏳ 確認中」と課税証明書「不要」の回答を、端末ごとでなくサーバーの送信記録からも表示。同じリンクを誰が開いても提出状況が分かる ／ ver.20261113.01:ver.20261113.01: 課税・納税証明書の質問カード（「○年1月1日、日本に住んでいましたか？」・窓口案内・不要の案内）も言語ボタンに合わせて訳す。役所の人に見せる見出しと書類名は日本語のまま、下に訳を付ける ／ ver.20261105.01: 「国民健康保険料（税）納付証明書」にも納付証明書の見本を表示 ／ ver.20261102.01: 「2025年1月1日、日本に住んでいましたか？」で「いいえ」を選んだら、書類を選んでいなくても送信できるように（回答を案シスへ届ける） ／ ver.20261020.01: 資格確認書に見本2枚（マイナポータルの資格情報・資格確認書）を横並びで追加、タップで拡大 ／ ver.20261008.02: 合格証（技能）に「合格証である（合格通知書ではない）」確認チェックを追加。チェックするまでアップロード不可（全言語）。説明にも分野の注意書きを明記 ／ ver.20261007.01: 2つ目のフォルダ（folder2）へ、ファイルの中身と名前が空のまま送られて格納できていなかった不具合を修正。2つ目への送信も3分で打ち切るようにした ／ ver.20261003.01: アップロードできない理由を表示。ファイル選択時に未対応形式・0バイト・大きすぎ・読み込み失敗を理由付きで通知、送信失敗時は理由（オフライン/通信エラー/時間切れ/容量超過/保存先フォルダなし・権限/サーバー障害）を判定して表示。HTTPエラーを成功扱いしていた不具合も修正、送信に3分のタイムアウトを追加。
 console.log('📄 zinzai_dataup.html', VERSION);
 // ver.20260625.02: アップロード専用GASが403になったためメインGAS（案件管理と同じ）に切り替え
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
@@ -1428,6 +1428,13 @@ function _sdRenderBanner(){
   var _o = buildFields;
   buildFields = function(){ var r = _o.apply(this, arguments); try { _sdRenderBanner(); } catch(e){} return r; };
 })();
+
+// ver.20261125.04: 提出済み（担当✓・不要）の欄は、右側も「✓ 提出済み」にそろえる（「未選択」と同時に出て迷うため）
+function _doneShortLabel(){
+  var l = { ja:'✓ 提出済み', en:'✓ Submitted', vi:'✓ Đã nộp', id:'✓ Sudah dikirim', my:'✓ တင်ပြီး', ko:'✓ 제출 완료',
+            ne:'✓ पेश गरिएको', zh:'✓ 已提交', th:'✓ ส่งแล้ว', km:'✓ បានដាក់ស្នើ', mn:'✓ Илгээсэн', si:'✓ ඉදිරිපත් කර ඇත' };
+  return l[(typeof currentLang!=='undefined'?currentLang:'ja')] || l.en;
+}
 // 送信直後などに、DOMのステータス表示を「確認中」へ更新する
 function _applyReviewingBadges(){
   try {
@@ -1593,12 +1600,16 @@ function buildFields() {
         si: '✓ ඉදිරිපත් කර ඇත (නැවත ඉදිරිපත් කිරීමට අවශ්‍ය නම් පමණි)'
       };
       _doneEl.textContent = _doneLabels[currentLang] || _doneLabels.en;
+      // ver.20261125.04: 「✓ 提出済み」は右側に出すので、ここは「（再提出が必要な場合のみ）」だけにする
+      var _dm = String(_doneEl.textContent).match(/[（(][^（(]*[）)]\s*$/);
+      if (_dm) { _doneEl.textContent = _dm[0].trim(); _doneEl.style.color = '#64748b'; _doneEl.style.fontWeight = '600'; }
       label.appendChild(_doneEl);
     }
     const status = document.createElement('span');
     status.className = 'field-status' + (hasFiles ? ' ready' : '');
     status.textContent = hasFiles ? L.selected : L.noFile;
     status.setAttribute('data-dockey', key);
+    if (!hasFiles && DOC_DONE && DOC_DONE[key]) { status.textContent = _doneShortLabel(); status.style.color = '#16a34a'; status.style.fontWeight = '700'; }
     // ver.20260831: 既に送信済み(localStorage記録あり)かつ今この画面で未選択なら「確認中」を表示
     // ver.20261125.02: 案シスで差戻しされ、まだ出し直していない書類は「差戻し・要再提出」
     if (!hasFiles && typeof _isSashimodoshiKey === 'function' && _isSashimodoshiKey(key)) {
@@ -1609,9 +1620,9 @@ function buildFields() {
       row.style.borderColor = '#fca5a5'; row.style.background = '#fef2f2';
       const _sdEl = document.createElement('div');
       _sdEl.className = 'sd-note';
-      _sdEl.style.cssText = 'font-size:11.5px;color:#b91c1c;font-weight:700;margin-top:4px;line-height:1.6;';
+      _sdEl.style.cssText = 'font-size:12px;color:#b91c1c;font-weight:700;line-height:1.6;padding:0 14px 12px;cursor:pointer;';
       _sdEl.textContent = _sashimodoshiNote();
-      label.appendChild(_sdEl);
+      row._sdNote = _sdEl;
     } else if (!hasFiles && typeof _isReviewingKey === 'function' && _isReviewingKey(key)) {
       status.className = 'field-status reviewing';
       status.textContent = (typeof _reviewingLabel === 'function') ? _reviewingLabel() : '⏳ 確認中';
@@ -1684,7 +1695,10 @@ function buildFields() {
       _nn.textContent = '不要';
       label.appendChild(_nn);
     }
-    row.appendChild(header); row.appendChild(body); parentEl.appendChild(row);
+    row.appendChild(header);
+    // ver.20261125.04: 差戻しの説明は書類名の横ではなく、欄の幅いっぱいに出す（スマホで縦長にならないように）
+    if (row._sdNote) { row._sdNote.onclick = function(){ row.classList.toggle('open'); }; row.appendChild(row._sdNote); }
+    row.appendChild(body); parentEl.appendChild(row);
   });
 }
 function updateSubmitBtn() {
