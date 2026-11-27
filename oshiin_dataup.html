@@ -1,3 +1,4 @@
+<!-- oshiin_dataup ver.20261127.04 - 保存先は確認前の置き場（人材フォルダ）。大房側が［📚 確認して製本］で押印依頼PDFと差し替えて1冊にし、元のファイルと一緒に「4. 企業押印済」へ入れる（画面の動きは .03 と同じ） -->
 <!-- oshiin_dataup ver.20261127.03 - 複数人のときは全員分そろうまで送れない（まだ届いていない人に1つもファイルが無いと［送信する］を押せない。判定は missingPersons() の1箇所） -->
 <!-- oshiin_dataup ver.20261127.02 - 複数人のときは一人ずつの欄（ファイルはその人の「4. 企業押印済」へ。見つからないときは人材フォルダ）。1人のときは今までどおり1つの枠
      ・人ごとの保存先は oshiin_upload_get の persons[i].folder_id。送るときに person（何番目の人か）を oshiin_upload_submit に渡す -->
@@ -116,7 +117,7 @@
     <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
     <div class="status-msg" id="statusMsg"></div>
   </div>
-  <div class="ver">oshiin_dataup ver.20261127.03</div>
+  <div class="ver">oshiin_dataup ver.20261127.04</div>
 </div>
 <div class="submit-wrap hidden" id="submitWrap"><div class="submit-hint hidden" id="submitHint"></div><button class="submit-btn" id="submitBtn" disabled>送信する</button></div>
 
