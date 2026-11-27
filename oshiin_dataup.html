@@ -1,3 +1,6 @@
+<!-- oshiin_dataup ver.20261127.03 - 複数人のときは全員分そろうまで送れない（まだ届いていない人に1つもファイルが無いと［送信する］を押せない。判定は missingPersons() の1箇所） -->
+<!-- oshiin_dataup ver.20261127.02 - 複数人のときは一人ずつの欄（ファイルはその人の「4. 企業押印済」へ。見つからないときは人材フォルダ）。1人のときは今までどおり1つの枠
+     ・人ごとの保存先は oshiin_upload_get の persons[i].folder_id。送るときに person（何番目の人か）を oshiin_upload_submit に渡す -->
 <!-- oshiin_dataup ver.20261127.01 - 新規：押印済み書類のアップロード（会社用）。案シスの押印リンクの結果画面で「📤 提出用リンクを入れる」を選ぶと、依頼文にこのページのURL（?t=トークン）が入る。
      ・中身は Supabase の oshiin_upload_get（会社名・対象者・期限・押印する書類）で読む。テーブルは直接さわらない
      ・ファイルは、ほかのアップロード画面と同じ GAS で「いちばん目の人の人材フォルダ」に入れ、oshiin_upload_submit で名前とURLを記録する
@@ -67,6 +70,19 @@
   .status-msg.success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
   .status-msg.error { background: var(--error-bg); color: var(--error); border: 1px solid var(--error-border); }
   .ver { text-align: center; font-size: 10px; color: #cbd5e1; margin-top: 18px; }
+  .pcard { border: 1.5px solid var(--border); border-radius: 14px; padding: 12px; margin-bottom: 12px; }
+  .pcard .ph { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .pcard .pn { font-size: 15px; font-weight: 700; }
+  .pcard .rcv { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 99px; }
+  .pcard .rcv.ok { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+  .pcard .rcv.no { background: #f8fafc; color: var(--sub); border: 1px solid var(--border); }
+  .pcard .rcv.miss { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+  .pcard.miss { border-color: #fdba74; }
+  .submit-hint { width: 100%; max-width: 520px; font-size: 12px; color: #c2410c; font-weight: 700; text-align: center; margin-bottom: 6px; }
+  .submit-wrap { flex-direction: column; align-items: center; }
+  .pcard .drop { padding: 14px 10px; }
+  .pcard .drop .big { font-size: 22px; }
+  .pcard .drop .t1 { font-size: 13.5px; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -92,33 +108,17 @@
       <a id="docLink" class="doc-link hidden" href="#" target="_blank" rel="noopener">📑 押印する書類を開く</a>
     </div>
     <div id="doneBox" class="done-box hidden"></div>
-    <div class="how">
-      ① 書類に押印してください。<br>
-      ② <b>印のあるページ</b>を、PDFか写真でお送りください（ページが複数あるときは、すべてお願いします）。<br>
-      パソコン：下の枠にファイルをドラッグ＆ドロップ<br>
-      スマートフォン：［📷 撮影する］でそのまま撮影できます
-    </div>
-
-    <div class="drop" id="drop">
-      <div class="big">📤</div>
-      <div class="t1">ここにファイルをドラッグ＆ドロップ</div>
-      <div class="t2">または、押してファイルを選ぶ（PDF・JPG・PNG／1ファイル25MBまで）</div>
-    </div>
-    <div class="btns">
-      <button class="btn2" type="button" id="pickBtn">📁 ファイルを選ぶ</button>
-      <button class="btn2 cam" type="button" id="camBtn">📷 撮影する</button>
-    </div>
+    <div class="how" id="how"></div>
+    <div id="zones"></div>
     <input type="file" id="fileIn" accept="application/pdf,image/*,.heic,.heif" multiple class="hidden">
     <input type="file" id="camIn" accept="image/*" capture="environment" class="hidden">
-
-    <div class="files" id="files"></div>
     <textarea id="note" placeholder="ご連絡事項があればご記入ください（任意）"></textarea>
     <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
     <div class="status-msg" id="statusMsg"></div>
   </div>
-  <div class="ver">oshiin_dataup ver.20261127.01</div>
+  <div class="ver">oshiin_dataup ver.20261127.03</div>
 </div>
-<div class="submit-wrap hidden" id="submitWrap"><button class="submit-btn" id="submitBtn" disabled>送信する</button></div>
+<div class="submit-wrap hidden" id="submitWrap"><div class="submit-hint hidden" id="submitHint"></div><button class="submit-btn" id="submitBtn" disabled>送信する</button></div>
 
 <script>
 // ほかのアップロード画面（tsuikan_company_dataup.html など）と同じ送り先
@@ -127,7 +127,7 @@ const SB_URL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
 const SB_KEY = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
 const TOKEN = new URLSearchParams(location.search).get('t') || '';
 var UPL_MAX_FILE_MB = 25, UPL_TIMEOUT_MS = 180000, MAX_FILES = 20;
-var META = null, picked = [];
+var META = null, picked = [], _target = 0;   // picked の1件 = {file, url, p(何番目の人か)}
 
 function rpc(fn, body){ return fetch(SB_URL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, body: JSON.stringify(body||{}) }); }
 function $(id){ return document.getElementById(id); }
@@ -150,17 +150,71 @@ async function load(){
   if(META.expired){ showErr('このアップロード用URLは有効期限（'+md(META.expires_at)+'）が過ぎています。お手数ですが、大房行政書士法人の担当者までご連絡ください。'); return; }
   $('loading').classList.add('hidden'); $('main').classList.remove('hidden'); $('submitWrap').classList.remove('hidden');
   $('coName').textContent = (META.company || '') + (META.company ? ' 御中' : '');
-  $('persons').innerHTML = (META.persons||[]).map(function(n){ return '<span>'+esc(n)+' 様</span>'; }).join('') || '<span>—</span>';
+  $('persons').innerHTML = PERSONS().map(function(o){ return '<span>'+esc(o.name)+' 様</span>'; }).join('') || '<span>—</span>';
   $('expiry').textContent = md(META.expires_at) + ' まで';
   if(META.oshiin_url && /^https:\/\//.test(META.oshiin_url)){ var a=$('docLink'); a.href=META.oshiin_url; a.classList.remove('hidden'); }
+  $('how').innerHTML = multi()
+    ? '① 書類に押印してください。<br>② <b>お一人ずつ欄が分かれています。</b>それぞれの方の<b>印のあるページ</b>を、<b>その方の欄</b>に入れてください（ページが複数あるときは、すべてお願いします）。<br>'
+      + '　全員分が1つのファイルになっているときは、<b>お一人ずつに分けて</b>お送りください。<br>'
+      + 'パソコン：各欄の枠にファイルをドラッグ＆ドロップ<br>スマートフォン：各欄の［📷 撮影する］でそのまま撮影できます<br>'
+      + '<b>全員分そろうと送信できます。</b>'
+    : '① 書類に押印してください。<br>② <b>印のあるページ</b>を、PDFか写真でお送りください（ページが複数あるときは、すべてお願いします）。<br>'
+      + 'パソコン：下の枠にファイルをドラッグ＆ドロップ<br>スマートフォン：［📷 撮影する］でそのまま撮影できます';
+  renderZones();
   renderDone();
+}
+// 対象者（案シスの persons）。古い形（名前だけ）でも読めるように
+function PERSONS(){
+  return ((META && META.persons) || []).map(function(o, i){
+    if(typeof o === 'string') return { i:i, name:o, folder_id: META.folder_id, received:0 };
+    return { i:(o.i != null ? o.i : i), name:o.name || '', folder_id: o.folder_id || META.folder_id, received: +o.received || 0 };
+  });
+}
+function multi(){ return PERSONS().length > 1; }
+function receivedOf(i){ return ((META && META.files) || []).filter(function(f){ return (+f.person || 0) === i; }).length; }
+// 複数人のとき：まだ届いていなくて、ファイルも選ばれていない人（この人が1人でもいると送れない）
+function missingPersons(){
+  if(!multi()) return [];
+  return PERSONS().filter(function(o){ return !receivedOf(o.i) && !picked.some(function(p){ return (p.p || 0) === o.i; }); });
+}
+// 欄（1人＝1つの枠／複数＝一人ずつのカード）
+function zoneHtml(i){
+  return '<div class="drop" data-drop="'+i+'"><div class="big">📤</div><div class="t1">ここにファイルをドラッグ＆ドロップ</div><div class="t2">または、押してファイルを選ぶ（PDF・JPG・PNG／1ファイル25MBまで）</div></div>'
+    + '<div class="btns"><button class="btn2" type="button" data-pick="'+i+'">📁 ファイルを選ぶ</button><button class="btn2 cam" type="button" data-cam="'+i+'">📷 撮影する</button></div>'
+    + '<div class="files" id="files_'+i+'"></div>';
+}
+function renderZones(){
+  var ps = PERSONS(), z = $('zones');
+  if(!multi()){ z.innerHTML = zoneHtml(0); }
+  else {
+    z.innerHTML = ps.map(function(o, k){
+      return '<div class="pcard" id="pcard_'+o.i+'"><div class="ph"><span class="pn">'+(['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'][k] || ((k+1)+'.'))+' '+esc(o.name)+' 様</span><span class="rcv" id="rcv_'+o.i+'"></span></div>'+zoneHtml(o.i)+'</div>';
+    }).join('');
+  }
+  Array.prototype.forEach.call(z.querySelectorAll('[data-drop]'), function(d){
+    var i = +d.getAttribute('data-drop');
+    d.addEventListener('click', function(){ _target=i; $('fileIn').click(); });
+    ['dragenter','dragover'].forEach(function(ev){ d.addEventListener(ev, function(e){ e.preventDefault(); d.classList.add('over'); }); });
+    ['dragleave','drop'].forEach(function(ev){ d.addEventListener(ev, function(e){ e.preventDefault(); d.classList.remove('over'); }); });
+    d.addEventListener('drop', function(e){ addFiles(e.dataTransfer && e.dataTransfer.files, i); });
+  });
+  Array.prototype.forEach.call(z.querySelectorAll('[data-pick]'), function(b){ b.addEventListener('click', function(){ _target=+b.getAttribute('data-pick'); $('fileIn').click(); }); });
+  Array.prototype.forEach.call(z.querySelectorAll('[data-cam]'), function(b){ b.addEventListener('click', function(){ _target=+b.getAttribute('data-cam'); $('camIn').click(); }); });
+  renderPicked();
 }
 function renderDone(){
   var fs = (META && META.files) || [], b = $('doneBox');
+  renderPicked();
   if(!fs.length){ b.classList.add('hidden'); return; }
-  b.innerHTML = '✅ これまでに <b>'+fs.length+'件</b> 受け取っています（最後：'+esc(mdhm(META.uploaded_at))+'）<br>'
-    + fs.map(function(f){ return '・'+esc(f.name); }).join('<br>')
-    + '<br><span style="color:#475569;">足りないページがあれば、追加でお送りください。</span>';
+  if(multi()){
+    b.innerHTML = '✅ これまでに <b>'+fs.length+'件</b> 受け取っています（最後：'+esc(mdhm(META.uploaded_at))+'）<br>'
+      + PERSONS().map(function(o){ var n=receivedOf(o.i); return '・'+esc(o.name)+' 様：'+(n ? (n+'件') : '<span style="color:#b45309;">まだ</span>'); }).join('<br>')
+      + '<br><span style="color:#475569;">足りないページがあれば、その方の欄から追加でお送りください。</span>';
+  } else {
+    b.innerHTML = '✅ これまでに <b>'+fs.length+'件</b> 受け取っています（最後：'+esc(mdhm(META.uploaded_at))+'）<br>'
+      + fs.map(function(f){ return '・'+esc(f.name); }).join('<br>')
+      + '<br><span style="color:#475569;">足りないページがあれば、追加でお送りください。</span>';
+  }
   b.classList.remove('hidden');
 }
 
@@ -174,35 +228,47 @@ function checkFile(file){
   if(isPdf && file.size > UPL_MAX_FILE_MB*1024*1024) return '「'+name+'」は '+mb(file.size)+' あり大きすぎます（1ファイル'+UPL_MAX_FILE_MB+'MBまで）。ページを分けてお送りください。';
   return '';
 }
-function addFiles(list){
-  var bad = [];
+function addFiles(list, pi){
+  var bad = []; pi = (pi == null ? _target : pi) || 0;
   Array.prototype.forEach.call(list || [], function(f){
     var m = checkFile(f); if(m){ bad.push(m); return; }
     if(picked.length >= MAX_FILES){ bad.push('一度に送れるのは'+MAX_FILES+'ファイルまでです。分けて送信してください。'); return; }
-    picked.push({ file:f, url: /^image\//.test(f.type) ? URL.createObjectURL(f) : '' });
+    picked.push({ file:f, url: /^image\//.test(f.type) ? URL.createObjectURL(f) : '', p: pi });
   });
   if(bad.length) alert('次のファイルは追加できませんでした。\n\n' + bad.filter(function(v,i,a){ return a.indexOf(v)===i; }).join('\n\n'));
   renderPicked();
 }
 function removeFile(i){ var p=picked[i]; if(p && p.url) URL.revokeObjectURL(p.url); picked.splice(i,1); renderPicked(); }
 function renderPicked(){
-  $('files').innerHTML = picked.map(function(p, i){
-    var f = p.file;
-    return '<div class="file">'+(p.url ? '<img src="'+p.url+'" alt="">' : '<div class="ic">📄</div>')
-      +'<span class="nm">'+esc(f.name)+'</span><span class="sz">'+mb(f.size)+'</span><button class="x" type="button" title="外す" onclick="removeFile('+i+')">✕</button></div>';
-  }).join('');
-  var b = $('submitBtn'); b.disabled = !picked.length; b.textContent = picked.length ? ('送信する（'+picked.length+'件）') : '送信する';
+  var ids = multi() ? PERSONS().map(function(o){ return o.i; }) : [0];
+  ids.forEach(function(pi){
+    var box = $('files_'+pi); if(!box) return;
+    box.innerHTML = picked.map(function(p, i){
+      if((p.p || 0) !== pi) return '';
+      var f = p.file;
+      return '<div class="file">'+(p.url ? '<img src="'+p.url+'" alt="">' : '<div class="ic">📄</div>')
+        +'<span class="nm">'+esc(f.name)+'</span><span class="sz">'+mb(f.size)+'</span><button class="x" type="button" title="外す" onclick="removeFile('+i+')">✕</button></div>';
+    }).join('');
+  });
+  var miss = missingPersons(), b = $('submitBtn'), hint = $('submitHint');
+  b.disabled = !picked.length || miss.length > 0;
+  b.textContent = picked.length ? ('送信する（'+picked.length+'件）') : '送信する';
+  if(hint){
+    if(picked.length && miss.length){ hint.textContent = '⚠️ まだファイルが入っていない方がいます：'+miss.map(function(o){ return o.name+' 様'; }).join('、')+'（全員分そろうと送信できます）'; hint.classList.remove('hidden'); }
+    else hint.classList.add('hidden');
+  }
+  PERSONS().forEach(function(o){
+    var card=$('pcard_'+o.i), el=$('rcv_'+o.i); if(!card || !el) return;
+    var n=receivedOf(o.i), k=picked.filter(function(p){ return (p.p || 0) === o.i; }).length;
+    card.classList.toggle('miss', !n && !k && picked.length > 0);
+    el.className = 'rcv '+(n ? 'ok' : (k ? 'no' : (picked.length ? 'miss' : 'no')));
+    el.textContent = n ? ('✅ 受け取り済み '+n+'件'+(k ? '（追加 '+k+'件）' : '')) : (k ? ('選択中 '+k+'件') : 'まだ届いていません');
+  });
 }
 (function(){
-  var drop=$('drop'), fi=$('fileIn'), ci=$('camIn');
-  drop.addEventListener('click', function(){ fi.click(); });
-  $('pickBtn').addEventListener('click', function(){ fi.click(); });
-  $('camBtn').addEventListener('click', function(){ ci.click(); });
-  fi.addEventListener('change', function(){ addFiles(fi.files); fi.value=''; });
-  ci.addEventListener('change', function(){ addFiles(ci.files); ci.value=''; });
-  ['dragenter','dragover'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add('over'); }); });
-  ['dragleave','drop'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('over'); }); });
-  drop.addEventListener('drop', function(e){ addFiles(e.dataTransfer && e.dataTransfer.files); });
+  var fi=$('fileIn'), ci=$('camIn');   // どの人の欄かは _target（欄の［ファイルを選ぶ］［撮影する］で入る）
+  fi.addEventListener('change', function(){ addFiles(fi.files, _target); fi.value=''; });
+  ci.addEventListener('change', function(){ addFiles(ci.files, _target); ci.value=''; });
   // 枠の外に落としてもブラウザでファイルが開かないように
   window.addEventListener('dragover', function(e){ e.preventDefault(); });
   window.addEventListener('drop', function(e){ e.preventDefault(); });
@@ -235,11 +301,12 @@ function errReason(err){
 function ymd(){ var d=new Date(); return d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2); }
 async function submit(){
   if(!picked.length || !META || window._sending) return;
+  if(missingPersons().length){ renderPicked(); return; }   // 全員分そろうまで送らない
   window._sending = true;
   var btn=$('submitBtn'), sm=$('statusMsg'), pw=$('progressWrap'), pb=$('progressBar');
   btn.disabled = true; pw.style.display='block'; sm.style.display='block'; sm.className='status-msg';
-  var who = (META.persons||[]).join('・'); if(who.length > 30) who = who.slice(0,30)+'ほか';
-  var base = ('押印済み_'+(who || META.company || '')+'_'+ymd()).replace(/[\\\/:*?"<>|]/g,'');
+  var PS = PERSONS(), byI = {}; PS.forEach(function(o){ byI[o.i]=o; });
+  var cnt = {}, seq = {}; picked.forEach(function(p){ cnt[p.p||0]=(cnt[p.p||0]||0)+1; });
   var ok=[], failed=[], total=picked.length;
   for(var i=0;i<total;i++){
     var p=picked[i];
@@ -249,28 +316,31 @@ async function submit(){
       if(pf.blob.size > UPL_MAX_FILE_MB*1024*1024) throw new Error('FILE_TOO_LARGE');
       var b64=await toBase64(pf.blob);
       var ext=(pf.name.split('.').pop()||'pdf').toLowerCase();
-      var name=base+(total>1?('_'+(i+1)):'')+'.'+ext;
-      var res=await tfetch(GAS_URL, { method:'POST', body: JSON.stringify({ files:[{ name:name, mimeType:pf.mimeType, data:b64 }], folderId: META.folder_id }) });
+      var pi=p.p||0, per=byI[pi]||{ name:'', folder_id: META.folder_id };
+      var who=String(per.name || META.company || ''); if(who.length > 30) who = who.slice(0,30);
+      seq[pi]=(seq[pi]||0)+1;
+      var name=('押印済み_'+who+'_'+ymd()).replace(/[\\\/:*?"<>|]/g,'')+(cnt[pi]>1?('_'+seq[pi]):'')+'.'+ext;
+      var res=await tfetch(GAS_URL, { method:'POST', body: JSON.stringify({ files:[{ name:name, mimeType:pf.mimeType, data:b64 }], folderId: per.folder_id || META.folder_id }) });
       if(!res.ok) throw new Error('HTTP '+res.status);
       var txt=await res.text(), json; try{ json=JSON.parse(txt); }catch(pe){ throw new Error('BAD_RESPONSE'); }
       if(!json.success) throw new Error(json.error || 'error');
       var rf=(Array.isArray(json.files) ? json.files[0] : null) || {};
       var url=rf.url || rf.webViewLink || rf.fileUrl || (rf.id ? ('https://drive.google.com/file/d/'+rf.id+'/view') : '');
       if(!url) throw new Error('NO_URL');
-      ok.push({ i:i, name:name, url:url, size:pf.blob.size, mime:pf.mimeType });
+      ok.push({ i:i, name:name, url:url, size:pf.blob.size, mime:pf.mimeType, p:pi });
     }catch(err){ failed.push({ name:p.file.name, reason: (String(err&&err.message)==='FILE_TOO_LARGE') ? '「'+p.file.name+'」が大きすぎます（'+UPL_MAX_FILE_MB+'MBまで）。' : errReason(err) }); }
   }
   pb.style.width='95%';
   if(ok.length){
     try{
-      var r=await rpc('oshiin_upload_submit', { p_token:TOKEN, p_files: ok.map(function(o){ return { name:o.name, url:o.url, size:String(o.size), mime:o.mime }; }), p_note: $('note').value || null });
+      var r=await rpc('oshiin_upload_submit', { p_token:TOKEN, p_files: ok.map(function(o){ return { name:o.name, url:o.url, size:String(o.size), mime:o.mime, person:String(o.p||0) }; }), p_note: $('note').value || null });
       var j=r.ok ? await r.json() : null;
       if(!j || j.error) throw new Error((j && j.error) || ('HTTP '+r.status));
       // 送れた分は選択から外す（失敗した分は残してもう一度送れるように）
       ok.slice().sort(function(a,b){ return b.i-a.i; }).forEach(function(o){ var q=picked[o.i]; if(q && q.url) URL.revokeObjectURL(q.url); picked.splice(o.i,1); });
       $('note').value='';
       var now=new Date().toISOString();
-      META.files=(META.files||[]).concat(ok.map(function(o){ return { name:o.name, at:now }; })); META.uploaded_at=now; renderDone();
+      META.files=(META.files||[]).concat(ok.map(function(o){ return { name:o.name, at:now, person:o.p||0 }; })); META.uploaded_at=now; renderDone();
     }catch(e){
       failed.push({ name:'（記録）', reason:'ファイルは届きましたが、受付の記録ができませんでした（'+String(e&&e.message||e).slice(0,40)+'）。お手数ですが、大房行政書士法人の担当者へ「アップロードした」とご連絡ください。' });
       picked=[];
