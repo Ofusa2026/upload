@@ -1,3 +1,4 @@
+<!-- oshiin_dataup ver.20261127.05 - 送り先を案シスと同じドライブ連携（メインGAS／zinzai_dataup と同じ）に変更。製本のときに案シスが同じ連携で読み込み・移動するため（ファイルの持ち主をそろえる） -->
 <!-- oshiin_dataup ver.20261127.04 - 保存先は確認前の置き場（人材フォルダ）。大房側が［📚 確認して製本］で押印依頼PDFと差し替えて1冊にし、元のファイルと一緒に「4. 企業押印済」へ入れる（画面の動きは .03 と同じ） -->
 <!-- oshiin_dataup ver.20261127.03 - 複数人のときは全員分そろうまで送れない（まだ届いていない人に1つもファイルが無いと［送信する］を押せない。判定は missingPersons() の1箇所） -->
 <!-- oshiin_dataup ver.20261127.02 - 複数人のときは一人ずつの欄（ファイルはその人の「4. 企業押印済」へ。見つからないときは人材フォルダ）。1人のときは今までどおり1つの枠
@@ -117,13 +118,13 @@
     <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
     <div class="status-msg" id="statusMsg"></div>
   </div>
-  <div class="ver">oshiin_dataup ver.20261127.04</div>
+  <div class="ver">oshiin_dataup ver.20261127.05</div>
 </div>
 <div class="submit-wrap hidden" id="submitWrap"><div class="submit-hint hidden" id="submitHint"></div><button class="submit-btn" id="submitBtn" disabled>送信する</button></div>
 
 <script>
-// ほかのアップロード画面（tsuikan_company_dataup.html など）と同じ送り先
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqddeEti71WWCR9CanUR5zFf1ikUywHs-ES2CyqTucmaRfYaevz4yBqNHJx-_LIf3JCQ/exec';
+// 案シスと同じドライブ連携（zinzai_dataup.html と同じメインGAS。action/data 形式）
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxxBta5g1jXVzTf-s4EgaIbMc3No42aaH8guMOorQQ8HZl2SlNu-8vpu0fCFj_rjKsalQ/exec';
 const SB_URL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
 const SB_KEY = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
 const TOKEN = new URLSearchParams(location.search).get('t') || '';
@@ -321,12 +322,12 @@ async function submit(){
       var who=String(per.name || META.company || ''); if(who.length > 30) who = who.slice(0,30);
       seq[pi]=(seq[pi]||0)+1;
       var name=('押印済み_'+who+'_'+ymd()).replace(/[\\\/:*?"<>|]/g,'')+(cnt[pi]>1?('_'+seq[pi]):'')+'.'+ext;
-      var res=await tfetch(GAS_URL, { method:'POST', body: JSON.stringify({ files:[{ name:name, mimeType:pf.mimeType, data:b64 }], folderId: per.folder_id || META.folder_id }) });
+      var res=await tfetch(GAS_URL, { method:'POST', redirect:'follow', body: JSON.stringify({ action:'uploadFileToDrive', data:{ folderId: per.folder_id || META.folder_id, base64:b64, fileName:name, mimeType:pf.mimeType } }) });
       if(!res.ok) throw new Error('HTTP '+res.status);
       var txt=await res.text(), json; try{ json=JSON.parse(txt); }catch(pe){ throw new Error('BAD_RESPONSE'); }
-      if(!json.success) throw new Error(json.error || 'error');
-      var rf=(Array.isArray(json.files) ? json.files[0] : null) || {};
-      var url=rf.url || rf.webViewLink || rf.fileUrl || (rf.id ? ('https://drive.google.com/file/d/'+rf.id+'/view') : '');
+      if(!(json.status === 'ok' || json.success === true)) throw new Error(json.msg || json.error || 'error');
+      var rf=(Array.isArray(json.files) ? json.files[0] : json) || {};
+      var url=rf.url || rf.webViewLink || rf.fileUrl || rf.driveUrl || json.url || json.fileUrl || ((rf.id||json.id||json.fileId) ? ('https://drive.google.com/file/d/'+(rf.id||json.id||json.fileId)+'/view') : '');
       if(!url) throw new Error('NO_URL');
       ok.push({ i:i, name:name, url:url, size:pf.blob.size, mime:pf.mimeType, p:pi });
     }catch(err){ failed.push({ name:p.file.name, reason: (String(err&&err.message)==='FILE_TOO_LARGE') ? '「'+p.file.name+'」が大きすぎます（'+UPL_MAX_FILE_MB+'MBまで）。' : errReason(err) }); }
