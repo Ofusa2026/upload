@@ -1,3 +1,5 @@
+<!-- oshiin_dataup ver.20261127.07 - PASS（リンクを作った日の月日4桁）を入れてから開く。確かめるのは DB の oshiin_upload_get／submit（p_pass）。5回まちがえると止まる。
+     ・PASS が要らないリンク（前に作ったもの）は今までどおり。送る直前にも PASS を確かめ直す（ドライブ連携は PASS を確かめてから12時間だけ保存先を返すため） -->
 <!-- oshiin_dataup ver.20261127.06 - 確認済み（製本済み）のあとは受け付けない（画面に「確認済みです」と出し、送信もDBで止める）／差し戻しの理由を上に出す（oshiin_upload_get の rejected・reject_note）／GASにトークンと人の番号も送る（GASがトークンから保存先を引く形にするための準備） -->
 <!-- oshiin_dataup ver.20261127.05 - 送り先を案シスと同じドライブ連携（メインGAS／zinzai_dataup と同じ）に変更。製本のときに案シスが同じ連携で読み込み・移動するため（ファイルの持ち主をそろえる） -->
 <!-- oshiin_dataup ver.20261127.04 - 保存先は確認前の置き場（人材フォルダ）。大房側が［📚 確認して製本］で押印依頼PDFと差し替えて1冊にし、元のファイルと一緒に「4. 企業押印済」へ入れる（画面の動きは .03 と同じ） -->
@@ -100,6 +102,14 @@
 
   <div id="loading" style="text-align:center;font-size:14px;color:var(--sub);padding:20px 0;">読み込んでいます…</div>
   <div id="errBox" class="err-box hidden"></div>
+  <!-- ver.20261127.07: PASS -->
+  <div id="passBox" class="info hidden" style="text-align:center;padding:18px 14px;">
+    <div style="font-size:16px;font-weight:800;margin-bottom:4px;">🔑 PASS を入力してください</div>
+    <div style="font-size:12.5px;color:var(--sub);margin-bottom:12px;line-height:1.7;">ご案内の文にある「PASS」（4桁の数字）</div>
+    <input id="passIn" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="0000" style="width:150px;font-size:26px;letter-spacing:8px;text-align:center;padding:8px 10px;border:1.5px solid var(--border);border-radius:10px;">
+    <div><button id="passBtn" type="button" class="btn2 cam" style="margin-top:12px;max-width:220px;width:100%;">開く</button></div>
+    <div id="passMsg" style="margin-top:10px;font-size:13px;font-weight:700;color:var(--error);min-height:1em;"></div>
+  </div>
 
   <div id="main" class="hidden">
     <div class="company-name-bar" id="coName"></div>
@@ -120,7 +130,7 @@
     <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
     <div class="status-msg" id="statusMsg"></div>
   </div>
-  <div class="ver">oshiin_dataup ver.20261127.06</div>
+  <div class="ver">oshiin_dataup ver.20261127.07</div>
 </div>
 <div class="submit-wrap hidden" id="submitWrap"><div class="submit-hint hidden" id="submitHint"></div><button class="submit-btn" id="submitBtn" disabled>送信する</button></div>
 
@@ -131,7 +141,8 @@ const SB_URL = 'https://ehwlgbwpycglmopiqyty.supabase.co';
 const SB_KEY = 'sb_publishable_3ptyILIpGIcNA5sUBhFMbA_n0VxpY2u';
 const TOKEN = new URLSearchParams(location.search).get('t') || '';
 var UPL_MAX_FILE_MB = 25, UPL_TIMEOUT_MS = 180000, MAX_FILES = 20;
-var META = null, picked = [], _target = 0;   // picked の1件 = {file, url, p(何番目の人か)}
+var META = null, picked = [], _target = 0;
+var PASS = ''; try{ PASS = sessionStorage.getItem('oshiin_pass_'+TOKEN) || ''; }catch(e){}   // ver.20261127.07: 合っていた PASS はこのタブのあいだだけ覚える   // picked の1件 = {file, url, p(何番目の人か)}
 
 function rpc(fn, body){ return fetch(SB_URL + '/rest/v1/rpc/' + fn, { method:'POST', headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, body: JSON.stringify(body||{}) }); }
 function $(id){ return document.getElementById(id); }
@@ -141,14 +152,36 @@ function md(iso){ var d=new Date(iso); return isNaN(d) ? '' : (d.getFullYear()+'
 function mdhm(iso){ var d=new Date(iso); return isNaN(d) ? '' : ((d.getMonth()+1)+'/'+d.getDate()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)); }
 function showErr(msg){ $('loading').classList.add('hidden'); $('main').classList.add('hidden'); $('submitWrap').classList.add('hidden'); var b=$('errBox'); b.textContent=msg; b.classList.remove('hidden'); }
 
+// ver.20261127.07: PASS の画面。o.error＝'pass'（ちがう・あと o.left 回）／'locked'（止まっている）
+function showPass(o){
+  var tried = !!PASS; PASS = ''; try{ sessionStorage.removeItem('oshiin_pass_'+TOKEN); }catch(e){}
+  $('loading').classList.add('hidden'); $('main').classList.add('hidden'); $('submitWrap').classList.add('hidden');
+  if(o && o.error === 'locked'){ $('passBox').classList.add('hidden'); showErr('PASS の入力の回数が上限になったため、このURLは止まっています。お手数ですが、大房行政書士法人の担当者までご連絡ください。'); return; }
+  $('passBox').classList.remove('hidden');
+  $('passMsg').textContent = (tried && o && o.error === 'pass') ? ('PASS がちがいます。もう一度ご確認ください（あと' + (o.left != null ? o.left : '') + '回）') : '';
+  var inp = $('passIn'); inp.value = ''; try{ inp.focus(); }catch(e){}
+}
+function passGo(){
+  var v = String($('passIn').value || '').replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/\D/g, '');
+  if(v.length !== 4){ $('passMsg').textContent = '4桁の数字を入力してください'; return; }
+  PASS = v; $('passMsg').textContent = ''; $('passBox').classList.add('hidden'); $('loading').classList.remove('hidden');
+  load();
+}
+$('passBtn').addEventListener('click', passGo);
+$('passIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') passGo(); });
+
 // ---- 読み込み ----
 async function load(){
   if(!TOKEN || TOKEN.length < 20){ showErr('このURLでは書類を表示できません（URLが途中で切れている可能性があります）。お手数ですが、大房行政書士法人の担当者までご連絡ください。'); return; }
   try{
-    var r = await rpc('oshiin_upload_get', { p_token: TOKEN });
+    var _body = { p_token: TOKEN }; if(PASS) _body.p_pass = PASS;   // ver.20261127.07: PASS は入っているときだけ送る
+    var r = await rpc('oshiin_upload_get', _body);
     if(!r.ok) throw new Error('HTTP '+r.status);
     var o = await r.json();
     if(!o || typeof o !== 'object'){ showErr('このURLでは書類を表示できません。お手数ですが、大房行政書士法人の担当者までご連絡ください。'); return; }
+    if(o.need_pass){ showPass(o); return; }
+    if(PASS){ try{ sessionStorage.setItem('oshiin_pass_'+TOKEN, PASS); }catch(e){} }
+    $('passBox').classList.add('hidden');
     META = o;
   }catch(e){ showErr('読み込めませんでした（通信エラー）。電波の良い場所で、ページを開き直してください。'); return; }
   if(META.expired){ showErr('このアップロード用URLは有効期限（'+md(META.expires_at)+'）が過ぎています。お手数ですが、大房行政書士法人の担当者までご連絡ください。'); return; }
@@ -316,6 +349,8 @@ async function submit(){
   if(!picked.length || !META || window._sending) return;
   if(missingPersons().length){ renderPicked(); return; }   // 全員分そろうまで送らない
   window._sending = true;
+  // ver.20261127.07: ドライブ連携は PASS を確かめてから12時間だけ保存先を返すので、送る直前にもう一度確かめる
+  if(PASS){ try{ await rpc('oshiin_upload_get', { p_token: TOKEN, p_pass: PASS }); }catch(e){} }
   var btn=$('submitBtn'), sm=$('statusMsg'), pw=$('progressWrap'), pb=$('progressBar');
   btn.disabled = true; pw.style.display='block'; sm.style.display='block'; sm.className='status-msg';
   var PS = PERSONS(), byI = {}; PS.forEach(function(o){ byI[o.i]=o; });
@@ -346,7 +381,9 @@ async function submit(){
   pb.style.width='95%';
   if(ok.length){
     try{
-      var r=await rpc('oshiin_upload_submit', { p_token:TOKEN, p_files: ok.map(function(o){ return { name:o.name, url:o.url, size:String(o.size), mime:o.mime, person:String(o.p||0) }; }), p_note: $('note').value || null });
+      var _sb={ p_token:TOKEN, p_files: ok.map(function(o){ return { name:o.name, url:o.url, size:String(o.size), mime:o.mime, person:String(o.p||0) }; }), p_note: $('note').value || null };
+      if(PASS) _sb.p_pass=PASS;   // ver.20261127.07
+      var r=await rpc('oshiin_upload_submit', _sb);
       var j=r.ok ? await r.json() : null;
       if(!j || j.error) throw new Error((j && j.error) || ('HTTP '+r.status));
       // 送れた分は選択から外す（失敗した分は残してもう一度送れるように）
