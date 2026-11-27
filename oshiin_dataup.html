@@ -1,3 +1,4 @@
+<!-- oshiin_dataup ver.20261127.06 - 確認済み（製本済み）のあとは受け付けない（画面に「確認済みです」と出し、送信もDBで止める）／差し戻しの理由を上に出す（oshiin_upload_get の rejected・reject_note）／GASにトークンと人の番号も送る（GASがトークンから保存先を引く形にするための準備） -->
 <!-- oshiin_dataup ver.20261127.05 - 送り先を案シスと同じドライブ連携（メインGAS／zinzai_dataup と同じ）に変更。製本のときに案シスが同じ連携で読み込み・移動するため（ファイルの持ち主をそろえる） -->
 <!-- oshiin_dataup ver.20261127.04 - 保存先は確認前の置き場（人材フォルダ）。大房側が［📚 確認して製本］で押印依頼PDFと差し替えて1冊にし、元のファイルと一緒に「4. 企業押印済」へ入れる（画面の動きは .03 と同じ） -->
 <!-- oshiin_dataup ver.20261127.03 - 複数人のときは全員分そろうまで送れない（まだ届いていない人に1つもファイルが無いと［送信する］を押せない。判定は missingPersons() の1箇所） -->
@@ -109,6 +110,7 @@
       <div id="expiry" style="font-weight:700;"></div>
       <a id="docLink" class="doc-link hidden" href="#" target="_blank" rel="noopener">📑 押印する書類を開く</a>
     </div>
+    <div id="rejectBox" class="err-box hidden" style="margin-bottom:14px;"></div>
     <div id="doneBox" class="done-box hidden"></div>
     <div class="how" id="how"></div>
     <div id="zones"></div>
@@ -118,7 +120,7 @@
     <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
     <div class="status-msg" id="statusMsg"></div>
   </div>
-  <div class="ver">oshiin_dataup ver.20261127.05</div>
+  <div class="ver">oshiin_dataup ver.20261127.06</div>
 </div>
 <div class="submit-wrap hidden" id="submitWrap"><div class="submit-hint hidden" id="submitHint"></div><button class="submit-btn" id="submitBtn" disabled>送信する</button></div>
 
@@ -150,7 +152,15 @@ async function load(){
     META = o;
   }catch(e){ showErr('読み込めませんでした（通信エラー）。電波の良い場所で、ページを開き直してください。'); return; }
   if(META.expired){ showErr('このアップロード用URLは有効期限（'+md(META.expires_at)+'）が過ぎています。お手数ですが、大房行政書士法人の担当者までご連絡ください。'); return; }
+  // ver.20261127.06: 確認済み（製本済み）なら受け付けない
+  if(META.confirmed){
+    $('loading').classList.add('hidden');
+    var cb=$('errBox'); cb.className='done-box'; cb.innerHTML='✅ 押印書類は確認済みです。ありがとうございました。<br>追加・差し替えがある場合は、大房行政書士法人の担当者までご連絡ください。'; cb.classList.remove('hidden');
+    return;
+  }
   $('loading').classList.add('hidden'); $('main').classList.remove('hidden'); $('submitWrap').classList.remove('hidden');
+  // ver.20261127.06: 差し戻しの理由
+  if(META.rejected && META.reject_note){ var rb=$('rejectBox'); rb.innerHTML='↩ <b>お手数ですが、もう一度お送りください。</b><br>'+esc(META.reject_note).replace(/\n/g,'<br>'); rb.classList.remove('hidden'); }
   $('coName').textContent = (META.company || '') + (META.company ? ' 御中' : '');
   $('persons').innerHTML = PERSONS().map(function(o){ return '<span>'+esc(o.name)+' 様</span>'; }).join('') || '<span>—</span>';
   $('expiry').textContent = md(META.expires_at) + ' まで';
@@ -297,6 +307,7 @@ function errReason(err){
   if((err && err.name === 'AbortError') || /timeout/i.test(m)) return '送信に時間がかかりすぎて止まりました。Wi-Fiにつなぐか、ファイルを分けてもう一度送信してください。';
   if(/Failed to fetch|NetworkError|Load failed/i.test(m)) return '通信エラーで送信できませんでした。電波の良い場所で、もう一度送信してください。';
   var hs = m.match(/HTTP (\d{3})/); if(hs){ var c=+hs[1]; if(c===413) return 'ファイルが大きすぎて受け付けられませんでした。分けて送信してください。'; if(c===429 || c>=500) return 'サーバーが混み合っています。少し時間をおいて、もう一度送信してください。'; }
+  if(/confirmed/.test(m)) return '押印書類はすでに確認済みのため、受け付けを締め切りました。追加・差し替えがある場合は、大房行政書士法人の担当者までご連絡ください。';
   if(/expired/.test(m)) return 'このURLの有効期限が過ぎています。大房行政書士法人の担当者までご連絡ください。';
   return '送信できませんでした（'+m.slice(0,80)+'）。もう一度送信しても失敗する場合は、この画面を撮って担当者へお送りください。';
 }
@@ -322,7 +333,7 @@ async function submit(){
       var who=String(per.name || META.company || ''); if(who.length > 30) who = who.slice(0,30);
       seq[pi]=(seq[pi]||0)+1;
       var name=('押印済み_'+who+'_'+ymd()).replace(/[\\\/:*?"<>|]/g,'')+(cnt[pi]>1?('_'+seq[pi]):'')+'.'+ext;
-      var res=await tfetch(GAS_URL, { method:'POST', redirect:'follow', body: JSON.stringify({ action:'uploadFileToDrive', data:{ folderId: per.folder_id || META.folder_id, base64:b64, fileName:name, mimeType:pf.mimeType } }) });
+      var res=await tfetch(GAS_URL, { method:'POST', redirect:'follow', body: JSON.stringify({ action:'uploadFileToDrive', data:{ folderId: per.folder_id || META.folder_id, oshiinToken: TOKEN, oshiinPerson: pi, base64:b64, fileName:name, mimeType:pf.mimeType } }) });
       if(!res.ok) throw new Error('HTTP '+res.status);
       var txt=await res.text(), json; try{ json=JSON.parse(txt); }catch(pe){ throw new Error('BAD_RESPONSE'); }
       if(!(json.status === 'ok' || json.success === true)) throw new Error(json.msg || json.error || 'error');
